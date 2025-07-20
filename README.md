@@ -1,2 +1,3 @@
-# SynThesisAI
-SynThesisAI – The Next-Gen Platform for Generative Intelligence Across STREAM
+# SynThesisAI – The Next-Gen Platform for Generative Intelligence Across STREAM
+
+This project is heavily rooted and inspired by the [`kamaal505/synthetic_math_prompts_agent`](https://github.com/kamaal505/synthetic_math_prompts_agent) repository, which served as the foundation for SynThesisAI. The project aims to provide a comprehensive, self-optimizing, multi-domain AI platform that leverages DSPy's declarative programming paradigm and agentic reinforcement learning to generate high-quality educational content across Science, Technology, Reading, Engineering, Arts, and Mathematics (STREAM) domains.

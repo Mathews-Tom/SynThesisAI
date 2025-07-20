@@ -1,0 +1,28 @@
+.DS_Store
+
+# Virtual Environment and Python Cache
+.venv
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Environments Configurations
+.env
+
+# Test Results
+results/
+
+# Cached LLM Responses
+cache/
+
+database/
+
+
+create_init.py_files.py
+
+#Download Benchmarks
+download_hmmt_yearly.py
+download_aime.py
+download_gpqa_diamomd.py
+
+PR_MESSAGE.md
