@@ -15,12 +15,14 @@ results/
 # Cached LLM Responses
 cache/
 
-create_init.py_files.py
-
 database/
 
-#Download Benchmarks
 
+create_init.py_files.py
+
+#Download Benchmarks
 download_hmmt_yearly.py
 download_aime.py
 download_gpqa_diamomd.py
+
+PR_MESSAGE.md
