@@ -20,7 +20,7 @@ SynThesisAI is a comprehensive, self-optimizing, multi-domain AI platform that l
 
 ## Attribution
 
-This project is built upon the excellent foundation provided by [`kamaal505/synthetic_math_prompts_agent`](https://github.com/kamaal505/synthetic_math_prompts_agent). Special thanks to the original innovators [Mirza Kamaal](https://github.com/kamaal505) and [Mintesnote Bankisara](https://github.com/MintesnoteBanksira) for their groundbreaking work on the synthetic math prompt agent system.
+This project is built upon the excellent foundation provided by [`kamaal505/synthetic_math_prompts_agent`](https://github.com/kamaal505/synthetic_math_prompts_agent). Special thanks to [Mirza Kamaal](https://github.com/kamaal505) and [Mintesnote Bankisara](https://github.com/MintesnoteBanksira), who, alongside myself, were the original innovators of this groundbreaking work on the synthetic math prompt agent system.
 
 ## Architecture
 
