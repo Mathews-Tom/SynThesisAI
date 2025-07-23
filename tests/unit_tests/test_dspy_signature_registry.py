@@ -12,8 +12,8 @@ from pathlib import Path
 
 import pytest
 
+from core.dspy.exceptions import SignatureValidationError
 from core.dspy.signature_registry import SignatureRegistry, get_signature_registry
-from core.dspy.signatures import SignatureValidationError
 
 
 class TestSignatureRegistry:

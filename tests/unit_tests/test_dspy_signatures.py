@@ -7,9 +7,9 @@ including signature validation, parsing, and compatibility checking.
 
 import pytest
 
+from core.dspy.exceptions import SignatureValidationError
 from core.dspy.signatures import (
     SignatureManager,
-    SignatureValidationError,
     create_custom_signature,
     get_all_domains,
     get_domain_signature,
