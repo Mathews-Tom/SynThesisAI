@@ -1,0 +1,91 @@
+{
+  "enabled": true,
+  "cache_dir": ".cache/dspy",
+  "cache_ttl": 86400,
+  "optimization": {
+    "mipro_v2": {
+      "optuna_trials_num": 100,
+      "max_bootstrapped_demos": 4,
+      "max_labeled_demos": 16,
+      "num_candidate_programs": 16,
+      "init_temperature": 1.4
+    },
+    "bootstrap": {
+      "max_bootstrapped_demos": 4,
+      "max_labeled_demos": 16
+    }
+  },
+  "training_data": {
+    "min_examples": 50,
+    "max_examples": 1000,
+    "validation_split": 0.2
+  },
+  "quality_requirements": {
+    "min_accuracy": 0.8,
+    "min_coherence": 0.7,
+    "min_relevance": 0.8,
+    "min_problem_length": 50,
+    "min_solution_length": 30
+  },
+  "fallback": {
+    "enabled": true,
+    "max_retries": 3,
+    "timeout": 300
+  },
+  "domains": {
+    "mathematics": {
+      "quality_requirements": {
+        "min_accuracy": 0.9,
+        "min_coherence": 0.8,
+        "min_relevance": 0.9,
+        "min_problem_length": 60,
+        "min_solution_length": 40
+      }
+    },
+    "science": {
+      "quality_requirements": {
+        "min_accuracy": 0.9,
+        "min_coherence": 0.8,
+        "min_relevance": 0.9,
+        "min_problem_length": 70,
+        "min_solution_length": 50
+      }
+    },
+    "technology": {
+      "quality_requirements": {
+        "min_accuracy": 0.85,
+        "min_coherence": 0.8,
+        "min_relevance": 0.85,
+        "min_problem_length": 60,
+        "min_solution_length": 40
+      }
+    },
+    "reading": {
+      "quality_requirements": {
+        "min_accuracy": 0.85,
+        "min_coherence": 0.9,
+        "min_relevance": 0.9,
+        "min_problem_length": 80,
+        "min_solution_length": 60
+      }
+    },
+    "engineering": {
+      "quality_requirements": {
+        "min_accuracy": 0.9,
+        "min_coherence": 0.8,
+        "min_relevance": 0.85,
+        "min_problem_length": 70,
+        "min_solution_length": 50
+      }
+    },
+    "arts": {
+      "quality_requirements": {
+        "min_accuracy": 0.8,
+        "min_coherence": 0.9,
+        "min_relevance": 0.9,
+        "min_problem_length": 80,
+        "min_solution_length": 60
+      }
+    }
+  }
+}
