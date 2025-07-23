@@ -24,6 +24,19 @@ except ImportError:
 # Import core components
 from .base_module import STREAMContentGenerator
 from .cache import OptimizationCache, get_optimization_cache
+from .cache_invalidation import (
+    CacheInvalidationManager,
+    get_invalidation_manager,
+    invalidate_by_config_change,
+    invalidate_by_domain,
+    run_cache_maintenance,
+)
+from .cache_monitoring import (
+    CachePerformanceMonitor,
+    collect_cache_metrics,
+    get_cache_monitor,
+    get_cache_performance_report,
+)
 from .config import (
     DSPyConfig,
     DSPyModuleConfig,
@@ -36,6 +49,7 @@ from .exceptions import (
     DSPyIntegrationError,
     ModuleInitializationError,
     OptimizationFailureError,
+    QualityAssessmentError,
     SignatureValidationError,
     TrainingDataError,
 )
@@ -58,10 +72,12 @@ __all__ = [
     # Core components
     "STREAMContentGenerator",
     "DSPyOptimizationEngine",
+    "TrainingDataManager",
     "SignatureManager",
     "OptimizationCache",
-    "TrainingDataManager",
     "SignatureRegistry",
+    "CacheInvalidationManager",
+    "CachePerformanceMonitor",
     # Configuration
     "get_dspy_config",
     "DSPyConfig",
@@ -75,6 +91,7 @@ __all__ = [
     "CacheCorruptionError",
     "TrainingDataError",
     "ModuleInitializationError",
+    "QualityAssessmentError",
     # Utility functions
     "get_domain_signature",
     "validate_signature",
@@ -83,6 +100,13 @@ __all__ = [
     "get_signature_types",
     "get_optimization_cache",
     "get_signature_registry",
+    "get_invalidation_manager",
+    "invalidate_by_config_change",
+    "invalidate_by_domain",
+    "run_cache_maintenance",
+    "get_cache_monitor",
+    "collect_cache_metrics",
+    "get_cache_performance_report",
     # Status
     "DSPY_AVAILABLE",
     "__version__",
