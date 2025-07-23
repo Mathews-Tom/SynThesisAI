@@ -42,6 +42,9 @@ class AgentConfig:
     max_episodes: int = 10000
     max_steps_per_episode: int = 1000
 
+    # Hardware configuration
+    gpu_enabled: bool = True
+
     def validate(self) -> None:
         """Validate agent configuration parameters."""
         if self.learning_rate <= 0 or self.learning_rate > 1:
