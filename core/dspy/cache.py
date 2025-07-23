@@ -1,19 +1,22 @@
 """
-DSPy Optimization Cache
+Caching system for DSPy optimization results.
 
-This module provides caching functionality for DSPy optimization results,
-enabling efficient reuse of optimized modules and reducing redundant computations.
+This module provides caching functionality for DSPy optimization results
+to avoid redundant computations and improve performance.
 """
 
 import hashlib
 import json
 import logging
+import os
 import pickle
+import threading
 import time
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
-from .config import get_dspy_config
+from .config import OptimizationResult, get_dspy_config
 from .exceptions import CacheCorruptionError
 
 logger = logging.getLogger(__name__)
@@ -23,217 +26,257 @@ class OptimizationCache:
     """
     Cache for DSPy optimization results.
 
-    Provides both memory and persistent caching of optimized DSPy modules
-    to avoid redundant optimization computations.
+    Provides both memory and persistent caching for optimization results
+    to avoid redundant computations.
     """
 
-    def __init__(self, cache_dir: Optional[str] = None):
+    def __init__(self, cache_dir: str = ".cache/dspy", cache_ttl: int = None):
         """
         Initialize optimization cache.
 
         Args:
-            cache_dir: Optional custom cache directory
+            cache_dir: Directory for persistent cache storage
+            cache_ttl: Cache time-to-live in seconds (defaults to config value)
         """
-        self.config = get_dspy_config()
-        cache_config = self.config.get_cache_config()
-
-        self.cache_dir = Path(cache_dir or cache_config["cache_dir"])
+        self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-
-        self.cache_ttl = cache_config["cache_ttl"]
-        self.enabled = cache_config["enabled"]
-
-        # In-memory cache for fast access
         self.memory_cache: Dict[str, Dict[str, Any]] = {}
 
-        # Cache statistics
-        self.stats = {"hits": 0, "misses": 0, "stores": 0, "evictions": 0, "errors": 0}
+        # Get cache TTL from config or use provided value
+        config = get_dspy_config()
+        self.cache_ttl = cache_ttl or config.cache_ttl
 
-        self.logger = logging.getLogger(f"{__name__}.OptimizationCache")
+        self.logger = logging.getLogger(__name__ + ".OptimizationCache")
+        self._lock = threading.RLock()  # Thread-safe operations
+
+        # Cache statistics
+        self.stats = {
+            "hits": 0,
+            "misses": 0,
+            "stores": 0,
+            "invalidations": 0,
+            "errors": 0,
+        }
+
+        # Initialize cache validation
+        self._validate_cache_directory()
+
         self.logger.info(
-            "Initialized optimization cache: %s (TTL: %ds)",
-            self.cache_dir,
-            self.cache_ttl,
+            "Initialized optimization cache with TTL %d seconds", self.cache_ttl
         )
 
+    def _validate_cache_directory(self) -> None:
+        """Validate cache directory and perform cleanup if needed."""
+        try:
+            # Ensure cache directory exists and is writable
+            if not self.cache_dir.exists():
+                self.cache_dir.mkdir(parents=True, exist_ok=True)
+
+            # Test write permissions
+            test_file = self.cache_dir / ".cache_test"
+            test_file.write_text("test")
+            test_file.unlink()
+
+            # Clean up expired entries on startup
+            self._cleanup_expired_entries()
+
+        except Exception as e:
+            self.logger.error("Cache directory validation failed: %s", str(e))
+            raise CacheCorruptionError(
+                f"Cache directory validation failed: {str(e)}",
+                cache_key="directory_validation",
+            ) from e
+
+    def _cleanup_expired_entries(self) -> int:
+        """
+        Clean up expired cache entries.
+
+        Returns:
+            Number of entries cleaned up
+        """
+        cleaned_count = 0
+        current_time = time.time()
+
+        try:
+            for cache_file in self.cache_dir.glob("*.pkl"):
+                try:
+                    # Check if file is expired
+                    if current_time - cache_file.stat().st_mtime > self.cache_ttl:
+                        cache_file.unlink()
+                        cleaned_count += 1
+                except OSError:
+                    # File might have been deleted by another process
+                    continue
+
+            if cleaned_count > 0:
+                self.logger.info("Cleaned up %d expired cache entries", cleaned_count)
+
+        except Exception as e:
+            self.logger.error("Error during cache cleanup: %s", str(e))
+
+        return cleaned_count
+
     def generate_cache_key(
-        self,
-        domain: str,
-        signature: str,
-        quality_requirements: Dict[str, Any],
-        optimization_params: Dict[str, Any] = None,
+        self, domain: str, signature: str, quality_requirements: Dict[str, Any]
     ) -> str:
         """
         Generate unique cache key for optimization.
 
         Args:
-            domain: STREAM domain
+            domain: Domain name
             signature: DSPy signature
-            quality_requirements: Quality requirements dictionary
-            optimization_params: Optional optimization parameters
+            quality_requirements: Quality requirements
 
         Returns:
-            Unique cache key string
+            Unique cache key
         """
         try:
             key_components = [
-                domain,
+                domain.lower(),  # Normalize domain case
                 signature,
                 json.dumps(quality_requirements, sort_keys=True),
-                json.dumps(optimization_params or {}, sort_keys=True),
-                self.config.get_dspy_version(),
+                "v1.1",  # Cache version
             ]
-
             key_string = "|".join(key_components)
-            cache_key = hashlib.md5(key_string.encode()).hexdigest()
-
-            self.logger.debug("Generated cache key for %s: %s", domain, cache_key)
-            return cache_key
-
+            return hashlib.md5(key_string.encode()).hexdigest()
         except Exception as e:
-            self.logger.error("Error generating cache key: %s", str(e))
-            # Fallback to simple key
-            return hashlib.md5(
-                f"{domain}_{signature}_{time.time()}".encode()
-            ).hexdigest()
+            self.logger.error("Failed to generate cache key: %s", str(e))
+            raise CacheCorruptionError(
+                f"Cache key generation failed: {str(e)}", cache_key="key_generation"
+            ) from e
 
-    def store(
-        self,
-        cache_key: str,
-        optimized_module: Any,
-        optimization_metrics: Dict[str, Any] = None,
-    ) -> bool:
+    def store(self, cache_key: str, result: OptimizationResult) -> bool:
         """
-        Store optimized module in cache.
+        Store optimization result in cache.
 
         Args:
-            cache_key: Unique cache key
-            optimized_module: Optimized DSPy module
-            optimization_metrics: Optional optimization metrics
+            cache_key: Cache key
+            result: Optimization result to store
 
         Returns:
-            True if stored successfully
+            True if stored successfully in both memory and persistent cache
         """
-        if not self.enabled:
-            return False
+        with self._lock:
+            memory_success = False
+            persistent_success = False
 
-        try:
-            timestamp = time.time()
+            try:
+                current_time = time.time()
 
-            cache_data = {
-                "module": optimized_module,
-                "timestamp": timestamp,
-                "metrics": optimization_metrics or {},
-                "metadata": {
-                    "domain": getattr(optimized_module, "domain", "unknown"),
-                    "signature": getattr(optimized_module, "signature", "unknown"),
-                    "cache_version": "1.0",
-                },
-            }
+                # Store in memory cache
+                self.memory_cache[cache_key] = {
+                    "result": result,
+                    "timestamp": current_time,
+                }
+                memory_success = True
 
-            # Store in memory cache
-            self.memory_cache[cache_key] = cache_data
+                # Store in persistent cache
+                cache_path = self.cache_dir / f"{cache_key}.pkl"
+                cache_data = {
+                    "result": result,
+                    "timestamp": current_time,
+                    "metadata": {
+                        "domain": getattr(result.optimized_module, "domain", "unknown"),
+                        "cache_key": cache_key,
+                        "validation_score": result.validation_score,
+                        "training_time": result.training_time,
+                    },
+                }
 
-            # Store in persistent cache
-            cache_path = self.cache_dir / f"{cache_key}.pkl"
-            with open(cache_path, "wb") as f:
-                pickle.dump(cache_data, f)
+                # Write to temporary file first, then rename for atomic operation
+                temp_path = cache_path.with_suffix(".tmp")
+                temp_path.write_bytes(pickle.dumps(cache_data))
+                temp_path.rename(cache_path)
+                persistent_success = True
 
-            self.stats["stores"] += 1
-            self.logger.debug("Stored optimization in cache: %s", cache_key)
+                self.stats["stores"] += 1
+                self.logger.info("Stored optimization result in cache: %s", cache_key)
+                return True
 
-            return True
+            except Exception as e:
+                self.stats["errors"] += 1
+                self.logger.error(
+                    "Failed to store cache entry %s: %s", cache_key, str(e)
+                )
 
-        except Exception as e:
-            self.stats["errors"] += 1
-            self.logger.error("Error storing cache entry %s: %s", cache_key, str(e))
-            return False
+                # Clean up temporary file if it exists
+                temp_path = self.cache_dir / f"{cache_key}.tmp"
+                if temp_path.exists():
+                    try:
+                        temp_path.unlink()
+                    except OSError:
+                        pass
 
-    def get(self, cache_key: str) -> Optional[Any]:
+                # If persistent storage failed, remove from memory cache too
+                if memory_success and not persistent_success:
+                    if cache_key in self.memory_cache:
+                        del self.memory_cache[cache_key]
+
+                return False
+
+    def get(self, cache_key: str) -> Optional[OptimizationResult]:
         """
-        Retrieve optimized module from cache.
+        Retrieve optimization result from cache.
 
         Args:
-            cache_key: Unique cache key
+            cache_key: Cache key
 
         Returns:
-            Optimized module if found and valid, None otherwise
+            Cached optimization result or None if not found/expired
         """
-        if not self.enabled:
-            return None
+        with self._lock:
+            current_time = time.time()
 
-        try:
             # Check memory cache first
             if cache_key in self.memory_cache:
                 cached_item = self.memory_cache[cache_key]
-                if self._is_cache_valid(cached_item):
+                if current_time - cached_item["timestamp"] < self.cache_ttl:
                     self.stats["hits"] += 1
                     self.logger.debug("Cache hit (memory): %s", cache_key)
-                    return cached_item["module"]
-                else:
-                    # Remove expired entry
-                    del self.memory_cache[cache_key]
-                    self.stats["evictions"] += 1
+                    return cached_item["result"]
+
+                # Remove expired entry
+                del self.memory_cache[cache_key]
 
             # Check persistent cache
             cache_path = self.cache_dir / f"{cache_key}.pkl"
             if cache_path.exists():
-                with open(cache_path, "rb") as f:
-                    cached_data = pickle.load(f)
+                try:
+                    cached_data = pickle.loads(cache_path.read_bytes())
 
-                if self._is_cache_valid(cached_data):
-                    # Update memory cache
-                    self.memory_cache[cache_key] = cached_data
-                    self.stats["hits"] += 1
-                    self.logger.debug("Cache hit (persistent): %s", cache_key)
-                    return cached_data["module"]
-                else:
+                    if current_time - cached_data["timestamp"] < self.cache_ttl:
+                        # Update memory cache
+                        self.memory_cache[cache_key] = {
+                            "result": cached_data["result"],
+                            "timestamp": cached_data["timestamp"],
+                        }
+                        self.stats["hits"] += 1
+                        self.logger.debug("Cache hit (persistent): %s", cache_key)
+                        return cached_data["result"]
+
                     # Remove expired file
                     cache_path.unlink()
-                    self.stats["evictions"] += 1
 
-            # Cache miss
+                except Exception as e:
+                    self.stats["errors"] += 1
+                    self.logger.error(
+                        "Failed to load cache entry %s: %s", cache_key, str(e)
+                    )
+
+                    # Remove corrupted cache file
+                    if cache_path.exists():
+                        try:
+                            cache_path.unlink()
+                        except OSError:
+                            pass
+
             self.stats["misses"] += 1
             self.logger.debug("Cache miss: %s", cache_key)
             return None
 
-        except Exception as e:
-            self.stats["errors"] += 1
-            self.logger.error("Error retrieving cache entry %s: %s", cache_key, str(e))
-            return None
-
-    def _is_cache_valid(self, cached_data: Dict[str, Any]) -> bool:
-        """
-        Check if cached data is still valid.
-
-        Args:
-            cached_data: Cached data dictionary
-
-        Returns:
-            True if cache entry is valid
-        """
-        try:
-            timestamp = cached_data.get("timestamp", 0)
-            age = time.time() - timestamp
-
-            if age > self.cache_ttl:
-                self.logger.debug("Cache entry expired (age: %.1fs)", age)
-                return False
-
-            # Check for required fields
-            if "module" not in cached_data:
-                self.logger.warning("Cache entry missing module")
-                return False
-
-            return True
-
-        except Exception as e:
-            self.logger.warning("Error validating cache entry: %s", str(e))
-            return False
-
     def invalidate(self, cache_key: str) -> bool:
         """
-        Invalidate a specific cache entry.
+        Invalidate a cache entry.
 
         Args:
             cache_key: Cache key to invalidate
@@ -241,26 +284,33 @@ class OptimizationCache:
         Returns:
             True if invalidated successfully
         """
-        try:
-            # Remove from memory cache
-            if cache_key in self.memory_cache:
-                del self.memory_cache[cache_key]
+        with self._lock:
+            try:
+                invalidated = False
 
-            # Remove from persistent cache
-            cache_path = self.cache_dir / f"{cache_key}.pkl"
-            if cache_path.exists():
-                cache_path.unlink()
+                # Remove from memory cache
+                if cache_key in self.memory_cache:
+                    del self.memory_cache[cache_key]
+                    invalidated = True
 
-            self.stats["evictions"] += 1
-            self.logger.debug("Invalidated cache entry: %s", cache_key)
-            return True
+                # Remove from persistent cache
+                cache_path = self.cache_dir / f"{cache_key}.pkl"
+                if cache_path.exists():
+                    cache_path.unlink()
+                    invalidated = True
 
-        except Exception as e:
-            self.stats["errors"] += 1
-            self.logger.error(
-                "Error invalidating cache entry %s: %s", cache_key, str(e)
-            )
-            return False
+                if invalidated:
+                    self.stats["invalidations"] += 1
+                    self.logger.info("Invalidated cache entry: %s", cache_key)
+
+                return invalidated
+
+            except Exception as e:
+                self.stats["errors"] += 1
+                self.logger.error(
+                    "Failed to invalidate cache entry %s: %s", cache_key, str(e)
+                )
+                return False
 
     def clear(self) -> bool:
         """
@@ -271,141 +321,224 @@ class OptimizationCache:
         """
         try:
             # Clear memory cache
-            cleared_memory = len(self.memory_cache)
             self.memory_cache.clear()
 
             # Clear persistent cache
-            cleared_persistent = 0
             for cache_file in self.cache_dir.glob("*.pkl"):
                 cache_file.unlink()
-                cleared_persistent += 1
 
-            self.stats["evictions"] += cleared_memory + cleared_persistent
-            self.logger.info(
-                "Cleared cache: %d memory + %d persistent entries",
-                cleared_memory,
-                cleared_persistent,
-            )
+            self.logger.info("Cleared all cache entries")
             return True
 
         except Exception as e:
-            self.stats["errors"] += 1
-            self.logger.error("Error clearing cache: %s", str(e))
+            self.logger.error("Failed to clear cache: %s", str(e))
             return False
 
-    def cleanup_expired(self) -> int:
+    def is_fresh(self, cache_key: str) -> bool:
         """
-        Clean up expired cache entries.
+        Check if a cache entry is fresh (not expired).
+
+        Args:
+            cache_key: Cache key to check
 
         Returns:
-            Number of entries cleaned up
+            True if entry exists and is fresh
         """
-        cleaned_count = 0
+        with self._lock:
+            current_time = time.time()
 
-        try:
-            # Clean memory cache
-            expired_keys = []
-            for key, data in self.memory_cache.items():
-                if not self._is_cache_valid(data):
-                    expired_keys.append(key)
+            # Check memory cache
+            if cache_key in self.memory_cache:
+                cached_item = self.memory_cache[cache_key]
+                return current_time - cached_item["timestamp"] < self.cache_ttl
 
-            for key in expired_keys:
-                del self.memory_cache[key]
-                cleaned_count += 1
-
-            # Clean persistent cache
-            for cache_file in self.cache_dir.glob("*.pkl"):
+            # Check persistent cache
+            cache_path = self.cache_dir / f"{cache_key}.pkl"
+            if cache_path.exists():
                 try:
-                    with open(cache_file, "rb") as f:
-                        cached_data = pickle.load(f)
+                    file_mtime = cache_path.stat().st_mtime
+                    return current_time - file_mtime < self.cache_ttl
+                except OSError:
+                    return False
 
-                    if not self._is_cache_valid(cached_data):
-                        cache_file.unlink()
-                        cleaned_count += 1
-
-                except Exception as e:
-                    self.logger.warning(
-                        "Error checking cache file %s: %s", cache_file, str(e)
-                    )
-                    # Remove corrupted files
-                    cache_file.unlink()
-                    cleaned_count += 1
-
-            if cleaned_count > 0:
-                self.stats["evictions"] += cleaned_count
-                self.logger.info("Cleaned up %d expired cache entries", cleaned_count)
-
-            return cleaned_count
-
-        except Exception as e:
-            self.stats["errors"] += 1
-            self.logger.error("Error during cache cleanup: %s", str(e))
-            return cleaned_count
-
-    def get_stats(self) -> Dict[str, Any]:
-        """
-        Get cache statistics.
-
-        Returns:
-            Dictionary containing cache statistics
-        """
-        total_requests = self.stats["hits"] + self.stats["misses"]
-        hit_rate = self.stats["hits"] / total_requests if total_requests > 0 else 0.0
-
-        return {
-            **self.stats,
-            "hit_rate": hit_rate,
-            "memory_entries": len(self.memory_cache),
-            "persistent_entries": len(list(self.cache_dir.glob("*.pkl"))),
-            "cache_dir": str(self.cache_dir),
-            "cache_ttl": self.cache_ttl,
-            "enabled": self.enabled,
-        }
+            return False
 
     def get_cache_info(self, cache_key: str) -> Optional[Dict[str, Any]]:
         """
-        Get information about a specific cache entry.
+        Get information about a cache entry.
 
         Args:
-            cache_key: Cache key to inspect
+            cache_key: Cache key
 
         Returns:
             Cache entry information or None if not found
         """
-        try:
-            # Check memory cache
+        with self._lock:
+            # Check memory cache first
             if cache_key in self.memory_cache:
-                cached_data = self.memory_cache[cache_key]
+                cached_item = self.memory_cache[cache_key]
                 return {
+                    "cache_key": cache_key,
                     "location": "memory",
-                    "timestamp": cached_data.get("timestamp"),
-                    "age": time.time() - cached_data.get("timestamp", 0),
-                    "valid": self._is_cache_valid(cached_data),
-                    "metadata": cached_data.get("metadata", {}),
-                    "metrics": cached_data.get("metrics", {}),
+                    "timestamp": cached_item["timestamp"],
+                    "age_seconds": time.time() - cached_item["timestamp"],
+                    "is_fresh": time.time() - cached_item["timestamp"] < self.cache_ttl,
                 }
 
             # Check persistent cache
             cache_path = self.cache_dir / f"{cache_key}.pkl"
             if cache_path.exists():
-                with open(cache_path, "rb") as f:
-                    cached_data = pickle.load(f)
+                try:
+                    cached_data = pickle.loads(cache_path.read_bytes())
 
-                return {
-                    "location": "persistent",
-                    "timestamp": cached_data.get("timestamp"),
-                    "age": time.time() - cached_data.get("timestamp", 0),
-                    "valid": self._is_cache_valid(cached_data),
-                    "metadata": cached_data.get("metadata", {}),
-                    "metrics": cached_data.get("metrics", {}),
-                    "file_size": cache_path.stat().st_size,
-                }
+                    return {
+                        "cache_key": cache_key,
+                        "location": "persistent",
+                        "timestamp": cached_data["timestamp"],
+                        "age_seconds": time.time() - cached_data["timestamp"],
+                        "is_fresh": time.time() - cached_data["timestamp"]
+                        < self.cache_ttl,
+                        "metadata": cached_data.get("metadata", {}),
+                        "file_size": cache_path.stat().st_size,
+                    }
+                except Exception as e:
+                    self.logger.error(
+                        "Failed to get cache info for %s: %s", cache_key, str(e)
+                    )
 
             return None
 
-        except Exception as e:
-            self.logger.error("Error getting cache info for %s: %s", cache_key, str(e))
-            return None
+    def list_cache_entries(self, domain_filter: str = None) -> List[Dict[str, Any]]:
+        """
+        List all cache entries with optional domain filtering.
+
+        Args:
+            domain_filter: Optional domain to filter by
+
+        Returns:
+            List of cache entry information
+        """
+        entries = []
+
+        with self._lock:
+            # Get all cache files
+            for cache_file in self.cache_dir.glob("*.pkl"):
+                try:
+                    cache_key = cache_file.stem
+
+                    cached_data = pickle.loads(cache_file.read_bytes())
+
+                    metadata = cached_data.get("metadata", {})
+                    domain = metadata.get("domain", "unknown")
+
+                    # Apply domain filter if specified
+                    if domain_filter and domain != domain_filter:
+                        continue
+
+                    entry_info = {
+                        "cache_key": cache_key,
+                        "domain": domain,
+                        "timestamp": cached_data["timestamp"],
+                        "age_seconds": time.time() - cached_data["timestamp"],
+                        "is_fresh": time.time() - cached_data["timestamp"]
+                        < self.cache_ttl,
+                        "file_size": cache_file.stat().st_size,
+                        "validation_score": metadata.get("validation_score", 0.0),
+                        "training_time": metadata.get("training_time", 0.0),
+                    }
+                    entries.append(entry_info)
+
+                except Exception as e:
+                    self.logger.error(
+                        "Failed to read cache entry %s: %s", cache_file, str(e)
+                    )
+                    continue
+
+        # Sort by timestamp (newest first)
+        entries.sort(key=lambda x: x["timestamp"], reverse=True)
+        return entries
+
+    def get_stats(self) -> Dict[str, Any]:
+        """
+        Get comprehensive cache statistics.
+
+        Returns:
+            Cache statistics
+        """
+        with self._lock:
+            memory_entries = len(self.memory_cache)
+            persistent_entries = len(list(self.cache_dir.glob("*.pkl")))
+
+            # Calculate cache directory size
+            total_size = 0
+            for cache_file in self.cache_dir.glob("*.pkl"):
+                try:
+                    total_size += cache_file.stat().st_size
+                except OSError:
+                    continue
+
+            # Calculate hit rate
+            total_requests = self.stats["hits"] + self.stats["misses"]
+            hit_rate = (
+                self.stats["hits"] / total_requests if total_requests > 0 else 0.0
+            )
+
+            return {
+                "memory_entries": memory_entries,
+                "persistent_entries": persistent_entries,
+                "total_entries": memory_entries + persistent_entries,
+                "cache_dir": str(self.cache_dir),
+                "cache_ttl": self.cache_ttl,
+                "total_size_bytes": total_size,
+                "total_size_mb": total_size / (1024 * 1024),
+                "hit_rate": hit_rate,
+                "stats": self.stats.copy(),
+            }
+
+    def maintenance(self) -> Dict[str, int]:
+        """
+        Perform cache maintenance operations.
+
+        Returns:
+            Dictionary with maintenance results
+        """
+        with self._lock:
+            results = {
+                "expired_cleaned": 0,
+                "corrupted_removed": 0,
+                "memory_cleared": 0,
+            }
+
+            # Clean up expired entries
+            results["expired_cleaned"] = self._cleanup_expired_entries()
+
+            # Remove corrupted cache files
+            for cache_file in self.cache_dir.glob("*.pkl"):
+                try:
+                    pickle.loads(cache_file.read_bytes())
+                except Exception:
+                    try:
+                        cache_file.unlink()
+                        results["corrupted_removed"] += 1
+                    except OSError:
+                        pass
+
+            # Clear expired memory cache entries
+            current_time = time.time()
+            expired_keys = [
+                key
+                for key, item in self.memory_cache.items()
+                if current_time - item["timestamp"] >= self.cache_ttl
+            ]
+
+            for key in expired_keys:
+                del self.memory_cache[key]
+                results["memory_cleared"] += 1
+
+            if any(results.values()):
+                self.logger.info("Cache maintenance completed: %s", results)
+
+            return results
 
 
 # Global cache instance
