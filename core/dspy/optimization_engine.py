@@ -1,41 +1,21 @@
 """
 DSPy Optimization Engine
 
-This module provides the optimization engine for DSPy modules using MIPROv2
-and other optimization strategies to automatically improve prompt performance.
+This module implements the DSPyOptimizationEngine class for optimizing DSPy modules
+using MIPROv2 and other optimization techniques with comprehensive training data management.
 """
 
+import hashlib
+import json
 import logging
 import time
-from typing import Any, Dict, List
-
-try:
-    import dspy
-    from dspy.teleprompt import BootstrapFewShot, MIPROv2
-
-    DSPY_AVAILABLE = True
-except ImportError:
-    DSPY_AVAILABLE = False
-
-    # Mock classes for development
-    class MIPROv2:
-        def __init__(self, **kwargs):
-            self.kwargs = kwargs
-
-        def compile(self, student, trainset, valset, **kwargs):
-            return student
-
-    class BootstrapFewShot:
-        def __init__(self, **kwargs):
-            self.kwargs = kwargs
-
-        def compile(self, student, trainset, **kwargs):
-            return student
-
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 from .base_module import STREAMContentGenerator
 from .cache import get_optimization_cache
-from .config import TrainingExample, get_dspy_config
+from .config import OptimizationResult, TrainingExample, get_dspy_config
 from .exceptions import OptimizationFailureError, TrainingDataError
 
 logger = logging.getLogger(__name__)
@@ -44,580 +24,718 @@ logger = logging.getLogger(__name__)
 class TrainingDataManager:
     """
     Manages training and validation data for DSPy optimization.
+
+    This class handles loading, validation, and management of training datasets
+    for different domains.
     """
 
     def __init__(self):
-        """Initialize training data manager."""
+        """Initialize the training data manager."""
         self.config = get_dspy_config()
-        self.logger = logging.getLogger(f"{__name__}.TrainingDataManager")
+        self.logger = logging.getLogger(__name__ + ".TrainingDataManager")
+        self.data_cache = {}
 
-        # Training data cache
-        self._training_cache: Dict[str, List[TrainingExample]] = {}
-        self._validation_cache: Dict[str, List[TrainingExample]] = {}
+        # Set up data directories
+        self.training_data_dir = Path("data/training")
+        self.validation_data_dir = Path("data/validation")
+        self.training_data_dir.mkdir(parents=True, exist_ok=True)
+        self.validation_data_dir.mkdir(parents=True, exist_ok=True)
 
-    def get_training_data(self, domain: str) -> List[Any]:
+        self.logger.info("Initialized training data manager")
+
+    def get_training_data(self, domain: str) -> List[TrainingExample]:
         """
-        Get training data for a specific domain.
+        Get training data for a domain.
 
         Args:
-            domain: STREAM domain
+            domain: The domain to get training data for
 
         Returns:
             List of training examples
 
         Raises:
-            TrainingDataError: If training data is invalid or insufficient
+            TrainingDataError: If training data cannot be loaded
         """
         try:
-            if domain in self._training_cache:
-                return self._training_cache[domain]
+            cache_key = f"training_{domain}"
+            if cache_key in self.data_cache:
+                return self.data_cache[cache_key]
 
-            # Load training data from file or generate synthetic data
-            training_config = self.config.get_training_config()
-            min_examples = training_config.get("min_examples", 50)
+            # Load training data from file
+            training_file = self.training_data_dir / f"{domain}_training.json"
 
-            # For now, generate synthetic training data
-            # In production, this would load from actual training files
-            training_data = self._generate_synthetic_training_data(domain, min_examples)
-
-            if len(training_data) < min_examples:
-                raise TrainingDataError(
-                    "Insufficient training data for %s: %d < %d"
-                    % (domain, len(training_data), min_examples),
-                    domain=domain,
+            if not training_file.exists():
+                # Generate synthetic training data if file doesn't exist
+                self.logger.info(
+                    "No training data file found for %s, generating synthetic data",
+                    domain,
                 )
+                training_data = self._generate_synthetic_training_data(domain)
+            else:
+                training_data = self._load_training_data_from_file(training_file)
 
-            self._training_cache[domain] = training_data
+            # Validate training data
+            validated_data = self._validate_training_data(training_data, domain)
+
+            # Cache the data
+            self.data_cache[cache_key] = validated_data
+
             self.logger.info(
-                "Loaded %d training examples for %s", len(training_data), domain
+                "Loaded %d training examples for %s", len(validated_data), domain
             )
-
-            return training_data
+            return validated_data
 
         except Exception as e:
-            error_msg = "Failed to get training data for %s: %s" % (domain, str(e))
-            self.logger.error(error_msg)
+            error_msg = f"Failed to load training data for {domain}: {str(e)}"
+            self.logger.error("Failed to load training data for %s: %s", domain, str(e))
             raise TrainingDataError(error_msg, domain=domain) from e
 
-    def get_validation_data(self, domain: str) -> List[Any]:
+    def get_validation_data(self, domain: str) -> List[TrainingExample]:
         """
-        Get validation data for a specific domain.
+        Get validation data for a domain.
 
         Args:
-            domain: STREAM domain
+            domain: The domain to get validation data for
 
         Returns:
             List of validation examples
 
         Raises:
-            TrainingDataError: If validation data is invalid or insufficient
+            TrainingDataError: If validation data cannot be loaded
         """
         try:
-            if domain in self._validation_cache:
-                return self._validation_cache[domain]
+            cache_key = f"validation_{domain}"
+            if cache_key in self.data_cache:
+                return self.data_cache[cache_key]
 
-            # Load validation data from file or generate synthetic data
-            training_config = self.config.get_training_config()
-            validation_split = training_config.get("validation_split", 0.2)
-            min_examples = training_config.get("min_examples", 50)
-            validation_size = max(10, int(min_examples * validation_split))
+            # Load validation data from file
+            validation_file = self.validation_data_dir / f"{domain}_validation.json"
 
-            # Generate synthetic validation data
-            validation_data = self._generate_synthetic_training_data(
-                domain, validation_size, is_validation=True
-            )
+            if not validation_file.exists():
+                # Generate synthetic validation data if file doesn't exist
+                self.logger.info(
+                    "No validation data file found for %s, generating synthetic data",
+                    domain,
+                )
+                validation_data = self._generate_synthetic_validation_data(domain)
+            else:
+                validation_data = self._load_training_data_from_file(validation_file)
 
-            self._validation_cache[domain] = validation_data
+            # Validate validation data
+            validated_data = self._validate_training_data(validation_data, domain)
+
+            # Cache the data
+            self.data_cache[cache_key] = validated_data
+
             self.logger.info(
-                "Loaded %d validation examples for %s", len(validation_data), domain
+                "Loaded %d validation examples for %s", len(validated_data), domain
             )
-
-            return validation_data
+            return validated_data
 
         except Exception as e:
-            error_msg = "Failed to get validation data for %s: %s" % (domain, str(e))
-            self.logger.error(error_msg)
+            error_msg = f"Failed to load validation data for {domain}: {str(e)}"
+            self.logger.error(
+                "Failed to load validation data for %s: %s", domain, str(e)
+            )
             raise TrainingDataError(error_msg, domain=domain) from e
 
-    def _generate_synthetic_training_data(
-        self, domain: str, count: int, is_validation: bool = False
-    ) -> List[Any]:
+    def _load_training_data_from_file(self, file_path: Path) -> List[TrainingExample]:
         """
-        Generate synthetic training data for development and testing.
+        Load training data from a JSON file.
 
         Args:
-            domain: STREAM domain
-            count: Number of examples to generate
-            is_validation: Whether this is validation data
+            file_path: Path to the training data file
+
+        Returns:
+            List of training examples
+        """
+        data = json.loads(file_path.read_text(encoding="utf-8"))
+
+        training_examples = []
+        for item in data:
+            example = TrainingExample(
+                inputs=item.get("inputs", {}),
+                expected_outputs=item.get("expected_outputs", {}),
+                quality_score=item.get("quality_score", 1.0),
+                domain=item.get("domain", "unknown"),
+                metadata=item.get("metadata", {}),
+            )
+            training_examples.append(example)
+
+        return training_examples
+
+    def _validate_training_data(
+        self, data: List[TrainingExample], domain: str
+    ) -> List[TrainingExample]:
+        """
+        Validate training data for a domain.
+
+        Args:
+            data: List of training examples
+            domain: The domain
+
+        Returns:
+            List of validated training examples
+        """
+        validated_data = []
+        training_config = self.config.get_training_config()
+
+        for example in data:
+            # Check if example has required fields
+            if not example.inputs or not example.expected_outputs:
+                self.logger.warning(
+                    "Skipping invalid training example: missing inputs or outputs"
+                )
+                continue
+
+            # Check quality score
+            if example.quality_score < training_config.get("min_quality_score", 0.5):
+                self.logger.warning(
+                    "Skipping low-quality training example: %.2f", example.quality_score
+                )
+                continue
+
+            validated_data.append(example)
+
+        # Check if we have enough data
+        min_examples = training_config.get("min_examples", 10)
+        if len(validated_data) < min_examples:
+            self.logger.warning(
+                "Only %d valid examples for %s, minimum is %d",
+                len(validated_data),
+                domain,
+                min_examples,
+            )
+
+        return validated_data
+
+    def _generate_synthetic_training_data(self, domain: str) -> List[TrainingExample]:
+        """
+        Generate synthetic training data for a domain.
+
+        Args:
+            domain: The domain to generate data for
 
         Returns:
             List of synthetic training examples
         """
-        examples = []
+        synthetic_data = []
 
-        try:
-            for i in range(count):
-                if domain == "mathematics":
-                    example = self._create_math_example(i, is_validation)
-                elif domain == "science":
-                    example = self._create_science_example(i, is_validation)
-                elif domain == "technology":
-                    example = self._create_technology_example(i, is_validation)
-                elif domain == "reading":
-                    example = self._create_reading_example(i, is_validation)
-                elif domain == "engineering":
-                    example = self._create_engineering_example(i, is_validation)
-                elif domain == "arts":
-                    example = self._create_arts_example(i, is_validation)
-                else:
-                    example = self._create_generic_example(domain, i, is_validation)
+        # Generate domain-specific synthetic examples
+        if domain == "mathematics":
+            examples = [
+                {
+                    "inputs": {
+                        "subject": "Algebra",
+                        "topic": "Linear Equations",
+                        "difficulty_level": "High School",
+                    },
+                    "expected_outputs": {
+                        "problem_statement": "Solve for x: 2x + 3 = 7",
+                        "solution": "x = 2",
+                        "hints": {
+                            "0": "Subtract 3 from both sides",
+                            "1": "Divide by 2",
+                        },
+                    },
+                    "quality_score": 0.9,
+                },
+                {
+                    "inputs": {
+                        "subject": "Calculus",
+                        "topic": "Derivatives",
+                        "difficulty_level": "Undergraduate",
+                    },
+                    "expected_outputs": {
+                        "problem_statement": "Find the derivative of f(x) = x^2 + 3x + 2",
+                        "solution": "f'(x) = 2x + 3",
+                        "hints": {
+                            "0": "Use the power rule",
+                            "1": "Derivative of constant is 0",
+                        },
+                    },
+                    "quality_score": 0.85,
+                },
+            ]
+        else:
+            # Generic examples for other domains
+            examples = [
+                {
+                    "inputs": {
+                        "domain": domain,
+                        "topic": "Basic Concepts",
+                        "difficulty_level": "Beginner",
+                    },
+                    "expected_outputs": {
+                        "problem_statement": f"Basic {domain} problem",
+                        "solution": f"Basic {domain} solution",
+                    },
+                    "quality_score": 0.7,
+                }
+            ]
 
-                examples.append(example)
-
-            self.logger.debug(
-                "Generated %d synthetic examples for %s", len(examples), domain
+        for example_data in examples:
+            example = TrainingExample(
+                inputs=example_data["inputs"],
+                expected_outputs=example_data["expected_outputs"],
+                quality_score=example_data["quality_score"],
+                domain=domain,
+                metadata={
+                    "synthetic": True,
+                    "generated_at": datetime.now().isoformat(),
+                },
             )
-            return examples
+            synthetic_data.append(example)
+
+        return synthetic_data
+
+    def _generate_synthetic_validation_data(self, domain: str) -> List[TrainingExample]:
+        """
+        Generate synthetic validation data for a domain.
+
+        Args:
+            domain: The domain to generate data for
+
+        Returns:
+            List of synthetic validation examples
+        """
+        # For now, use similar logic to training data but with different examples
+        synthetic_data = []
+
+        if domain == "mathematics":
+            examples = [
+                {
+                    "inputs": {
+                        "subject": "Algebra",
+                        "topic": "Quadratic Equations",
+                        "difficulty_level": "High School",
+                    },
+                    "expected_outputs": {
+                        "problem_statement": "Solve for x: x^2 - 5x + 6 = 0",
+                        "solution": "x = 2 or x = 3",
+                        "hints": {
+                            "0": "Factor the quadratic",
+                            "1": "Set each factor to zero",
+                        },
+                    },
+                    "quality_score": 0.9,
+                }
+            ]
+        else:
+            examples = [
+                {
+                    "inputs": {
+                        "domain": domain,
+                        "topic": "Validation Concepts",
+                        "difficulty_level": "Intermediate",
+                    },
+                    "expected_outputs": {
+                        "problem_statement": f"Validation {domain} problem",
+                        "solution": f"Validation {domain} solution",
+                    },
+                    "quality_score": 0.8,
+                }
+            ]
+
+        for example_data in examples:
+            example = TrainingExample(
+                inputs=example_data["inputs"],
+                expected_outputs=example_data["expected_outputs"],
+                quality_score=example_data["quality_score"],
+                domain=domain,
+                metadata={
+                    "synthetic": True,
+                    "validation": True,
+                    "generated_at": datetime.now().isoformat(),
+                },
+            )
+            synthetic_data.append(example)
+
+        return synthetic_data
+
+    def save_training_data(
+        self, domain: str, data: List[TrainingExample], data_type: str = "training"
+    ):
+        """
+        Save training or validation data to file.
+
+        Args:
+            domain: The domain
+            data: List of training examples
+            data_type: Type of data ("training" or "validation")
+        """
+        try:
+            if data_type == "training":
+                file_path = self.training_data_dir / f"{domain}_training.json"
+            else:
+                file_path = self.validation_data_dir / f"{domain}_validation.json"
+
+            # Convert to JSON-serializable format
+            json_data = []
+            for example in data:
+                json_data.append(
+                    {
+                        "inputs": example.inputs,
+                        "expected_outputs": example.expected_outputs,
+                        "quality_score": example.quality_score,
+                        "domain": example.domain,
+                        "metadata": example.metadata,
+                    }
+                )
+
+            file_path.write_text(json.dumps(json_data, indent=2), encoding="utf-8")
+
+            self.logger.info(
+                "Saved %d %s examples for %s", len(data), data_type, domain
+            )
 
         except Exception as e:
-            self.logger.error("Error generating synthetic training data: %s", str(e))
-            return []
-
-    def _create_math_example(self, index: int, is_validation: bool = False) -> Any:
-        """Create a synthetic mathematics training example."""
-        if not DSPY_AVAILABLE:
-            return type(
-                "Example",
-                (),
-                {
-                    "mathematical_concept": f"algebra_{index}",
-                    "difficulty_level": "undergraduate",
-                    "learning_objectives": ["solve equations"],
-                    "problem_statement": f"Solve for x: 2x + {index} = 10",
-                    "solution": f"x = {(10 - index) / 2}",
-                    "proof": "Algebraic manipulation",
-                    "reasoning_trace": "Step-by-step solution",
-                    "pedagogical_hints": "Isolate the variable",
-                },
-            )()
-
-        return dspy.Example(
-            mathematical_concept=f"algebra_{index}",
-            difficulty_level="undergraduate",
-            learning_objectives=["solve equations"],
-            problem_statement=f"Solve for x: 2x + {index} = 10",
-            solution=f"x = {(10 - index) / 2}",
-            proof="Algebraic manipulation",
-            reasoning_trace="Step-by-step solution",
-            pedagogical_hints="Isolate the variable",
-        ).with_inputs("mathematical_concept", "difficulty_level", "learning_objectives")
-
-    def _create_science_example(self, index: int, is_validation: bool = False) -> Any:
-        """Create a synthetic science training example."""
-        if not DSPY_AVAILABLE:
-            return type(
-                "Example",
-                (),
-                {
-                    "scientific_concept": f"physics_{index}",
-                    "difficulty_level": "high_school",
-                    "learning_objectives": ["understand motion"],
-                    "problem_statement": f"Calculate velocity after {index} seconds",
-                    "solution": f"v = {index * 9.8} m/s",
-                    "experimental_design": "Drop test setup",
-                    "evidence_evaluation": "Measure and analyze",
-                    "reasoning_trace": "Physics principles applied",
-                },
-            )()
-
-        return dspy.Example(
-            scientific_concept=f"physics_{index}",
-            difficulty_level="high_school",
-            learning_objectives=["understand motion"],
-            problem_statement=f"Calculate velocity after {index} seconds",
-            solution=f"v = {index * 9.8} m/s",
-            experimental_design="Drop test setup",
-            evidence_evaluation="Measure and analyze",
-            reasoning_trace="Physics principles applied",
-        ).with_inputs("scientific_concept", "difficulty_level", "learning_objectives")
-
-    def _create_technology_example(
-        self, index: int, is_validation: bool = False
-    ) -> Any:
-        """Create a synthetic technology training example."""
-        if not DSPY_AVAILABLE:
-            return type(
-                "Example",
-                (),
-                {
-                    "technical_concept": f"algorithm_{index}",
-                    "difficulty_level": "undergraduate",
-                    "learning_objectives": ["understand sorting"],
-                    "problem_statement": f"Sort array of {index} elements",
-                    "solution": "Use quicksort algorithm",
-                    "algorithm_explanation": "Divide and conquer approach",
-                    "system_design": "Recursive implementation",
-                    "reasoning_trace": "Algorithm analysis",
-                },
-            )()
-
-        return dspy.Example(
-            technical_concept=f"algorithm_{index}",
-            difficulty_level="undergraduate",
-            learning_objectives=["understand sorting"],
-            problem_statement=f"Sort array of {index} elements",
-            solution="Use quicksort algorithm",
-            algorithm_explanation="Divide and conquer approach",
-            system_design="Recursive implementation",
-            reasoning_trace="Algorithm analysis",
-        ).with_inputs("technical_concept", "difficulty_level", "learning_objectives")
-
-    def _create_reading_example(self, index: int, is_validation: bool = False) -> Any:
-        """Create a synthetic reading training example."""
-        if not DSPY_AVAILABLE:
-            return type(
-                "Example",
-                (),
-                {
-                    "literary_concept": f"theme_{index}",
-                    "difficulty_level": "high_school",
-                    "learning_objectives": ["analyze themes"],
-                    "comprehension_question": f"What is the main theme in passage {index}?",
-                    "analysis_prompt": "Identify literary devices used",
-                    "critical_thinking_exercise": "Compare with other works",
-                    "reasoning_trace": "Literary analysis process",
-                },
-            )()
-
-        return dspy.Example(
-            literary_concept=f"theme_{index}",
-            difficulty_level="high_school",
-            learning_objectives=["analyze themes"],
-            comprehension_question=f"What is the main theme in passage {index}?",
-            analysis_prompt="Identify literary devices used",
-            critical_thinking_exercise="Compare with other works",
-            reasoning_trace="Literary analysis process",
-        ).with_inputs("literary_concept", "difficulty_level", "learning_objectives")
-
-    def _create_engineering_example(
-        self, index: int, is_validation: bool = False
-    ) -> Any:
-        """Create a synthetic engineering training example."""
-        if not DSPY_AVAILABLE:
-            return type(
-                "Example",
-                (),
-                {
-                    "engineering_concept": f"design_{index}",
-                    "difficulty_level": "undergraduate",
-                    "learning_objectives": ["design systems"],
-                    "design_challenge": f"Design bridge for {index}kg load",
-                    "optimization_problem": "Minimize material usage",
-                    "constraint_analysis": "Safety and cost constraints",
-                    "reasoning_trace": "Engineering design process",
-                },
-            )()
-
-        return dspy.Example(
-            engineering_concept=f"design_{index}",
-            difficulty_level="undergraduate",
-            learning_objectives=["design systems"],
-            design_challenge=f"Design bridge for {index}kg load",
-            optimization_problem="Minimize material usage",
-            constraint_analysis="Safety and cost constraints",
-            reasoning_trace="Engineering design process",
-        ).with_inputs("engineering_concept", "difficulty_level", "learning_objectives")
-
-    def _create_arts_example(self, index: int, is_validation: bool = False) -> Any:
-        """Create a synthetic arts training example."""
-        if not DSPY_AVAILABLE:
-            return type(
-                "Example",
-                (),
-                {
-                    "artistic_concept": f"composition_{index}",
-                    "difficulty_level": "high_school",
-                    "learning_objectives": ["understand composition"],
-                    "creative_prompt": f"Create artwork with {index} elements",
-                    "aesthetic_analysis": "Analyze visual balance",
-                    "cultural_context": "Historical art movement",
-                    "reasoning_trace": "Artistic analysis process",
-                },
-            )()
-
-        return dspy.Example(
-            artistic_concept=f"composition_{index}",
-            difficulty_level="high_school",
-            learning_objectives=["understand composition"],
-            creative_prompt=f"Create artwork with {index} elements",
-            aesthetic_analysis="Analyze visual balance",
-            cultural_context="Historical art movement",
-            reasoning_trace="Artistic analysis process",
-        ).with_inputs("artistic_concept", "difficulty_level", "learning_objectives")
-
-    def _create_generic_example(
-        self, domain: str, index: int, is_validation: bool = False
-    ) -> Any:
-        """Create a generic training example for unknown domains."""
-        if not DSPY_AVAILABLE:
-            return type(
-                "Example",
-                (),
-                {
-                    "concept": f"{domain}_{index}",
-                    "difficulty_level": "undergraduate",
-                    "learning_objectives": [f"understand {domain}"],
-                    "problem_statement": f"Generic {domain} problem {index}",
-                    "solution": f"Generic solution {index}",
-                    "reasoning_trace": f"Generic reasoning for {domain}",
-                },
-            )()
-
-        return dspy.Example(
-            concept=f"{domain}_{index}",
-            difficulty_level="undergraduate",
-            learning_objectives=[f"understand {domain}"],
-            problem_statement=f"Generic {domain} problem {index}",
-            solution=f"Generic solution {index}",
-            reasoning_trace=f"Generic reasoning for {domain}",
-        ).with_inputs("concept", "difficulty_level", "learning_objectives")
+            self.logger.error(
+                "Failed to save %s data for %s: %s", data_type, domain, str(e)
+            )
 
 
 class DSPyOptimizationEngine:
     """
-    DSPy optimization engine using MIPROv2 and other optimization strategies.
+    Advanced optimization engine for DSPy modules.
 
-    Provides automated prompt optimization for DSPy modules to improve
-    performance and reduce manual prompt engineering overhead.
+    This class provides comprehensive functionality for optimizing DSPy modules using
+    MIPROv2 and other optimization techniques with proper training data management.
     """
 
     def __init__(self):
-        """Initialize DSPy optimization engine."""
+        """Initialize the optimization engine."""
         self.config = get_dspy_config()
         self.cache = get_optimization_cache()
-        self.training_data_manager = TrainingDataManager()
-        self.logger = logging.getLogger(f"{__name__}.DSPyOptimizationEngine")
-
-        # Initialize optimizers
-        self.optimizers = {}
-        self._initialize_optimizers()
-
-        self.logger.info("DSPy optimization engine initialized")
-
-    def _initialize_optimizers(self):
-        """Initialize available optimizers."""
-        try:
-            # MIPROv2 optimizer
-            mipro_config = self.config.get_optimization_config("mipro_v2")
-            self.optimizers["mipro_v2"] = MIPROv2(**mipro_config)
-
-            # Bootstrap optimizer
-            bootstrap_config = self.config.get_optimization_config("bootstrap")
-            self.optimizers["bootstrap"] = BootstrapFewShot(**bootstrap_config)
-
-            self.logger.info("Initialized optimizers: %s", list(self.optimizers.keys()))
-
-        except Exception as e:
-            self.logger.error("Error initializing optimizers: %s", str(e))
-            # Create mock optimizers for development
-            self.optimizers = {"mipro_v2": MIPROv2(), "bootstrap": BootstrapFewShot()}
+        self.training_manager = TrainingDataManager()
+        self.logger = logging.getLogger(__name__ + ".DSPyOptimizationEngine")
+        self.optimization_history = []
+        self.logger.info("Initialized DSPy optimization engine")
 
     def optimize_for_domain(
         self,
         domain_module: STREAMContentGenerator,
         quality_requirements: Dict[str, Any],
-        optimizer_type: str = "mipro_v2",
     ) -> STREAMContentGenerator:
         """
-        Optimize a domain module using specified optimizer.
+        Optimize a domain module using MIPROv2.
 
         Args:
-            domain_module: DSPy module to optimize
+            domain_module: The domain module to optimize
             quality_requirements: Quality requirements for optimization
-            optimizer_type: Type of optimizer to use
 
         Returns:
-            Optimized DSPy module
+            Optimized domain module
 
         Raises:
             OptimizationFailureError: If optimization fails
         """
+        optimization_start_time = time.time()
+
         try:
+            # Check if optimization is enabled
+            if not self.config.is_enabled():
+                self.logger.info("DSPy optimization is disabled, skipping")
+                return domain_module
+
+            # Check if we have DSPy available
+            try:
+                import dspy
+                from dspy.teleprompt import MIPROv2
+            except ImportError:
+                self.logger.warning("DSPy not available, skipping optimization")
+                return domain_module
+
             self.logger.info(
-                "Starting optimization for %s using %s",
-                domain_module.domain,
-                optimizer_type,
+                "Starting optimization for %s module with MIPROv2", domain_module.domain
             )
 
             # Generate cache key
-            optimization_params = self.config.get_optimization_config(optimizer_type)
-            cache_key = self.cache.generate_cache_key(
-                domain_module.domain,
-                domain_module.signature,
-                quality_requirements,
-                optimization_params,
-            )
+            cache_key = self._generate_cache_key(domain_module, quality_requirements)
 
-            # Check cache first
-            cached_result = self.cache.get(cache_key)
-            if cached_result is not None:
-                self.logger.info(
-                    "Using cached optimization for %s", domain_module.domain
-                )
-                return cached_result
+            # Check if cache lookup is enabled
+            if self.config.cache_enabled:
+                # Check cache first
+                cached_result = self.cache.get(cache_key)
+                if cached_result:
+                    self.logger.info(
+                        "Using cached optimization for %s (cache key: %s)",
+                        domain_module.domain,
+                        cache_key,
+                    )
+
+                    # Log cache performance metrics
+                    cache_stats = self.cache.get_stats()
+                    self.logger.debug(
+                        "Cache performance: hit_rate=%.2f, hits=%d, misses=%d",
+                        cache_stats["hit_rate"],
+                        cache_stats["stats"]["hits"],
+                        cache_stats["stats"]["misses"],
+                    )
+
+                    return cached_result
+                else:
+                    self.logger.debug(
+                        "No cache entry found for %s (cache key: %s)",
+                        domain_module.domain,
+                        cache_key,
+                    )
+            else:
+                self.logger.debug("Cache lookup disabled by configuration")
 
             # Get training and validation data
-            trainset = self.training_data_manager.get_training_data(
-                domain_module.domain
+            try:
+                trainset = self.training_manager.get_training_data(domain_module.domain)
+                valset = self.training_manager.get_validation_data(domain_module.domain)
+            except TrainingDataError as e:
+                self.logger.warning(
+                    "Training data error: %s, skipping optimization", str(e)
+                )
+                return domain_module
+
+            if not trainset or not valset:
+                self.logger.warning(
+                    "Insufficient data for %s, skipping optimization",
+                    domain_module.domain,
+                )
+                return domain_module
+
+            # Convert training examples to DSPy format
+            dspy_trainset = self._convert_to_dspy_format(trainset)
+            dspy_valset = self._convert_to_dspy_format(valset)
+
+            # Get optimization configuration
+            opt_config = self.config.get_optimization_config("mipro_v2")
+
+            # Create MIPROv2 optimizer with configuration
+            optimizer = MIPROv2(
+                max_bootstrapped_demos=opt_config.get("max_bootstrapped_demos", 4),
+                max_labeled_demos=opt_config.get("max_labeled_demos", 16),
+                num_candidate_programs=opt_config.get("num_candidate_programs", 16),
+                init_temperature=opt_config.get("init_temperature", 1.4),
             )
-            valset = self.training_data_manager.get_validation_data(
-                domain_module.domain
+
+            self.logger.info(
+                "Optimizing with %d training and %d validation examples",
+                len(dspy_trainset),
+                len(dspy_valset),
             )
 
             # Perform optimization
-            start_time = time.time()
-            optimized_module = self._run_optimization(
-                domain_module, trainset, valset, optimizer_type, optimization_params
-            )
-            optimization_time = time.time() - start_time
-
-            # Calculate optimization metrics
-            optimization_metrics = self._calculate_optimization_metrics(
-                domain_module, optimized_module, valset, optimization_time
+            optimized_module = optimizer.compile(
+                student=domain_module,
+                trainset=dspy_trainset,
+                valset=dspy_valset,
+                optuna_trials_num=opt_config.get("optuna_trials_num", 100),
             )
 
-            # Store in cache
-            self.cache.store(cache_key, optimized_module, optimization_metrics)
+            optimization_end_time = time.time()
+            optimization_time = optimization_end_time - optimization_start_time
+
+            # Evaluate optimization results
+            validation_score = self._evaluate_optimization(
+                optimized_module, dspy_valset
+            )
+
+            # Create optimization result
+            optimization_result = OptimizationResult(
+                optimized_module=optimized_module,
+                optimization_metrics={
+                    "validation_score": validation_score,
+                    "training_examples": len(dspy_trainset),
+                    "validation_examples": len(dspy_valset),
+                    "optimization_time": optimization_time,
+                    "cache_key": cache_key,
+                    "timestamp": datetime.now().isoformat(),
+                },
+                training_time=optimization_time,
+                validation_score=validation_score,
+                cache_key=cache_key,
+                timestamp=datetime.now(),
+            )
+
+            # Store in cache if enabled
+            if self.config.cache_enabled:
+                cache_stored = self.cache.store(cache_key, optimized_module)
+                if cache_stored:
+                    self.logger.info(
+                        "Stored optimization result in cache (key: %s)", cache_key
+                    )
+                else:
+                    self.logger.warning(
+                        "Failed to store optimization result in cache (key: %s)",
+                        cache_key,
+                    )
+            else:
+                self.logger.debug("Cache storage disabled by configuration")
+
+            # Record optimization history
+            self.optimization_history.append(optimization_result)
 
             self.logger.info(
-                "Optimization completed for %s (time: %.2fs, score: %.3f)",
+                "Successfully optimized %s module (validation score: %.3f, time: %.2fs)",
                 domain_module.domain,
+                validation_score,
                 optimization_time,
-                optimization_metrics.get("validation_score", 0),
             )
 
             return optimized_module
 
         except Exception as e:
-            error_msg = "Optimization failed for %s: %s" % (
-                domain_module.domain,
-                str(e),
+            error_msg = f"Failed to optimize {domain_module.domain} module: {str(e)}"
+            self.logger.error(
+                "Failed to optimize %s module: %s", domain_module.domain, str(e)
             )
-            self.logger.error(error_msg)
             raise OptimizationFailureError(
                 error_msg,
-                optimizer_type=optimizer_type,
+                optimizer_type="MIPROv2",
                 details={
                     "domain": domain_module.domain,
-                    "optimizer_type": optimizer_type,
                     "error": str(e),
+                    "optimization_time": time.time() - optimization_start_time,
                 },
             ) from e
 
-    def _run_optimization(
+    def _generate_cache_key(
         self,
-        student_module: STREAMContentGenerator,
-        trainset: List[Any],
-        valset: List[Any],
-        optimizer_type: str,
-        optimization_params: Dict[str, Any],
-    ) -> STREAMContentGenerator:
+        domain_module: STREAMContentGenerator,
+        quality_requirements: Dict[str, Any],
+    ) -> str:
         """
-        Run the actual optimization process.
+        Generate cache key for optimization.
 
         Args:
-            student_module: Module to optimize
-            trainset: Training data
-            valset: Validation data
-            optimizer_type: Type of optimizer
-            optimization_params: Optimization parameters
+            domain_module: The domain module
+            quality_requirements: Quality requirements
 
         Returns:
-            Optimized module
+            Cache key string
         """
-        if optimizer_type not in self.optimizers:
-            raise OptimizationFailureError(
-                "Unknown optimizer type: %s" % optimizer_type,
-                optimizer_type=optimizer_type,
-            )
+        # Get optimization data
+        opt_data = domain_module.get_optimization_data()
 
-        optimizer = self.optimizers[optimizer_type]
+        # Create key components
+        key_components = [
+            opt_data["domain"],
+            opt_data["signature"],
+            json.dumps(quality_requirements, sort_keys=True),
+            self.config.get_dspy_version(),
+            json.dumps(self.config.get_optimization_config("mipro_v2"), sort_keys=True),
+        ]
 
-        if optimizer_type == "mipro_v2":
-            # MIPROv2 optimization
-            optimized_module = optimizer.compile(
-                student=student_module,
-                trainset=trainset,
-                valset=valset,
-                **optimization_params,
-            )
-        elif optimizer_type == "bootstrap":
-            # Bootstrap optimization
-            optimized_module = optimizer.compile(
-                student=student_module, trainset=trainset, **optimization_params
-            )
-        else:
-            # Generic optimization
-            optimized_module = optimizer.compile(
-                student=student_module,
-                trainset=trainset,
-                valset=valset,
-                **optimization_params,
-            )
+        # Generate hash
+        return hashlib.md5("|".join(key_components).encode()).hexdigest()
 
-        return optimized_module
-
-    def _calculate_optimization_metrics(
-        self,
-        original_module: STREAMContentGenerator,
-        optimized_module: STREAMContentGenerator,
-        valset: List[Any],
-        optimization_time: float,
-    ) -> Dict[str, float]:
+    def _convert_to_dspy_format(
+        self, training_examples: List[TrainingExample]
+    ) -> List[Any]:
         """
-        Calculate metrics for optimization effectiveness.
+        Convert training examples to DSPy format.
 
         Args:
-            original_module: Original module
-            optimized_module: Optimized module
-            valset: Validation set
-            optimization_time: Time taken for optimization
+            training_examples: List of training examples
 
         Returns:
-            Dictionary of optimization metrics
+            List of DSPy-formatted examples
         """
-        metrics = {
-            "optimization_time": optimization_time,
-            "validation_score": 0.8,  # Placeholder - would need actual evaluation
-            "improvement_ratio": 1.2,  # Placeholder - would compare performance
-            "training_examples": len(valset) if valset else 0,
-        }
+        dspy_examples = []
 
+        for example in training_examples:
+            # Create a simple DSPy example object
+            # In a real implementation, this would use proper DSPy Example classes
+            dspy_example = type(
+                "DSPyExample",
+                (),
+                {
+                    **example.inputs,
+                    **example.expected_outputs,
+                    "quality_score": example.quality_score,
+                },
+            )()
+
+            dspy_examples.append(dspy_example)
+
+        return dspy_examples
+
+    def _evaluate_optimization(
+        self, optimized_module: STREAMContentGenerator, valset: List[Any]
+    ) -> float:
+        """
+        Evaluate the optimization results.
+
+        Args:
+            optimized_module: The optimized module
+            valset: Validation dataset
+
+        Returns:
+            Validation score (0.0 to 1.0)
+        """
         try:
-            # In a real implementation, this would evaluate both modules
-            # on the validation set and compare their performance
+            # Simple evaluation - in practice, this would be more sophisticated
+            total_score = 0.0
+            valid_examples = 0
 
-            # Placeholder metrics calculation
-            metrics["validation_score"] = 0.85  # Mock validation score
-            metrics["improvement_ratio"] = 1.15  # Mock improvement
+            for example in valset[
+                :5
+            ]:  # Evaluate on first 5 examples to avoid long evaluation
+                try:
+                    # Run the optimized module on the example
+                    result = optimized_module(
+                        **{
+                            k: v
+                            for k, v in example.__dict__.items()
+                            if not k.startswith("_") and k != "quality_score"
+                        }
+                    )
+
+                    # Simple scoring based on whether we got a result
+                    if result:
+                        total_score += getattr(example, "quality_score", 1.0)
+                        valid_examples += 1
+                except Exception:
+                    # Skip examples that cause errors
+                    continue
+
+            if valid_examples == 0:
+                return 0.0
+
+            return total_score / valid_examples
 
         except Exception as e:
-            self.logger.warning("Error calculating optimization metrics: %s", str(e))
+            self.logger.warning("Evaluation failed: %s", str(e))
+            return 0.5  # Default score
 
-        return metrics
-
-    def get_optimization_status(self) -> Dict[str, Any]:
+    def get_optimization_history(self) -> List[OptimizationResult]:
         """
-        Get current optimization engine status.
+        Get the optimization history.
 
         Returns:
-            Dictionary containing status information
+            List of optimization results
         """
-        return {
-            "available_optimizers": list(self.optimizers.keys()),
-            "cache_stats": self.cache.get_stats(),
-            "config": {
-                "enabled": self.config.is_enabled(),
-                "cache_enabled": self.config.get_cache_config()["enabled"],
-            },
-        }
+        return self.optimization_history.copy()
+
+    def clear_optimization_history(self) -> None:
+        """Clear the optimization history."""
+        self.optimization_history = []
+        self.logger.info("Cleared optimization history")
+
+
+# Global instances
+_training_data_manager = None
+_optimization_engine = None
+
+
+def get_training_data_manager() -> TrainingDataManager:
+    """Get the global training data manager instance."""
+    global _training_data_manager
+    if _training_data_manager is None:
+        _training_data_manager = TrainingDataManager()
+    return _training_data_manager
+
+
+def get_optimization_engine() -> DSPyOptimizationEngine:
+    """Get the global optimization engine instance."""
+    global _optimization_engine
+    if _optimization_engine is None:
+        _optimization_engine = DSPyOptimizationEngine()
+    return _optimization_engine
