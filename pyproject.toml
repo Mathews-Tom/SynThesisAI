@@ -1,9 +1,9 @@
 [project]
-name = "synthetic-math-prompts-agent"
+name = "SynThesisAI"
 version = "0.1.0"
-description = "Add your description here"
+description = "The Next-Gen Platform for Generative Intelligence Across"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = [
     # =============================
     # LLM Clients
@@ -30,4 +30,9 @@ dependencies = [
     "json-repair>=0.47.4",
     "pytest>=8.4.1",
     "sympy>=1.14.0",
+    # =============================
+    # DSPy Framework
+    # =============================
+    "dspy-ai>=2.5.0", # DSPy framework for declarative self-improving prompts
+    "optuna>=3.6.1", # For MIPROv2 optimizer hyperparameter tuning
 ]
