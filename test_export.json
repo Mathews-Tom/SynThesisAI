@@ -1,0 +1,13 @@
+{
+  "timestamp": 1753445348.119248,
+  "uptime_seconds": 0.00031495094299316406,
+  "coordination_events": [],
+  "system_summary": {
+    "uptime_seconds": 0.0003159046173095703,
+    "coordination_success_rate": 0.0,
+    "total_coordinations": 0,
+    "active_coordinations": 0,
+    "system_metrics": {}
+  },
+  "agent_summaries": {}
+}
