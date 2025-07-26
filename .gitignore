@@ -19,7 +19,7 @@ cache/
 .learning/
 
 database/
-
+logs/
 
 create_init.py_files.py
 

@@ -20,7 +20,7 @@ dependencies = [
     # Utility & Config
     # =============================
     "python-dotenv>=1.0.0", # Loads environment variables from .env
-    "PyYAML>=6.0.1", # For loading config/settings.yaml
+    "pyyaml>=6.0.1", # For loading config/settings.yaml
     "pandas>=2.2.1", # (Optional) For structured data inspection
     "tqdm>=4.66.2", # (Optional) For progress bars in CLI
     # =============================
@@ -50,4 +50,9 @@ dependencies = [
     "nltk>=3.8.1", # Natural language processing
     "spacy>=3.7.0", # Advanced NLP
     "transformers>=4.35.0", # Transformer models for content analysis
+    "pytest-asyncio>=1.1.0",
+    "psutil>=7.0.0",
+    "scipy>=1.16.0",
+    "matplotlib>=3.10.3",
+    "packaging>=25.0",
 ]
