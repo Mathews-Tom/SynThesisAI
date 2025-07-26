@@ -11,6 +11,9 @@ __pycache__/
 
 # Test Results
 results/
+test_export.json
+*_export.json
+metrics_export.json
 
 # Cached LLM Responses
 cache/
