@@ -87,3 +87,44 @@ class APIError(Exception):
         elif status_code:
             message = f"API error (status {status_code}): {message}"
         super().__init__(message)
+
+
+class CoordinationError(Exception):
+    """Raised when multi-agent coordination fails."""
+
+    def __init__(
+        self,
+        message: str,
+        coordination_time: float = None,
+        request_summary: str = None,
+        action_summary: str = None,
+    ):
+        self.coordination_time = coordination_time
+        self.request_summary = request_summary
+        self.action_summary = action_summary
+
+        if coordination_time is not None:
+            message = f"Coordination error after {coordination_time:.2f}s: {message}"
+        if request_summary:
+            message = f"{message}\nRequest: {request_summary}"
+        if action_summary:
+            message = f"{message}\nAction: {action_summary}"
+
+        super().__init__(message)
+
+
+class AgentFailureError(Exception):
+    """Raised when an individual agent fails to perform its function."""
+
+    def __init__(self, message: str, agent_id: str = None, failure_type: str = None):
+        self.agent_id = agent_id
+        self.failure_type = failure_type
+
+        if agent_id and failure_type:
+            message = f"Agent '{agent_id}' failed ({failure_type}): {message}"
+        elif agent_id:
+            message = f"Agent '{agent_id}' failed: {message}"
+        elif failure_type:
+            message = f"Agent failure ({failure_type}): {message}"
+
+        super().__init__(message)

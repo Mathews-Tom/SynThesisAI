@@ -348,20 +348,22 @@ class BaseRLAgent(ABC):
             # Sample batch from replay buffer
             experiences = self.replay_buffer.sample(self.config.batch_size)
 
-            # Convert to tensors
-            states = torch.FloatTensor([exp.state for exp in experiences]).to(
+            # Convert to tensors (optimized to avoid numpy array list warning)
+            states = torch.FloatTensor(np.array([exp.state for exp in experiences])).to(
                 self.device
             )
-            actions = torch.LongTensor([exp.action for exp in experiences]).to(
+            actions = torch.LongTensor(
+                np.array([exp.action for exp in experiences])
+            ).to(self.device)
+            rewards = torch.FloatTensor(
+                np.array([exp.reward for exp in experiences])
+            ).to(self.device)
+            next_states = torch.FloatTensor(
+                np.array([exp.next_state for exp in experiences])
+            ).to(self.device)
+            dones = torch.BoolTensor(np.array([exp.done for exp in experiences])).to(
                 self.device
             )
-            rewards = torch.FloatTensor([exp.reward for exp in experiences]).to(
-                self.device
-            )
-            next_states = torch.FloatTensor([exp.next_state for exp in experiences]).to(
-                self.device
-            )
-            dones = torch.BoolTensor([exp.done for exp in experiences]).to(self.device)
 
             # Calculate current Q-values
             current_q_values = self.q_network(states).gather(1, actions.unsqueeze(1))

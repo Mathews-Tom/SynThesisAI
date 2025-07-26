@@ -87,14 +87,14 @@ class ValidatorAgentConfig(AgentConfig):
 
     # Validation strategy parameters
     threshold_count: int = 8
-    validation_accuracy_weight: float = 0.7
+    accuracy_weight: float = 0.7
     efficiency_weight: float = 0.3
     feedback_quality_weight: float = 0.2
 
     # Reward function parameters
     false_positive_penalty: float = 0.1
     false_negative_penalty: float = 0.15
-    feedback_quality_bonus: float = 0.2
+    coordination_bonus: float = 0.1
 
 
 @dataclass

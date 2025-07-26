@@ -1,20 +1,26 @@
 """
-MARL Learning Infrastructure
+MARL Learning Module
 
-This module provides advanced learning infrastructure components for multi-agent
-reinforcement learning, including optimization algorithms, experience sharing,
-and distributed training capabilities.
+This module provides learning infrastructure for multi-agent reinforcement learning,
+including shared experience management and continuous learning systems.
 """
 
-from .distributed_training import DistributedTrainingManager, TrainingNode
-from .experience_sharing import ExperienceValue, SharedExperienceManager
-from .optimization import AdaptiveLearningRateScheduler, MARLOptimizer
+from .shared_experience import (
+    ExperienceConfig,
+    ExperienceFilter,
+    ExperienceMetadata,
+    ExperienceSharing,
+    SharedExperienceManager,
+    StateNoveltyTracker,
+    create_shared_experience_manager,
+)
 
 __all__ = [
-    "MARLOptimizer",
-    "AdaptiveLearningRateScheduler",
+    "ExperienceConfig",
+    "ExperienceMetadata",
+    "ExperienceFilter",
+    "StateNoveltyTracker",
+    "ExperienceSharing",
     "SharedExperienceManager",
-    "ExperienceValue",
-    "DistributedTrainingManager",
-    "TrainingNode",
+    "create_shared_experience_manager",
 ]
