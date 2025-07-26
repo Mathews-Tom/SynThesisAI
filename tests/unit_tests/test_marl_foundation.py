@@ -120,12 +120,12 @@ class TestMARLConfig:
         config = ValidatorAgentConfig()
 
         assert config.threshold_count == 8
-        assert config.validation_accuracy_weight == 0.7
+        assert config.accuracy_weight == 0.7
         assert config.efficiency_weight == 0.3
         assert config.feedback_quality_weight == 0.2
         assert config.false_positive_penalty == 0.1
         assert config.false_negative_penalty == 0.15
-        assert config.feedback_quality_bonus == 0.2
+        assert config.coordination_bonus == 0.1
 
     def test_curriculum_agent_config(self):
         """Test curriculum agent specific configuration."""
