@@ -226,3 +226,83 @@ class PolicyNetworkError(MARLError):
         self.agent_id = agent_id
         self.network_type = network_type
         self.operation = operation
+
+
+class CoordinationFailureError(CoordinationError):
+    """Exception raised when coordination policy execution fails."""
+
+    def __init__(
+        self,
+        message: str,
+        coordination_type: str = "policy_coordination",
+        agents_involved: Optional[list] = None,
+        failure_context: Optional[Dict[str, Any]] = None,
+        details: Optional[Dict[str, Any]] = None,
+    ):
+        """
+        Initialize coordination failure error.
+
+        Args:
+            message: Error message
+            coordination_type: Type of coordination that failed
+            agents_involved: List of agents involved in failed coordination
+            failure_context: Context information about the failure
+            details: Additional error details
+        """
+        super().__init__(message, coordination_type, details=details)
+        self.agents_involved = agents_involved or []
+        self.failure_context = failure_context or {}
+
+
+class ConflictResolutionError(MARLError):
+    """Exception raised when conflict resolution fails."""
+
+    def __init__(
+        self,
+        message: str,
+        conflict_types: Optional[list] = None,
+        agents_involved: Optional[list] = None,
+        resolution_context: Optional[Dict[str, Any]] = None,
+        details: Optional[Dict[str, Any]] = None,
+    ):
+        """
+        Initialize conflict resolution error.
+
+        Args:
+            message: Error message
+            conflict_types: Types of conflicts that couldn't be resolved
+            agents_involved: List of agents involved in the conflict
+            resolution_context: Context information about the resolution attempt
+            details: Additional error details
+        """
+        super().__init__(message, details)
+        self.conflict_types = conflict_types or []
+        self.agents_involved = agents_involved or []
+        self.resolution_context = resolution_context or {}
+
+
+class ConsensusFailureError(MARLError):
+    """Exception raised when consensus building fails."""
+
+    def __init__(
+        self,
+        message: str,
+        consensus_strategy: str = "unknown",
+        proposals_count: int = 0,
+        failure_context: Optional[Dict[str, Any]] = None,
+        details: Optional[Dict[str, Any]] = None,
+    ):
+        """
+        Initialize consensus failure error.
+
+        Args:
+            message: Error message
+            consensus_strategy: Strategy used for consensus building
+            proposals_count: Number of proposals involved
+            failure_context: Context information about the failure
+            details: Additional error details
+        """
+        super().__init__(message, details)
+        self.consensus_strategy = consensus_strategy
+        self.proposals_count = proposals_count
+        self.failure_context = failure_context or {}
