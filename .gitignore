@@ -31,4 +31,6 @@ download_hmmt_yearly.py
 download_aime.py
 download_gpqa_diamomd.py
 
+*.pth
+
 PR_MESSAGE.md

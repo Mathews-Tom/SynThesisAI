@@ -24,25 +24,68 @@ logger = logging.getLogger(__name__)
 
 def parse_test_results(output: str) -> dict:
     """
-    Parse test output to extract pass/fail statistics.
+    Parse test output to extract pass/fail statistics and category information.
 
     Args:
         output: Test output string
 
     Returns:
-        Dictionary with test statistics
+        Dictionary with test statistics and category information
     """
     stats = {
         "total_tests": 0,
         "passed_tests": 0,
         "failed_tests": 0,
         "pass_percentage": 0.0,
+        "categories": {
+            "total_categories": 0,
+            "passed_categories": 0,
+            "failed_categories": 0,
+            "category_details": [],
+        },
     }
 
     total_passed = 0
     total_failed = 0
 
-    # Look for pytest summary lines and extract numbers
+    # Look for category-based results first (Phase 2 format)
+    category_pattern = r"Categories passed:\s*(\d+)/(\d+)"
+    category_match = re.search(category_pattern, output)
+
+    if category_match:
+        passed_categories = int(category_match.group(1))
+        total_categories = int(category_match.group(2))
+        stats["categories"]["passed_categories"] = passed_categories
+        stats["categories"]["total_categories"] = total_categories
+        stats["categories"]["failed_categories"] = total_categories - passed_categories
+
+        # Extract category details from the summary section
+        lines = output.split("\n")
+        in_summary = False
+        for line in lines:
+            line = line.strip()
+            if "TEST SUMMARY" in line or "PHASE 2 TEST SUMMARY" in line:
+                in_summary = True
+                continue
+            if in_summary and ("✅ PASSED" in line or "❌ FAILED" in line):
+                # Parse lines like "MARL Agents................... ✅ PASSED"
+                if "." in line and ("✅ PASSED" in line or "❌ FAILED" in line):
+                    # Remove timestamp prefix if present
+                    clean_line = line
+                    if " - INFO - " in line:
+                        clean_line = line.split(" - INFO - ", 1)[1]
+                    elif " - ERROR - " in line:
+                        clean_line = line.split(" - ERROR - ", 1)[1]
+
+                    category_name = clean_line.split(".")[0].strip()
+                    status = "PASSED" if "✅ PASSED" in line else "FAILED"
+                    stats["categories"]["category_details"].append(
+                        {"name": category_name, "status": status}
+                    )
+            elif in_summary and line.startswith("-"):
+                break  # End of category summary
+
+    # Look for pytest summary lines and extract individual test numbers
     # Pattern 1: "X failed, Y passed, Z errors in T.Ts" or "X failed, Y passed in T.Ts"
     failed_passed_pattern = r"(\d+)\s+failed,\s*(\d+)\s+passed"
     matches = re.findall(failed_passed_pattern, output)
@@ -60,7 +103,6 @@ def parse_test_results(output: str) -> dict:
         total_failed += failed
 
     # Pattern 3: "Y passed in T.Ts" (only passed, no failures)
-    # Look for lines with only "passed" and no "failed"
     for line in output.split("\n"):
         line = line.strip()
         if (
@@ -75,22 +117,16 @@ def parse_test_results(output: str) -> dict:
                 passed = int(passed_match.group(1))
                 total_passed += passed
 
-    # If we found individual test results, use them
+    # Set test statistics
     if total_passed > 0 or total_failed > 0:
         stats["passed_tests"] = total_passed
         stats["failed_tests"] = total_failed
         stats["total_tests"] = total_passed + total_failed
-    else:
-        # Fallback: look for category-based results like "Categories passed: 6/8"
-        category_pattern = r"Categories passed:\s*(\d+)/(\d+)"
-        category_match = re.search(category_pattern, output)
-
-        if category_match:
-            passed_categories = int(category_match.group(1))
-            total_categories = int(category_match.group(2))
-            stats["passed_tests"] = passed_categories
-            stats["total_tests"] = total_categories
-            stats["failed_tests"] = total_categories - passed_categories
+    elif category_match:
+        # Use category counts as fallback for test counts
+        stats["passed_tests"] = passed_categories
+        stats["total_tests"] = total_categories
+        stats["failed_tests"] = total_categories - passed_categories
 
     # Calculate percentage
     if stats["total_tests"] > 0:
@@ -266,6 +302,16 @@ def main():
         (passed_tests_all / total_tests_all * 100) if total_tests_all > 0 else 0.0
     )
 
+    # Calculate overall category statistics
+    total_categories_all = sum(
+        result.get("test_stats", {}).get("categories", {}).get("total_categories", 0)
+        for result in phase_results
+    )
+    passed_categories_all = sum(
+        result.get("test_stats", {}).get("categories", {}).get("passed_categories", 0)
+        for result in phase_results
+    )
+
     # Print comprehensive summary
     logger.info("\n" + "=" * 80)
     logger.info("🏆 COMPREHENSIVE TEST SUMMARY")
@@ -276,20 +322,48 @@ def main():
         duration = result.get("duration", 0)
         test_stats = result.get("test_stats", {})
         pass_percentage = test_stats.get("pass_percentage", 0.0)
+        categories = test_stats.get("categories", {})
 
-        # Format the line with pass percentage
+        # Format the line with pass percentage and category info
+        phase_info = f"{result['phase']:.<50} {status} ({duration:.1f}s)"
+
+        # Add both category info and pass percentage when available
+        info_parts = []
+
+        if categories.get("total_categories", 0) > 0:
+            cat_passed = categories.get("passed_categories", 0)
+            cat_total = categories.get("total_categories", 0)
+            info_parts.append(f"{cat_passed}/{cat_total} categories")
+
         if test_stats.get("total_tests", 0) > 0:
-            logger.info(
-                f"{result['phase']:.<50} {status} ({duration:.1f}s) ({pass_percentage:.1f}% pass)"
-            )
-        else:
-            logger.info(f"{result['phase']:.<50} {status} ({duration:.1f}s)")
+            info_parts.append(f"{pass_percentage:.1f}% pass")
+
+        if info_parts:
+            phase_info += f" ({', '.join(info_parts)})"
+
+        logger.info(phase_info)
+
+        # Show category details for failed phases
+        if not result["success"] and categories.get("category_details"):
+            failed_categories = [
+                cat
+                for cat in categories["category_details"]
+                if cat["status"] == "FAILED"
+            ]
+            if failed_categories:
+                logger.error("   Failed categories:")
+                for cat in failed_categories:
+                    logger.error(f"     • {cat['name']}")
 
         if not result["success"] and "error" in result:
             logger.error(f"   Error: {result['error']}")
 
     logger.info("-" * 80)
     logger.info(f"Phases passed: {passed_phases}/{total_phases}")
+    if total_categories_all > 0:
+        logger.info(
+            f"Categories passed: {passed_categories_all}/{total_categories_all}"
+        )
     logger.info(f"Total duration: {total_duration:.1f} seconds")
     if total_tests_all > 0:
         logger.info(
