@@ -17,8 +17,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from ..config import AgentConfig
-from ..exceptions import AgentFailureError, ExperienceBufferError, PolicyNetworkError
+from ..config_legacy import AgentConfig
+from ..exceptions import (AgentFailureError, ExperienceBufferError,
+                          PolicyNetworkError)
 from ..logging_config import get_marl_logger
 from .experience import Experience
 from .learning_metrics import LearningMetrics
