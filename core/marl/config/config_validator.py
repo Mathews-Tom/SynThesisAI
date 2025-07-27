@@ -121,6 +121,13 @@ class ConfigValidator:
             },
         }
 
+        # Warning thresholds for validation
+        self._warning_thresholds = {
+            "memory_usage": 0.8,
+            "performance_degradation": 0.2,
+            "coordination_timeout": 300.0,
+        }
+
         self.logger.info("Configuration validator initialized")
 
     def validate_config(self, config: MARLConfig) -> Tuple[List[str], List[str]]:
