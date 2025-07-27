@@ -6,8 +6,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from core.marl.config import CoordinationConfig
 from core.marl.config.config_schema import ConsensusConfig
+from core.marl.config_legacy import CoordinationConfig
 from core.marl.coordination.consensus_mechanism import ConsensusMechanism
 
 
