@@ -52,6 +52,18 @@ class MessageResponse:
     error_message: Optional[str] = None
 
 
+@dataclass
+class ContentRequest:
+    """Represents a content generation request."""
+
+    domain: str
+    difficulty_level: str = "intermediate"
+    learning_objectives: List[str] = field(default_factory=list)
+    context: Dict[str, Any] = field(default_factory=dict)
+    constraints: Dict[str, Any] = field(default_factory=dict)
+    timestamp: datetime = field(default_factory=datetime.now)
+
+
 class AgentCommunicationProtocol:
     """
     Communication protocol system for multi-agent coordination.
@@ -677,11 +689,11 @@ class AgentCommunicationProtocol:
             "success_rate": success_rate,
             "pending_responses": len(self.pending_responses),
             "message_queue_size": self.message_queue.qsize(),
-            "performance_status": "excellent"
-            if success_rate > 0.95
-            else "good"
-            if success_rate > 0.85
-            else "needs_improvement",
+            "performance_status": (
+                "excellent"
+                if success_rate > 0.95
+                else "good" if success_rate > 0.85 else "needs_improvement"
+            ),
         }
 
     async def shutdown(self) -> None:
