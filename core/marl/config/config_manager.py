@@ -279,6 +279,7 @@ class MARLConfigManager:
         """
         config_files = list(self.config_dir.glob(pattern))
         config_files.extend(self.config_dir.glob("*.json"))
+        config_files.extend(self.config_dir.glob("*.yml"))  # Add support for .yml files
 
         # Filter by supported formats
         config_files = [f for f in config_files if f.suffix in self._supported_formats]
@@ -466,7 +467,11 @@ class MARLConfigManager:
             "agent_types": list(
                 set(agent.agent_type for agent in config.agents.values())
             ),
-            "consensus_strategy": config.coordination.consensus.strategy.value,
+            "consensus_strategy": (
+                config.coordination.consensus.strategy.value
+                if hasattr(config.coordination.consensus.strategy, "value")
+                else config.coordination.consensus.strategy
+            ),
             "shared_learning_enabled": config.learning.shared_learning.enabled,
             "device": config.system.device,
             "num_workers": config.system.num_workers,
