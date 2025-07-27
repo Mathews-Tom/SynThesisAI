@@ -11,7 +11,7 @@ import pytest
 from core.marl.agents.base_agent import BaseRLAgent
 
 # Import AgentConfig directly from the config.py file to avoid import conflicts
-config_path = Path(__file__).parent.parent.parent / "core" / "marl" / "config.py"
+config_path = Path(__file__).parent.parent.parent / "core" / "marl" / "config_legacy.py"
 spec = importlib.util.spec_from_file_location("marl_config", config_path)
 marl_config_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(marl_config_module)

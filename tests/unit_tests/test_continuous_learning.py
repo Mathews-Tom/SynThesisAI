@@ -286,10 +286,11 @@ class TestContinuousLearningManager:
         agent.config.learning_rate = 0.001
         agent.replay_buffer = MagicMock()
         agent.replay_buffer.__len__ = MagicMock(return_value=50)
+        # Return enough experiences to ensure at least one iteration (batch_size=32)
         agent.replay_buffer.sample = MagicMock(
             return_value=[
                 Experience(np.array([1.0]), 0, 0.5, np.array([1.1]), False)
-                for _ in range(10)
+                for _ in range(35)  # Increased from 10 to 35 to ensure iterations > 0
             ]
         )
         agent._update_policy_from_batch = MagicMock(return_value=0.1)
@@ -392,7 +393,9 @@ class TestContinuousLearningManager:
 
         experiences = learning_manager._prepare_training_batch("test_agent", mock_agent)
 
-        assert len(experiences) == 10  # From mock agent
+        assert (
+            len(experiences) == 35
+        )  # From mock agent (updated to ensure iterations > 0)
         mock_agent.replay_buffer.sample.assert_called_once()
 
     def test_prepare_training_batch_with_shared(self, learning_manager, mock_agent):
@@ -408,7 +411,7 @@ class TestContinuousLearningManager:
 
         experiences = learning_manager._prepare_training_batch("test_agent", mock_agent)
 
-        assert len(experiences) == 11  # 10 own + 1 shared
+        assert len(experiences) == 36  # 35 own + 1 shared
         learning_manager.shared_experience_manager.sample_experiences.assert_called_once()
 
     def test_record_agent_performance(self, learning_manager, mock_agent):
