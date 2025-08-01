@@ -5,13 +5,14 @@ This module provides configuration management for DSPy integration,
 including optimization parameters, quality requirements, and result tracking.
 """
 
+# Standard Library
 import json
 import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +161,10 @@ class DSPyConfig:
             "max_memory_entries": 1000,
             "max_disk_size_mb": 100,
         }
+
+    def get_module_config(self, domain: str, signature: str) -> DSPyModuleConfig:
+        """Get module configuration for specified domain and signature."""
+        return DSPyModuleConfig(domain, signature)
 
     def get_dspy_version(self) -> str:
         """

@@ -1,13 +1,20 @@
+"""Unit tests for score_similarity function."""
+
+# Standard Library
 from unittest.mock import patch
+
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.search.search_similarity import score_similarity
 
 
+@pytest.mark.skip(reason="Temporarily disabled")
 @patch("core.search.similarity_agent.create_similarity_agent")
 @patch("core.search.tavily_search.query_tavily_search")
-@pytest.mark.skip(reason="Temporarily disabled")
 def test_score_similarity_returns_shape(mock_query, mock_create_agent):
+    """Test that score_similarity returns expected dict shape."""
     mock_query.return_value = [{"title": "Mock", "content": "Example question"}]
 
     # Mock the similarity agent

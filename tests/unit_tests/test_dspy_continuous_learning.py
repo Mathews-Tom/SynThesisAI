@@ -5,21 +5,20 @@ These tests verify the continuous learning functionality including
 performance tracking, reoptimization decisions, and adaptive parameter tuning.
 """
 
-import json
+# Standard Library
 import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import pytest
+# Third-Party Library
 
-from core.dspy.base_module import STREAMContentGenerator
+# SynThesisAI Modules
 from core.dspy.continuous_learning import (
     ContinuousLearningManager,
     LearningMetrics,
     get_continuous_learning_manager,
 )
 from core.dspy.feedback import (
-    FeedbackManager,
     FeedbackSeverity,
     FeedbackSource,
     FeedbackType,
@@ -45,21 +44,15 @@ class TestLearningMetrics:
         metrics = LearningMetrics()
 
         # Add first record
-        metrics.add_performance_record(
-            {"overall_score": 0.75, "accuracy": 0.8, "relevance": 0.7}
-        )
+        metrics.add_performance_record({"overall_score": 0.75, "accuracy": 0.8, "relevance": 0.7})
 
         assert len(metrics.performance_history) == 1
         assert metrics.current_performance == 0.75
         assert metrics.best_performance == 0.75
-        assert (
-            metrics.optimization_count == 0
-        )  # Not incremented by add_performance_record
+        assert metrics.optimization_count == 0  # Not incremented by add_performance_record
 
         # Add second record with better performance
-        metrics.add_performance_record(
-            {"overall_score": 0.85, "accuracy": 0.9, "relevance": 0.8}
-        )
+        metrics.add_performance_record({"overall_score": 0.85, "accuracy": 0.9, "relevance": 0.8})
 
         assert len(metrics.performance_history) == 2
         assert metrics.current_performance == 0.85
@@ -99,9 +92,7 @@ class TestLearningMetrics:
 
         assert metrics_dict["optimization_count"] == 5
         assert metrics_dict["best_performance"] == 0.85
-        assert (
-            metrics_dict["current_performance"] == 0.75
-        )  # Updated by add_performance_record
+        assert metrics_dict["current_performance"] == 0.75  # Updated by add_performance_record
         assert "last_optimization" in metrics_dict
         assert len(metrics_dict["performance_history"]) == 1
 
@@ -110,9 +101,7 @@ class TestLearningMetrics:
 
         assert restored_metrics.optimization_count == 5
         assert restored_metrics.best_performance == 0.85
-        assert (
-            restored_metrics.current_performance == 0.75
-        )  # Matches the serialized value
+        assert restored_metrics.current_performance == 0.75  # Matches the serialized value
         assert len(restored_metrics.performance_history) == 1
 
 
@@ -122,9 +111,7 @@ class TestContinuousLearningManager:
     def setup_method(self):
         """Set up test environment."""
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.learning_manager = ContinuousLearningManager(
-            learning_dir=self.temp_dir.name
-        )
+        self.learning_manager = ContinuousLearningManager(learning_dir=self.temp_dir.name)
 
     def teardown_method(self):
         """Clean up test environment."""
@@ -141,9 +128,7 @@ class TestContinuousLearningManager:
     def test_should_reoptimize_initial(self):
         """Test reoptimization decision for never-optimized domain."""
         # Use a unique domain to avoid interference from other tests
-        should_reopt, reason = self.learning_manager.should_reoptimize(
-            "test_initial_domain"
-        )
+        should_reopt, reason = self.learning_manager.should_reoptimize("test_initial_domain")
 
         assert should_reopt is True
         assert "Initial optimization required" in reason
@@ -171,9 +156,7 @@ class TestContinuousLearningManager:
         metrics.optimization_count = 3
         metrics.last_optimization = datetime.now() - timedelta(days=2)  # Recent
         metrics.current_performance = 0.7  # Current performance
-        metrics.best_performance = (
-            0.9  # Much better past performance (>10% degradation)
-        )
+        metrics.best_performance = 0.9  # Much better past performance (>10% degradation)
 
         self.learning_manager.domain_metrics["mathematics"] = metrics
 
@@ -269,9 +252,7 @@ class TestContinuousLearningManager:
 
         # Test slow improvement (with good performance to avoid override)
         metrics.improvement_rate = 0.005  # Very slow
-        metrics.current_performance = (
-            0.8  # Good performance to avoid low performance override
-        )
+        metrics.current_performance = 0.8  # Good performance to avoid low performance override
         adaptive_params = self.learning_manager._apply_adaptive_tuning("mathematics")
         assert adaptive_params["max_labeled_demos"] == 20  # More training data
         assert adaptive_params["optuna_trials_num"] == 150  # More trials
@@ -307,9 +288,7 @@ class TestContinuousLearningManager:
         assert "mathematics" in self.learning_manager.domain_metrics
         restored_metrics = self.learning_manager.domain_metrics["mathematics"]
         assert restored_metrics.optimization_count == 3
-        assert (
-            restored_metrics.current_performance == 0.8
-        )  # Updated by add_performance_record
+        assert restored_metrics.current_performance == 0.8  # Updated by add_performance_record
         assert len(restored_metrics.performance_history) == 1
 
     def test_get_learning_summary_single_domain(self):
@@ -391,9 +370,7 @@ class TestContinuousLearningIntegration:
     def setup_method(self):
         """Set up test environment."""
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.learning_manager = ContinuousLearningManager(
-            learning_dir=self.temp_dir.name
-        )
+        self.learning_manager = ContinuousLearningManager(learning_dir=self.temp_dir.name)
 
     def teardown_method(self):
         """Clean up test environment."""
@@ -440,7 +417,3 @@ class TestContinuousLearningIntegration:
         # Should be able to generate adaptive parameters
         adaptive_params = self.learning_manager._apply_adaptive_tuning("mathematics")
         assert isinstance(adaptive_params, dict)
-
-
-if __name__ == "__main__":
-    pytest.main(["-xvs", __file__])

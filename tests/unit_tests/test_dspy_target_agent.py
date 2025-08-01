@@ -5,11 +5,13 @@ These tests verify the functionality of the DSPyTargetAgent class,
 including initialization, DSPy module management, and problem solving.
 """
 
-import unittest
+# Standard Library
 from unittest.mock import MagicMock, patch
 
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.dspy.exceptions import DSPyIntegrationError
 from core.dspy.target_agent import DSPyTargetAgent
 
@@ -55,9 +57,7 @@ class TestDSPyTargetAgent:
 
     @patch("core.dspy.target_agent.STREAMContentGenerator")
     @patch("core.dspy.target_agent.get_dspy_config")
-    def test_initialize_dspy_module_failure(
-        self, mock_get_dspy_config, mock_stream_generator
-    ):
+    def test_initialize_dspy_module_failure(self, mock_get_dspy_config, mock_stream_generator):
         """Test failure in initializing DSPy module."""
         # Setup mocks
         mock_config = MagicMock()
@@ -224,7 +224,3 @@ class TestDSPyTargetAgent:
         assert result["correct"] is True
         assert result["confidence"] == 0.8
         assert "appears to be correct" in result["explanation"]
-
-
-if __name__ == "__main__":
-    pytest.main(["-xvs", __file__])

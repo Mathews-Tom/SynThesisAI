@@ -1,0 +1,153 @@
+# MARL Configuration for SynThesisAI Platform
+# Multi-Agent Reinforcement Learning coordination settings
+
+# Generator Agent Configuration
+generator:
+  # Neural network architecture
+  hidden_layers: [256, 128, 64]
+  activation: "relu"
+  learning_rate: 0.001
+  
+  # Q-learning parameters
+  gamma: 0.99
+  epsilon_initial: 1.0
+  epsilon_decay: 0.995
+  epsilon_min: 0.01
+  
+  # Experience replay
+  buffer_size: 100000
+  batch_size: 32
+  target_update_freq: 1000
+  
+  # Training parameters
+  max_episodes: 10000
+  max_steps_per_episode: 1000
+  
+  # Generation strategy parameters
+  strategy_count: 8
+  novelty_weight: 0.3
+  quality_weight: 0.5
+  efficiency_weight: 0.2
+  
+  # Reward function parameters
+  quality_threshold: 0.8
+  novelty_threshold: 0.6
+  coordination_bonus: 0.1
+  validation_penalty: 0.2
+
+# Validator Agent Configuration
+validator:
+  # Neural network architecture
+  hidden_layers: [256, 128, 64]
+  activation: "relu"
+  learning_rate: 0.001
+  
+  # Q-learning parameters
+  gamma: 0.99
+  epsilon_initial: 1.0
+  epsilon_decay: 0.995
+  epsilon_min: 0.01
+  
+  # Experience replay
+  buffer_size: 100000
+  batch_size: 32
+  target_update_freq: 1000
+  
+  # Training parameters
+  max_episodes: 10000
+  max_steps_per_episode: 1000
+  
+  # Validation strategy parameters
+  threshold_count: 8
+  validation_accuracy_weight: 0.7
+  efficiency_weight: 0.3
+  feedback_quality_weight: 0.2
+  
+  # Reward function parameters
+  false_positive_penalty: 0.1
+  false_negative_penalty: 0.15
+  feedback_quality_bonus: 0.2
+
+# Curriculum Agent Configuration
+curriculum:
+  # Neural network architecture
+  hidden_layers: [256, 128, 64]
+  activation: "relu"
+  learning_rate: 0.001
+  
+  # Q-learning parameters
+  gamma: 0.99
+  epsilon_initial: 1.0
+  epsilon_decay: 0.995
+  epsilon_min: 0.01
+  
+  # Experience replay
+  buffer_size: 100000
+  batch_size: 32
+  target_update_freq: 1000
+  
+  # Training parameters
+  max_episodes: 10000
+  max_steps_per_episode: 1000
+  
+  # Curriculum strategy parameters
+  strategy_count: 8
+  pedagogical_coherence_weight: 0.4
+  learning_progression_weight: 0.4
+  objective_alignment_weight: 0.2
+  
+  # Reward function parameters
+  coherence_threshold: 0.7
+  progression_threshold: 0.7
+  integration_bonus: 0.15
+
+# Coordination Configuration
+coordination:
+  # Consensus parameters
+  consensus_strategy: "adaptive_consensus"
+  min_consensus_quality: 0.8
+  consensus_timeout: 30.0
+  
+  # Conflict resolution
+  max_negotiation_rounds: 5
+  conflict_resolution_strategy: "weighted_priority"
+  
+  # Communication
+  message_queue_size: 1000
+  communication_timeout: 10.0
+  
+  # Coordination thresholds
+  coordination_success_threshold: 0.85
+  coordination_failure_threshold: 0.3
+
+# Experience Management Configuration
+experience:
+  # Buffer sizes
+  shared_buffer_size: 50000
+  agent_buffer_size: 25000
+  
+  # Experience sharing
+  high_reward_threshold: 0.8
+  novelty_threshold: 0.7
+  sharing_probability: 0.3
+  
+  # Experience prioritization
+  priority_alpha: 0.6
+  importance_sampling_beta: 0.4
+
+# System Configuration
+system:
+  # Performance monitoring
+  monitoring_enabled: true
+  metrics_collection_interval: 100
+  performance_report_interval: 1000
+  
+  # Distributed training
+  distributed_training: false
+  num_workers: 4
+  gpu_enabled: true
+  
+  # Logging and debugging
+  log_level: "INFO"
+  debug_mode: false
+  checkpoint_interval: 5000

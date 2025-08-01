@@ -5,21 +5,18 @@ Tests the complete cache integration workflow including cache lookup,
 storage, invalidation, and performance monitoring.
 """
 
-import json
-import os
-import tempfile
-import time
+# Standard Library
 from datetime import datetime
 from pathlib import Path
+import shutil
+import tempfile
 from unittest.mock import Mock, patch
 
-import pytest
-
+# SynThesisAI Modules
 from core.dspy.base_module import STREAMContentGenerator
-from core.dspy.cache import OptimizationCache, get_optimization_cache
+from core.dspy.cache import OptimizationCache
 from core.dspy.cache_invalidation import (
     CacheInvalidationManager,
-    invalidate_by_config_change,
     invalidate_by_domain,
     run_cache_maintenance,
 )
@@ -28,14 +25,14 @@ from core.dspy.cache_monitoring import (
     collect_cache_metrics,
     get_cache_performance_report,
 )
-from core.dspy.config import OptimizationResult, get_dspy_config
+from core.dspy.config import OptimizationResult
 from core.dspy.optimization_engine import DSPyOptimizationEngine
 
 
 class TestCacheIntegration:
     """Integration tests for cache integration with optimization engine."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         # Create temporary directory for cache
         self.temp_dir = tempfile.mkdtemp()
@@ -56,15 +53,14 @@ class TestCacheIntegration:
             timestamp=datetime.now(),
         )
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         """Clean up test fixtures."""
         # Clean up temporary directory
-        import shutil
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     @patch("core.dspy.optimization_engine.get_optimization_cache")
-    def test_cache_lookup_in_optimization_engine(self, mock_get_cache):
+    def test_cache_lookup_in_optimization_engine(self, mock_get_cache) -> None:
         """Test cache lookup in optimization engine."""
         # Set up mock cache
         mock_cache = Mock()
@@ -89,7 +85,7 @@ class TestCacheIntegration:
             assert result == self.test_module
 
     @patch("core.dspy.optimization_engine.get_optimization_cache")
-    def test_cache_storage_after_optimization(self, mock_get_cache):
+    def test_cache_storage_after_optimization(self, mock_get_cache) -> None:
         """Test cache storage after optimization."""
         # Set up mock cache
         mock_cache = Mock()
@@ -104,7 +100,7 @@ class TestCacheIntegration:
         with (
             patch("core.dspy.optimization_engine.dspy", create=True),
             patch("core.dspy.optimization_engine.MIPROv2", create=True) as mock_mipro,
-            patch("core.dspy.optimization_engine.TrainingDataManager") as mock_tdm,
+            patch("core.dspy.optimization_engine.TrainingDataManager"),
         ):
             # Set up mock optimizer
             mock_optimizer = Mock()
@@ -126,7 +122,7 @@ class TestCacheIntegration:
             # Verify result is from optimization
             assert result == self.test_module
 
-    def test_cache_invalidation_triggers(self):
+    def test_cache_invalidation_triggers(self) -> None:
         """Test cache invalidation triggers."""
         # Create cache invalidation manager
         invalidation_manager = CacheInvalidationManager()
@@ -139,9 +135,7 @@ class TestCacheIntegration:
         assert self.cache.get(cache_key) is not None
 
         # Mock configuration change
-        with patch.object(
-            invalidation_manager, "check_config_changes", return_value=True
-        ):
+        with patch.object(invalidation_manager, "check_config_changes", return_value=True):
             # Invalidate by config change
             invalidated = invalidation_manager.invalidate_by_config_change()
 
@@ -149,10 +143,10 @@ class TestCacheIntegration:
             assert invalidated >= 1
             assert self.cache.get(cache_key) is None
 
-    def test_cache_performance_monitoring(self):
+    def test_cache_performance_monitoring(self) -> None:
         """Test cache performance monitoring."""
         # Create temporary file for metrics
-        metrics_file = os.path.join(self.temp_dir, "metrics.json")
+        metrics_file: Path = Path(self.temp_dir) / "metrics.json"
 
         # Create cache performance monitor
         monitor = CachePerformanceMonitor(metrics_file=metrics_file)
@@ -190,7 +184,7 @@ class TestCacheIntegration:
         assert "hit_rate_trend" in report
         assert "recommendations" in report
 
-    def test_end_to_end_cache_integration(self):
+    def test_end_to_end_cache_integration(self) -> None:
         """Test end-to-end cache integration workflow."""
         # Create optimization engine with real cache
         engine = DSPyOptimizationEngine()
@@ -200,7 +194,7 @@ class TestCacheIntegration:
         with (
             patch("core.dspy.optimization_engine.dspy", create=True),
             patch("core.dspy.optimization_engine.MIPROv2", create=True) as mock_mipro,
-            patch("core.dspy.optimization_engine.TrainingDataManager") as mock_tdm,
+            patch("core.dspy.optimization_engine.TrainingDataManager"),
         ):
             # Set up mock optimizer
             mock_optimizer = Mock()
@@ -214,14 +208,10 @@ class TestCacheIntegration:
             engine.training_manager = mock_tdm_instance
 
             # First optimization (should store in cache)
-            result1 = engine.optimize_for_domain(
-                self.test_module, {"min_accuracy": 0.9}
-            )
+            result1 = engine.optimize_for_domain(self.test_module, {"min_accuracy": 0.9})
 
             # Second optimization (should hit cache)
-            result2 = engine.optimize_for_domain(
-                self.test_module, {"min_accuracy": 0.9}
-            )
+            result2 = engine.optimize_for_domain(self.test_module, {"min_accuracy": 0.9})
 
             # Verify both results are the same
             assert result1 == result2
@@ -231,10 +221,10 @@ class TestCacheIntegration:
             assert cache_stats["stats"]["hits"] >= 1
 
             # Run cache maintenance
-            maintenance_results = run_cache_maintenance()
+            run_cache_maintenance()
 
             # Collect cache metrics
-            metrics = collect_cache_metrics()
+            collect_cache_metrics()
 
             # Generate cache performance report
             report = get_cache_performance_report()
@@ -243,7 +233,7 @@ class TestCacheIntegration:
             assert "current_metrics" in report
             assert "hit_rate_trend" in report
 
-    def test_cache_invalidation_by_domain(self):
+    def test_cache_invalidation_by_domain(self) -> None:
         """Test cache invalidation by domain."""
         # Store entries for different domains
         domains = ["mathematics", "science", "technology"]
@@ -266,7 +256,7 @@ class TestCacheIntegration:
         assert self.cache.get("test_science_key") is None
         assert self.cache.get("test_technology_key") is not None
 
-    def test_cache_config_changes(self):
+    def test_cache_config_changes(self) -> None:
         """Test cache configuration changes."""
         # Create cache invalidation manager
         invalidation_manager = CacheInvalidationManager()

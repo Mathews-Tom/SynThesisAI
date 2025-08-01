@@ -1,3 +1,5 @@
-# __init__.py
+"""This module initializes the API package.
 
-# API module
+It brings together all the API routes and makes them available
+to the main application.
+"""

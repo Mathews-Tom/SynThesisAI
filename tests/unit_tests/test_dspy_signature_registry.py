@@ -5,14 +5,11 @@ These tests verify the functionality of the signature registry,
 including registration, retrieval, compatibility checking, and persistence.
 """
 
-import json
-import os
 import tempfile
 from pathlib import Path
 
 import pytest
 
-from core.dspy.exceptions import SignatureValidationError
 from core.dspy.signature_registry import SignatureRegistry, get_signature_registry
 
 
@@ -59,17 +56,12 @@ class TestSignatureRegistry:
             self.registry.registry["signatures"]["test_signature"]["signature"]
             == "input1, input2 -> output1, output2"
         )
-        assert (
-            self.registry.registry["signatures"]["test_signature"]["domain"]
-            == "test_domain"
-        )
+        assert self.registry.registry["signatures"]["test_signature"]["domain"] == "test_domain"
         assert (
             self.registry.registry["signatures"]["test_signature"]["description"]
             == "Test signature description"
         )
-        assert (
-            self.registry.registry["signatures"]["test_signature"]["version"] == "1.0.0"
-        )
+        assert self.registry.registry["signatures"]["test_signature"]["version"] == "1.0.0"
 
         # Register an invalid signature
         result = self.registry.register_signature(
@@ -81,9 +73,7 @@ class TestSignatureRegistry:
     def test_get_signature(self):
         """Test retrieving signatures."""
         # Register a signature
-        self.registry.register_signature(
-            "test_signature", "input1, input2 -> output1, output2"
-        )
+        self.registry.register_signature("test_signature", "input1, input2 -> output1, output2")
 
         # Get signature
         signature = self.registry.get_signature("test_signature")
@@ -94,13 +84,8 @@ class TestSignatureRegistry:
         assert signature is None
 
         # Verify usage stats are updated
-        assert (
-            self.registry.registry["usage_stats"]["test_signature"]["usage_count"] == 1
-        )
-        assert (
-            self.registry.registry["usage_stats"]["test_signature"]["last_used"]
-            is not None
-        )
+        assert self.registry.registry["usage_stats"]["test_signature"]["usage_count"] == 1
+        assert self.registry.registry["usage_stats"]["test_signature"]["last_used"] is not None
 
     def test_get_signature_info(self):
         """Test retrieving signature information."""
@@ -159,9 +144,7 @@ class TestSignatureRegistry:
     def test_delete_signature(self):
         """Test deleting signatures."""
         # Register a signature
-        self.registry.register_signature(
-            "test_signature", "input1, input2 -> output1, output2"
-        )
+        self.registry.register_signature("test_signature", "input1, input2 -> output1, output2")
 
         # Verify signature exists
         assert "test_signature" in self.registry.registry["signatures"]
@@ -201,9 +184,7 @@ class TestSignatureRegistry:
 
         # Verify signature is updated
         info = self.registry.get_signature_info("test_signature")
-        assert (
-            info["signature"] == "input1, input2, input3 -> output1, output2, output3"
-        )
+        assert info["signature"] == "input1, input2, input3 -> output1, output2, output3"
         assert info["domain"] == "domain2"
         assert info["description"] == "Updated description"
         assert info["version"] == "2.0.0"
@@ -227,9 +208,7 @@ class TestSignatureRegistry:
 
         # Verify only specified fields are updated
         info = self.registry.get_signature_info("test_signature")
-        assert (
-            info["signature"] == "input1, input2, input3 -> output1, output2, output3"
-        )
+        assert info["signature"] == "input1, input2, input3 -> output1, output2, output3"
         assert info["domain"] == "domain2"
         assert info["description"] == "Partially updated description"
         assert info["version"] == "2.0.0"
@@ -246,24 +225,12 @@ class TestSignatureRegistry:
         assert self.registry.check_compatibility("signature2", "signature1") is False
 
         # Check compatibility by string
-        assert (
-            self.registry.check_compatibility("a, b, c -> x, y, z", "a, b -> x, y")
-            is True
-        )
-        assert (
-            self.registry.check_compatibility("a, b -> x, y", "a, b, c -> x, y, z")
-            is False
-        )
+        assert self.registry.check_compatibility("a, b, c -> x, y, z", "a, b -> x, y") is True
+        assert self.registry.check_compatibility("a, b -> x, y", "a, b, c -> x, y, z") is False
 
         # Check compatibility with strict mode
-        assert (
-            self.registry.check_compatibility("signature1", "signature1", strict=True)
-            is True
-        )
-        assert (
-            self.registry.check_compatibility("signature1", "signature2", strict=True)
-            is False
-        )
+        assert self.registry.check_compatibility("signature1", "signature1", strict=True) is True
+        assert self.registry.check_compatibility("signature1", "signature2", strict=True) is False
 
         # Check compatibility with non-existent signature
         assert self.registry.check_compatibility("signature1", "non_existent") is False
@@ -399,18 +366,12 @@ class TestSignatureRegistry:
             new_registry.registry["signatures"]["test_signature1"]["signature"]
             == "input1, input2 -> output1, output2"
         )
-        assert (
-            new_registry.registry["signatures"]["test_signature1"]["domain"]
-            == "domain1"
-        )
+        assert new_registry.registry["signatures"]["test_signature1"]["domain"] == "domain1"
         assert (
             new_registry.registry["signatures"]["test_signature2"]["signature"]
             == "input3, input4 -> output3, output4"
         )
-        assert (
-            new_registry.registry["signatures"]["test_signature2"]["domain"]
-            == "domain2"
-        )
+        assert new_registry.registry["signatures"]["test_signature2"]["domain"] == "domain2"
 
     def test_global_registry(self):
         """Test global registry instance."""

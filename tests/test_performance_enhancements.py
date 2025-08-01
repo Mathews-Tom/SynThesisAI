@@ -5,20 +5,18 @@ This module tests the concurrent processing, caching mechanisms, and performance
 monitoring features implemented in Phase 2.
 """
 
+# Standard Library
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor
-from unittest.mock import MagicMock, Mock, patch
+from typing import Generator
+from unittest.mock import patch
 
+# Third-Party Library
 import pytest
 
-from core.llm.llm_client import LLMClient, get_llm_client
-from core.orchestration.concurrent_processor import (
-    AdaptiveThreadPool,
-    ConcurrentProcessor,
-)
+# SynThesisAI Modules
+from core.orchestration.concurrent_processor import AdaptiveThreadPool
 from core.orchestration.generate_batch import (
-    _generate_and_validate_prompt,
     _generate_batch_problems,
     run_generation_pipeline,
 )
@@ -214,9 +212,7 @@ class TestIntegratedPerformanceEnhancements:
     @patch("core.llm.llm_dispatch.call_engineer")
     @patch("core.llm.llm_dispatch.call_checker")
     @patch("core.llm.llm_dispatch.call_target_model")
-    def test_pipeline_with_performance_monitoring(
-        self, mock_target, mock_checker, mock_engineer
-    ):
+    def test_pipeline_with_performance_monitoring(self, mock_target, mock_checker, mock_engineer):
         """Test that the pipeline integrates performance monitoring."""
         # Mock responses
         mock_engineer.return_value = {
@@ -267,12 +263,17 @@ class TestIntegratedPerformanceEnhancements:
 
 
 @pytest.fixture(autouse=True)
-def cleanup_globals():
-    """Clean up global state after each test."""
+def cleanup_globals() -> Generator[None, None, None]:
+    """
+    Clean up global state after each test.
+
+    Yields:
+        None
+    """
     yield
     try:
         reset_performance_monitor()
-    except:
+    except Exception:
         pass  # Ignore cleanup errors
 
 

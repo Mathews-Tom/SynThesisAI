@@ -5,10 +5,13 @@ These tests verify the adapter pattern for backward compatibility
 with existing agent interfaces.
 """
 
+# Standard Library
 from unittest.mock import MagicMock, patch
 
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.dspy.adapter import (
     AgentAdapter,
     CheckerAgentAdapter,
@@ -18,7 +21,6 @@ from core.dspy.adapter import (
     create_engineer_agent,
     create_target_agent,
 )
-from core.dspy.exceptions import DSPyIntegrationError
 
 
 class TestAgentAdapter:

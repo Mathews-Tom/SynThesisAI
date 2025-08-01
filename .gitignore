@@ -5,12 +5,19 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.test_cache/
+pytest.ini
 
 # Environments Configurations
 .env
 
 # Test Results
 results/
+test_export.json
+*_export.json
+metrics_export.json
 
 # Cached LLM Responses
 cache/
@@ -19,7 +26,7 @@ cache/
 .learning/
 
 database/
-
+logs/
 
 create_init.py_files.py
 
@@ -28,4 +35,7 @@ download_hmmt_yearly.py
 download_aime.py
 download_gpqa_diamomd.py
 
+*.pth
+
 PR_MESSAGE.md
+refactor_log.md

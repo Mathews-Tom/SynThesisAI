@@ -5,16 +5,17 @@ Tests the caching functionality including memory and persistent caching,
 cache validation, freshness checking, and maintenance operations.
 """
 
+# Standard Library
 import os
+import shutil
 import tempfile
 import time
 import unittest
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
-import pytest
-
+# SynThesisAI Modules
 from core.dspy.base_module import STREAMContentGenerator
 from core.dspy.cache import OptimizationCache, get_optimization_cache
 from core.dspy.config import OptimizationResult
@@ -44,8 +45,6 @@ class TestOptimizationCache(unittest.TestCase):
     def tearDown(self):
         """Clean up test fixtures."""
         # Clean up temporary directory
-        import shutil
-
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_cache_initialization(self):

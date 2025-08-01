@@ -8,7 +8,6 @@ enhanced concurrent processing and caching systems.
 import logging
 import threading
 import time
-from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
@@ -116,7 +115,7 @@ class PerformanceMonitor:
         retries: int = 0,
         timeout: bool = False,
         thread_id: Optional[int] = None,
-    ):
+    ) -> None:
         """
         Mark the end of a request and record metrics.
 
@@ -161,17 +160,17 @@ class PerformanceMonitor:
 
             self._sample_thread_count()
 
-    def record_cache_lookup(self, duration: float):
+    def record_cache_lookup(self, duration: float) -> None:
         """Record cache lookup timing."""
         with self._lock:
             self._cache_lookup_times.append(duration)
 
-    def record_api_call(self, duration: float):
+    def record_api_call(self, duration: float) -> None:
         """Record API call timing."""
         with self._lock:
             self._api_call_times.append(duration)
 
-    def _sample_thread_count(self):
+    def _sample_thread_count(self) -> None:
         """Sample the current number of active threads."""
         current_time = time.perf_counter()
 
@@ -193,9 +192,7 @@ class PerformanceMonitor:
 
             # Calculate timing metrics
             avg_request_time = (
-                sum(self._request_times) / len(self._request_times)
-                if self._request_times
-                else 0.0
+                sum(self._request_times) / len(self._request_times) if self._request_times else 0.0
             )
 
             avg_cache_lookup_time = (
@@ -221,23 +218,17 @@ class PerformanceMonitor:
             # Calculate cache metrics
             total_cache_requests = self._cache_hits + self._cache_misses
             cache_hit_rate = (
-                self._cache_hits / total_cache_requests
-                if total_cache_requests > 0
-                else 0.0
+                self._cache_hits / total_cache_requests if total_cache_requests > 0 else 0.0
             )
             cache_miss_rate = 1.0 - cache_hit_rate
 
             # Calculate error rate
             error_rate = (
-                self._failed_requests / self._total_requests
-                if self._total_requests > 0
-                else 0.0
+                self._failed_requests / self._total_requests if self._total_requests > 0 else 0.0
             )
 
             # Calculate throughput
-            requests_per_second = (
-                self._total_requests / total_time if total_time > 0 else 0.0
-            )
+            requests_per_second = self._total_requests / total_time if total_time > 0 else 0.0
 
             return PerformanceMetrics(
                 total_time=total_time,
@@ -250,9 +241,7 @@ class PerformanceMonitor:
                 cached_requests=self._cached_requests,
                 max_concurrent_threads=max_threads,
                 average_concurrent_threads=avg_threads,
-                thread_utilization=avg_threads / max_threads
-                if max_threads > 0
-                else 0.0,
+                thread_utilization=avg_threads / max_threads if max_threads > 0 else 0.0,
                 cache_hit_rate=cache_hit_rate,
                 cache_miss_rate=cache_miss_rate,
                 cache_size=total_cache_requests,
@@ -266,7 +255,7 @@ class PerformanceMonitor:
                 },
             )
 
-    def log_summary(self):
+    def log_summary(self) -> None:
         """Log a summary of performance metrics."""
         metrics = self.get_metrics()
 
@@ -277,9 +266,7 @@ class PerformanceMonitor:
         logger.info(f"Cache Hit Rate: {metrics.cache_hit_rate:.2%}")
         logger.info(f"Avg Concurrent Threads: {metrics.average_concurrent_threads:.1f}")
         logger.info(f"Max Concurrent Threads: {metrics.max_concurrent_threads}")
-        logger.info(
-            f"Requests/Second: {metrics.metadata.get('requests_per_second', 0):.2f}"
-        )
+        logger.info(f"Requests/Second: {metrics.metadata.get('requests_per_second', 0):.2f}")
         logger.info(f"Avg Request Time: {metrics.concurrent_processing_time:.3f}s")
         logger.info(f"Avg API Call Time: {metrics.api_call_time:.3f}s")
         logger.info(f"Avg Cache Lookup Time: {metrics.cache_lookup_time:.3f}s")
@@ -289,7 +276,7 @@ class PerformanceMonitor:
         if metrics.timeout_count > 0:
             logger.info(f"Timeouts: {metrics.timeout_count}")
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset all metrics."""
         with self._lock:
             self._start_time = time.perf_counter()
@@ -331,7 +318,7 @@ def get_performance_monitor() -> PerformanceMonitor:
     return _performance_monitor
 
 
-def reset_performance_monitor():
+def reset_performance_monitor() -> None:
     """Reset the global performance monitor."""
     monitor = get_performance_monitor()
     monitor.reset()

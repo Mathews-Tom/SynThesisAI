@@ -10,6 +10,8 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+__all__ = ["setup_logger", "default_logger", "get_logger"]
+
 
 def setup_logger(
     name: str = "synthetic_math_prompts",
@@ -69,7 +71,7 @@ def setup_logger(
 default_logger = setup_logger()
 
 
-def get_logger(name: str = None) -> logging.Logger:
+def get_logger(name: Optional[str] = None) -> logging.Logger:
     """
     Get a logger instance.
 
