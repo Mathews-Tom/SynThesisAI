@@ -5,7 +5,6 @@ Tests the complete optimization workflow including scheduling,
 batch processing, monitoring, and quality assessment.
 """
 
-import asyncio
 import time
 from datetime import datetime, timedelta
 from unittest.mock import Mock, patch
@@ -28,14 +27,14 @@ from core.dspy.optimization_workflows import (
 class TestOptimizationWorkflowsIntegration:
     """Integration tests for optimization workflows."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.scheduler = OptimizationScheduler(max_concurrent_jobs=2)
         self.batch_processor = BatchOptimizationProcessor(self.scheduler)
         self.monitor = OptimizationMonitor()
         self.workflow_manager = OptimizationWorkflowManager(max_concurrent_jobs=2)
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         """Clean up after tests."""
         if hasattr(self.scheduler, "stop_scheduler"):
             self.scheduler.stop_scheduler()
@@ -68,12 +67,8 @@ class TestOptimizationWorkflowsIntegration:
 
         # Mock the optimization engine to avoid actual optimization
         with (
-            patch(
-                "core.dspy.optimization_workflows.get_optimization_engine"
-            ) as mock_engine,
-            patch(
-                "core.dspy.optimization_workflows.get_quality_assessor"
-            ) as mock_assessor,
+            patch("core.dspy.optimization_workflows.get_optimization_engine") as mock_engine,
+            patch("core.dspy.optimization_workflows.get_quality_assessor") as mock_assessor,
         ):
             # Mock optimization engine
             mock_opt_engine = Mock()
@@ -106,9 +101,7 @@ class TestOptimizationWorkflowsIntegration:
         quality_requirements = {"min_accuracy": 0.8}
 
         # Process batch
-        batch_id = self.batch_processor.process_domains_batch(
-            domains, quality_requirements
-        )
+        batch_id = self.batch_processor.process_domains_batch(domains, quality_requirements)
 
         # Check batch was created
         assert batch_id.startswith("batch_")
@@ -283,13 +276,9 @@ class TestOptimizationWorkflowsIntegration:
         )
 
         # Mock optimization engine to raise exception
-        with patch(
-            "core.dspy.optimization_workflows.get_optimization_engine"
-        ) as mock_engine:
+        with patch("core.dspy.optimization_workflows.get_optimization_engine") as mock_engine:
             mock_opt_engine = Mock()
-            mock_opt_engine.optimize_for_domain.side_effect = Exception(
-                "Optimization failed"
-            )
+            mock_opt_engine.optimize_for_domain.side_effect = Exception("Optimization failed")
             mock_engine.return_value = mock_opt_engine
 
             # Execute job and expect failure

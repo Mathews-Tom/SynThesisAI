@@ -5,12 +5,14 @@ Tests the Validator RL Agent implementation including validation strategies,
 quality prediction, feedback generation, and learning mechanisms.
 """
 
-from unittest.mock import MagicMock, Mock, patch
+# Standard Library
+from unittest.mock import patch
 
+# Third-Party Library
 import numpy as np
 import pytest
-import torch
 
+# SynThesisAI Modules
 from core.marl.agents.specialized.validator_agent import (
     ContentAnalyzer,
     FeedbackGenerator,
@@ -637,9 +639,7 @@ class TestValidatorAgentIntegration:
             }
 
             # Get validation result
-            result = agent.predict_quality_and_provide_feedback(
-                content, environment_state
-            )
+            agent.predict_quality_and_provide_feedback(content, environment_state)
 
             # Simulate learning update
             state = agent.get_state_representation(
@@ -676,7 +676,3 @@ class TestValidatorAgentIntegration:
         summary = strategy.get_performance_summary()
         assert summary["usage_count"] == initial_usage + 5
         assert summary["overall_score"] > 0
-
-
-if __name__ == "__main__":
-    pytest.main([__file__])

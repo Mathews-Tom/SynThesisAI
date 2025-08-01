@@ -5,11 +5,16 @@ These tests verify the end-to-end integration between feedback collection,
 continuous learning, and optimization processes.
 """
 
+# Standard Library
+import logging
 import tempfile
 from datetime import datetime, timedelta
+from pathlib import Path
 
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.dspy.base_module import STREAMContentGenerator
 from core.dspy.continuous_learning import ContinuousLearningManager
 from core.dspy.feedback import (
@@ -20,28 +25,32 @@ from core.dspy.feedback import (
     FeedbackType,
 )
 
+logger = logging.getLogger(__name__)
+
 
 @pytest.mark.integration
 class TestFeedbackContinuousLearningIntegration:
     """Test integration between feedback and continuous learning systems."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test environment."""
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.feedback_manager = FeedbackManager(
-            feedback_dir=self.temp_dir.name + "/feedback"
+        feedback_path = Path(self.temp_dir.name) / "feedback"
+        learning_path = Path(self.temp_dir.name) / "learning"
+        logger.debug(
+            "Creating feedback and learning dirs at %s, %s",
+            feedback_path,
+            learning_path,
         )
-        self.learning_manager = ContinuousLearningManager(
-            learning_dir=self.temp_dir.name + "/learning"
-        )
+        self.feedback_manager = FeedbackManager(feedback_dir=str(feedback_path))
+        self.learning_manager = ContinuousLearningManager(learning_dir=str(learning_path))
 
         # Override the feedback manager in the learning manager's integrator
-        self.learning_manager.feedback_integrator.feedback_manager = (
-            self.feedback_manager
-        )
+        self.learning_manager.feedback_integrator.feedback_manager = self.feedback_manager
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         """Clean up test environment."""
+        logger.debug("Cleaning up test environment at %s", self.temp_dir.name)
         self.temp_dir.cleanup()
 
     def test_end_to_end_feedback_to_reoptimization(self):
@@ -61,9 +70,7 @@ class TestFeedbackContinuousLearningIntegration:
         integrator = DSPyFeedbackIntegrator()
         integrator.feedback_manager = self.feedback_manager
 
-        feedback_items = integrator.collect_validation_feedback(
-            domain_module, validation_results
-        )
+        feedback_items = integrator.collect_validation_feedback(domain_module, validation_results)
 
         # Should generate multiple feedback items for low scores
         assert len(feedback_items) >= 3
@@ -149,9 +156,7 @@ class TestFeedbackContinuousLearningIntegration:
 
         # Perform continuous learning (this will be a mock since we don't have full DSPy)
         try:
-            learning_results = self.learning_manager.perform_continuous_learning(
-                domain_module
-            )
+            learning_results = self.learning_manager.perform_continuous_learning(domain_module)
 
             # Should attempt reoptimization
             assert learning_results["domain"] == "mathematics"
@@ -245,15 +250,9 @@ class TestFeedbackContinuousLearningIntegration:
         # 2. Slow improvement -> more training data and trials
         # 3. Low performance -> more bootstrapping
 
-        assert (
-            adaptive_params["init_temperature"] == 1.5
-        )  # Moderate exploration (count=5)
-        assert (
-            adaptive_params["num_candidate_programs"] == 18
-        )  # Moderate candidates (count=5)
-        assert (
-            adaptive_params["max_labeled_demos"] == 24
-        )  # More training (low performance)
+        assert adaptive_params["init_temperature"] == 1.5  # Moderate exploration (count=5)
+        assert adaptive_params["num_candidate_programs"] == 18  # Moderate candidates (count=5)
+        assert adaptive_params["max_labeled_demos"] == 24  # More training (low performance)
         # Low performance condition overrides slow improvement for max_labeled_demos
         # So we should see bootstrapping parameters but not optuna_trials_num
         assert (
@@ -281,9 +280,7 @@ class TestFeedbackContinuousLearningIntegration:
                     feedback_type=feedback_type,
                     source=FeedbackSource.SYSTEM,
                     domain=domain,
-                    severity=FeedbackSeverity.HIGH
-                    if i < 2
-                    else FeedbackSeverity.MEDIUM,
+                    severity=(FeedbackSeverity.HIGH if i < 2 else FeedbackSeverity.MEDIUM),
                 )
 
         # Run learning cycle
@@ -302,7 +299,6 @@ class TestFeedbackContinuousLearningIntegration:
 
     def test_feedback_persistence_across_learning_cycles(self):
         """Test that feedback persists and influences multiple learning cycles."""
-        domain_module = STREAMContentGenerator("mathematics")
 
         # First cycle: Add feedback and perform learning
         self.feedback_manager.add_feedback(
@@ -314,8 +310,10 @@ class TestFeedbackContinuousLearningIntegration:
         )
 
         # Simulate first learning cycle
-        first_adjustments = self.learning_manager.feedback_integrator.integrate_feedback_for_optimization(
-            "mathematics"
+        first_adjustments = (
+            self.learning_manager.feedback_integrator.integrate_feedback_for_optimization(
+                "mathematics"
+            )
         )
         assert len(first_adjustments) > 0
 
@@ -334,8 +332,10 @@ class TestFeedbackContinuousLearningIntegration:
         assert feedback_summary["by_type"]["accuracy"] >= 2
 
         # Second learning cycle should consider all accumulated feedback
-        second_adjustments = self.learning_manager.feedback_integrator.integrate_feedback_for_optimization(
-            "mathematics"
+        second_adjustments = (
+            self.learning_manager.feedback_integrator.integrate_feedback_for_optimization(
+                "mathematics"
+            )
         )
 
         # Should still have accuracy-focused adjustments

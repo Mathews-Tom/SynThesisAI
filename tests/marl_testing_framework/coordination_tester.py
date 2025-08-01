@@ -4,15 +4,18 @@ This module provides specialized testing capabilities for MARL coordination
 mechanisms, including conflict resolution, consensus building, and communication.
 """
 
+# Standard Library
 import asyncio
 import random
 import statistics
 import time
 import uuid
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
 
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
+
+# SynThesisAI Modules
 from utils.logging_config import get_logger
 
 
@@ -39,7 +42,29 @@ class ConflictScenario(Enum):
 
 @dataclass
 class CoordinationTestConfig:
-    """Configuration for coordination testing."""
+    """
+    Configuration for coordination testing.
+
+    Args:
+        test_type: Type of test to run.
+        num_agents: Number of agents participating in the test.
+        num_test_rounds: Total test rounds to execute.
+        timeout_per_round: Timeout duration (seconds) per test round.
+        conflict_scenario: Scenario type for conflict simulation.
+        conflict_probability: Probability of conflict occurrence (0-1).
+        conflict_intensity: Intensity level for generated conflicts (0-1).
+        consensus_threshold: Minimum consensus score to declare success.
+        max_consensus_rounds: Maximum rounds for consensus building.
+        consensus_timeout: Timeout duration (seconds) for consensus process.
+        message_loss_probability: Probability of losing a message (0-1).
+        message_delay_range: Tuple specifying min and max message delay (seconds).
+        network_partition_probability: Probability of partitioning two agents.
+        min_success_rate: Minimum success rate threshold for tests.
+        max_average_resolution_time: Maximum average resolution time threshold (seconds).
+        max_communication_overhead: Maximum allowed communication overhead.
+        max_agents_for_scalability: Max agents to test scalability.
+        scalability_step_size: Step size to increase agents per scalability test.
+    """
 
     # Test settings
     test_type: CoordinationTestType = CoordinationTestType.CONSENSUS_BUILDING
@@ -71,11 +96,15 @@ class CoordinationTestConfig:
     max_agents_for_scalability: int = 20
     scalability_step_size: int = 2
 
-    def __post_init__(self):
-        """Validate configuration."""
+    def __post_init__(self) -> None:
+        """
+        Validate configuration.
+
+        Raises:
+            ValueError: If num_agents < 2 or conflict_probability not between 0 and 1.
+        """
         if self.num_agents < 2:
             raise ValueError("Need at least 2 agents for coordination testing")
-
         if not (0 <= self.conflict_probability <= 1):
             raise ValueError("Conflict probability must be between 0 and 1")
 
@@ -114,8 +143,14 @@ class CoordinationTestResult:
 class MockAgent:
     """Mock agent for coordination testing."""
 
-    def __init__(self, agent_id: str, agent_type: str = "default"):
-        """Initialize mock agent."""
+    def __init__(self, agent_id: str, agent_type: str = "default") -> None:
+        """
+        Initialize mock agent.
+
+        Args:
+            agent_id: Unique identifier for the agent.
+            agent_type: Type/category of the agent.
+        """
         self.agent_id = agent_id
         self.agent_type = agent_type
         self.preferences = self._generate_preferences()
@@ -125,7 +160,12 @@ class MockAgent:
         self.is_active = True
 
     def _generate_preferences(self) -> Dict[str, float]:
-        """Generate random preferences for testing."""
+        """
+        Generate random preferences for testing.
+
+        Returns:
+            A dictionary mapping preference names to values.
+        """
         return {
             "action_preference": random.uniform(0, 1),
             "priority_weight": random.uniform(0.1, 1.0),
@@ -134,7 +174,15 @@ class MockAgent:
         }
 
     async def propose_action(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        """Propose an action based on context."""
+        """
+        Propose an action based on the provided context.
+
+        Args:
+            context: Contextual information for action proposal.
+
+        Returns:
+            A proposal dictionary containing action details.
+        """
         # Simulate decision making
         await asyncio.sleep(random.uniform(0.01, 0.05))
 
@@ -150,13 +198,19 @@ class MockAgent:
         return proposal
 
     async def evaluate_proposal(self, proposal: Dict[str, Any]) -> Dict[str, Any]:
-        """Evaluate another agent's proposal."""
+        """
+        Evaluate another agent's proposal.
+
+        Args:
+            proposal: Proposal dictionary from another agent.
+
+        Returns:
+            An evaluation dictionary with satisfaction and support info.
+        """
         await asyncio.sleep(random.uniform(0.005, 0.02))
 
         # Calculate satisfaction based on preferences
-        action_diff = abs(
-            proposal.get("action", 0) - self.preferences["action_preference"] * 10
-        )
+        action_diff = abs(proposal.get("action", 0) - self.preferences["action_preference"] * 10)
         satisfaction = max(0.0, 1.0 - (action_diff / 10.0))
 
         # Apply cooperation tendency
@@ -167,16 +221,19 @@ class MockAgent:
             "proposal_id": proposal.get("agent_id"),
             "satisfaction": satisfaction,
             "support": satisfaction > 0.5,
-            "suggested_modifications": []
-            if satisfaction > 0.7
-            else ["reduce_action_value"],
+            "suggested_modifications": [] if satisfaction > 0.7 else ["reduce_action_value"],
         }
 
         self.messages_sent += 1
         return evaluation
 
     async def receive_message(self, message: Dict[str, Any]) -> None:
-        """Receive and process a message."""
+        """
+        Receive and process a message.
+
+        Args:
+            message: The message dictionary received.
+        """
         self.messages_received += 1
 
         # Update satisfaction based on message content
@@ -188,7 +245,12 @@ class MockAgent:
             self.satisfaction = max(0.0, 1.0 - (action_diff / 10.0))
 
     def get_status(self) -> Dict[str, Any]:
-        """Get agent status."""
+        """
+        Get agent status.
+
+        Returns:
+            A dictionary containing current status of the agent.
+        """
         return {
             "agent_id": self.agent_id,
             "agent_type": self.agent_type,
@@ -207,12 +269,12 @@ class CoordinationTester:
     consensus building, conflict resolution, and communication reliability.
     """
 
-    def __init__(self, config: CoordinationTestConfig):
+    def __init__(self, config: CoordinationTestConfig) -> None:
         """
         Initialize coordination tester.
 
         Args:
-            config: Coordination test configuration
+            config: Coordination test configuration.
         """
         self.config = config
         self.logger = get_logger(__name__)
@@ -226,9 +288,7 @@ class CoordinationTester:
 
         # Communication simulation
         self.message_queue: List[Dict[str, Any]] = []
-        self.network_partitions: List[
-            Tuple[str, str]
-        ] = []  # Pairs of disconnected agents
+        self.network_partitions: List[Tuple[str, str]] = []  # Pairs of disconnected agents
 
         self.logger.info("Coordination tester initialized")
 
@@ -249,13 +309,14 @@ class CoordinationTester:
     async def run_coordination_test(
         self, coordination_system: Optional[Any] = None
     ) -> CoordinationTestResult:
-        """Run a single coordination test.
+        """
+        Run a single coordination test.
 
         Args:
-            coordination_system: Optional coordination system to test
+            coordination_system: Optional coordination system to test.
 
         Returns:
-            Test result
+            CoordinationTestResult: Result object for this test.
         """
         test_id = str(uuid.uuid4())
         self.current_test_id = test_id
@@ -273,9 +334,7 @@ class CoordinationTester:
                 result = await self._test_consensus_building()
             elif self.config.test_type == CoordinationTestType.CONFLICT_RESOLUTION:
                 result = await self._test_conflict_resolution()
-            elif (
-                self.config.test_type == CoordinationTestType.COMMUNICATION_RELIABILITY
-            ):
+            elif self.config.test_type == CoordinationTestType.COMMUNICATION_RELIABILITY:
                 result = await self._test_communication_reliability()
             elif self.config.test_type == CoordinationTestType.DEADLOCK_PREVENTION:
                 result = await self._test_deadlock_prevention()
@@ -319,7 +378,12 @@ class CoordinationTester:
             return error_result
 
     async def _test_consensus_building(self) -> CoordinationTestResult:
-        """Test consensus building mechanism."""
+        """
+        Test consensus building mechanism.
+
+        Returns:
+            CoordinationTestResult: Result of the consensus building test.
+        """
         self.logger.debug("Testing consensus building")
 
         consensus_achieved = False
@@ -396,7 +460,16 @@ class CoordinationTester:
         proposals: Dict[str, Dict[str, Any]],
         evaluations: Dict[str, List[Dict[str, Any]]],
     ) -> float:
-        """Calculate consensus score from proposals and evaluations."""
+        """
+        Calculate consensus score from proposals and evaluations.
+
+        Args:
+            proposals: Mapping of agent IDs to their proposals.
+            evaluations: Mapping of agent IDs to lists of evaluation results.
+
+        Returns:
+            float: Consensus score (0.0 to 1.0).
+        """
         if not evaluations:
             return 0.0
 
@@ -460,9 +533,7 @@ class CoordinationTester:
                     for resolution_id, resolution in resolutions.items():
                         if resolution_id != agent_id:
                             evaluation = await agent.evaluate_proposal(resolution)
-                            resolution_scores.append(
-                                evaluation.get("satisfaction", 0.0)
-                            )
+                            resolution_scores.append(evaluation.get("satisfaction", 0.0))
                             total_messages += 1
 
             # Check if conflict is resolved
@@ -496,32 +567,31 @@ class CoordinationTester:
         )
 
     async def _create_conflict_scenario(self) -> bool:
-        """Create a conflict scenario based on configuration."""
+        """
+        Create a conflict scenario based on configuration.
+
+        Returns:
+            bool: True if conflict scenario was successfully created, False otherwise.
+        """
         try:
             if self.config.conflict_scenario == ConflictScenario.SIMPLE_DISAGREEMENT:
                 # Make agents have opposing preferences
                 agent_list = list(self.agents.values())
                 for i, agent in enumerate(agent_list):
                     agent.preferences["action_preference"] = i / len(agent_list)
-                    agent.preferences["cooperation_tendency"] *= (
-                        1 - self.config.conflict_intensity
-                    )
+                    agent.preferences["cooperation_tendency"] *= 1 - self.config.conflict_intensity
 
             elif self.config.conflict_scenario == ConflictScenario.RESOURCE_COMPETITION:
                 # All agents want the same resource
                 for agent in self.agents.values():
                     agent.preferences["action_preference"] = 0.5  # Same preference
-                    agent.preferences["priority_weight"] = random.uniform(
-                        0.8, 1.0
-                    )  # High priority
+                    agent.preferences["priority_weight"] = random.uniform(0.8, 1.0)  # High priority
 
             elif self.config.conflict_scenario == ConflictScenario.PRIORITY_CONFLICT:
                 # Agents have conflicting priorities
                 priorities = [1.0, 0.9, 0.8]
                 for i, agent in enumerate(self.agents.values()):
-                    agent.preferences["priority_weight"] = priorities[
-                        i % len(priorities)
-                    ]
+                    agent.preferences["priority_weight"] = priorities[i % len(priorities)]
                     agent.preferences["compromise_willingness"] *= (
                         1 - self.config.conflict_intensity
                     )
@@ -593,18 +663,31 @@ class CoordinationTester:
                     self.network_partitions.append((agent_ids[i], agent_ids[j]))
 
     def _is_partitioned(self, agent1_id: str, agent2_id: str) -> bool:
-        """Check if two agents are partitioned."""
+        """
+        Check if two agents are partitioned.
+
+        Args:
+            agent1_id: Identifier of first agent.
+            agent2_id: Identifier of second agent.
+
+        Returns:
+            bool: True if agents are in a network partition, False otherwise.
+        """
         return (agent1_id, agent2_id) in self.network_partitions or (
             agent2_id,
             agent1_id,
         ) in self.network_partitions
 
     async def _test_deadlock_prevention(self) -> CoordinationTestResult:
-        """Test deadlock prevention mechanism."""
+        """
+        Test deadlock prevention mechanism.
+
+        Returns:
+            CoordinationTestResult: Result of deadlock prevention test.
+        """
         self.logger.debug("Testing deadlock prevention")
 
         # Create potential deadlock scenario
-        deadlock_detected = False
         deadlock_resolved = False
         num_rounds = 0
 
@@ -622,7 +705,7 @@ class CoordinationTester:
 
             # Check for deadlock
             if self._detect_deadlock(waiting_for):
-                deadlock_detected = True
+                # Deadlock detected
 
                 # Attempt resolution by breaking one dependency
                 victim_agent = random.choice(agent_list)
@@ -656,7 +739,15 @@ class CoordinationTester:
         )
 
     def _detect_deadlock(self, waiting_for: Dict[str, str]) -> bool:
-        """Detect circular dependencies (deadlock)."""
+        """
+        Detect circular dependencies (deadlock).
+
+        Args:
+            waiting_for: Mapping of agent ID to the ID it is waiting for.
+
+        Returns:
+            bool: True if a cycle (deadlock) is detected, False otherwise.
+        """
         if not waiting_for:
             return False
 
@@ -681,7 +772,12 @@ class CoordinationTester:
         return False
 
     async def _test_scalability(self) -> CoordinationTestResult:
-        """Test coordination scalability with increasing number of agents."""
+        """
+        Test coordination scalability with increasing number of agents.
+
+        Returns:
+            CoordinationTestResult: Scalability test results and metrics.
+        """
         self.logger.debug("Testing scalability")
 
         scalability_results = []
@@ -722,15 +818,10 @@ class CoordinationTester:
             time_growth_rate = (
                 scalability_results[-1]["coordination_time"]
                 - scalability_results[0]["coordination_time"]
-            ) / (
-                scalability_results[-1]["num_agents"]
-                - scalability_results[0]["num_agents"]
-            )
+            ) / (scalability_results[-1]["num_agents"] - scalability_results[0]["num_agents"])
 
             # Good scalability if time growth is sub-linear
-            good_scalability = (
-                time_growth_rate < 0.1
-            )  # Less than 0.1 seconds per additional agent
+            good_scalability = time_growth_rate < 0.1  # Less than 0.1 seconds per additional agent
         else:
             good_scalability = True
 
@@ -741,15 +832,18 @@ class CoordinationTester:
             resolution_time=sum(r["coordination_time"] for r in scalability_results),
             num_rounds=len(scalability_results),
             consensus_achieved=good_scalability,
-            communication_overhead=time_growth_rate
-            if len(scalability_results) >= 2
-            else 0.0,
+            communication_overhead=time_growth_rate if len(scalability_results) >= 2 else 0.0,
             agent_satisfaction={"scalability_score": 1.0 if good_scalability else 0.5},
             conflict_resolved=True,
         )
 
     async def _test_fault_tolerance(self) -> CoordinationTestResult:
-        """Test fault tolerance with agent failures."""
+        """
+        Test fault tolerance with agent failures.
+
+        Returns:
+            CoordinationTestResult: Result of fault tolerance test.
+        """
         self.logger.debug("Testing fault tolerance")
 
         # Randomly fail some agents
@@ -759,9 +853,7 @@ class CoordinationTester:
         for agent_id in failed_agents:
             self.agents[agent_id].is_active = False
 
-        active_agents = {
-            aid: agent for aid, agent in self.agents.items() if agent.is_active
-        }
+        active_agents = {aid: agent for aid, agent in self.agents.items() if agent.is_active}
 
         # Test if remaining agents can still coordinate
         if len(active_agents) < 2:
@@ -797,7 +889,7 @@ class CoordinationTester:
                 action_std = statistics.stdev(actions) if len(actions) > 1 else 0.0
                 coordination_successful = action_std < 3.0  # Reasonable agreement
 
-        except Exception as e:
+        except Exception:
             coordination_successful = False
 
         return CoordinationTestResult(
@@ -848,12 +940,10 @@ class CoordinationTester:
                     test_results.append(result)
 
                 # Analyze results for this test type
-                success_rate = sum(1 for r in test_results if r.success) / len(
+                success_rate = sum(1 for r in test_results if r.success) / len(test_results)
+                avg_resolution_time = sum(r.resolution_time for r in test_results) / len(
                     test_results
                 )
-                avg_resolution_time = sum(
-                    r.resolution_time for r in test_results
-                ) / len(test_results)
                 avg_communication_overhead = sum(
                     r.communication_overhead for r in test_results
                 ) / len(test_results)
@@ -865,10 +955,8 @@ class CoordinationTester:
                     "average_communication_overhead": avg_communication_overhead,
                     "meets_criteria": (
                         success_rate >= self.config.min_success_rate
-                        and avg_resolution_time
-                        <= self.config.max_average_resolution_time
-                        and avg_communication_overhead
-                        <= self.config.max_communication_overhead
+                        and avg_resolution_time <= self.config.max_average_resolution_time
+                        and avg_communication_overhead <= self.config.max_communication_overhead
                     ),
                     "individual_results": [r.to_dict() for r in test_results],
                 }
@@ -900,9 +988,7 @@ class CoordinationTester:
                 1 for r in test_suite_results.values() if r.get("meets_criteria", False)
             ),
             "test_results": test_suite_results,
-            "recommendations": self._generate_coordination_recommendations(
-                test_suite_results
-            ),
+            "recommendations": self._generate_coordination_recommendations(test_suite_results),
         }
 
         self.logger.info(
@@ -912,10 +998,16 @@ class CoordinationTester:
 
         return summary
 
-    def _generate_coordination_recommendations(
-        self, test_results: Dict[str, Any]
-    ) -> List[str]:
-        """Generate recommendations based on test results."""
+    def _generate_coordination_recommendations(self, test_results: Dict[str, Any]) -> List[str]:
+        """
+        Generate recommendations based on test results.
+
+        Args:
+            test_results: Aggregated test suite results mapping test types to metrics.
+
+        Returns:
+            List[str]: List of recommendations for improvement or confirmation.
+        """
         recommendations = []
 
         for test_type, result in test_results.items():
@@ -925,30 +1017,22 @@ class CoordinationTester:
                         "Improve consensus algorithms and reduce consensus timeout"
                     )
                 elif test_type == "conflict_resolution":
-                    recommendations.append(
-                        "Enhance conflict detection and resolution strategies"
-                    )
+                    recommendations.append("Enhance conflict detection and resolution strategies")
                 elif test_type == "communication_reliability":
                     recommendations.append(
                         "Implement message retry mechanisms and improve network resilience"
                     )
                 elif test_type == "deadlock_prevention":
-                    recommendations.append(
-                        "Add deadlock detection and prevention mechanisms"
-                    )
+                    recommendations.append("Add deadlock detection and prevention mechanisms")
                 elif test_type == "scalability":
                     recommendations.append(
                         "Optimize coordination algorithms for better scalability"
                     )
                 elif test_type == "fault_tolerance":
-                    recommendations.append(
-                        "Improve fault detection and recovery mechanisms"
-                    )
+                    recommendations.append("Improve fault detection and recovery mechanisms")
 
         if not recommendations:
-            recommendations.append(
-                "All coordination tests passed. System is performing well."
-            )
+            recommendations.append("All coordination tests passed. System is performing well.")
 
         return recommendations
 
@@ -964,9 +1048,7 @@ class CoordinationTester:
         total_tests = len(self.test_results)
         successful_tests = sum(1 for r in self.test_results if r.success)
 
-        avg_resolution_time = (
-            sum(r.resolution_time for r in self.test_results) / total_tests
-        )
+        avg_resolution_time = sum(r.resolution_time for r in self.test_results) / total_tests
         avg_communication_overhead = (
             sum(r.communication_overhead for r in self.test_results) / total_tests
         )
@@ -977,13 +1059,15 @@ class CoordinationTester:
             "success_rate": successful_tests / total_tests,
             "average_resolution_time": avg_resolution_time,
             "average_communication_overhead": avg_communication_overhead,
-            "test_types_covered": list(
-                set(r.test_type.value for r in self.test_results)
-            ),
+            "test_types_covered": list(set(r.test_type.value for r in self.test_results)),
         }
 
     def clear_test_results(self) -> None:
-        """Clear all test results."""
+        """
+        Clear all test results and reset internal state.
+
+        This empties test_results, resets current_test_id, and clears network partitions and message queue.
+        """
         self.test_results.clear()
         self.current_test_id = None
         self.network_partitions.clear()

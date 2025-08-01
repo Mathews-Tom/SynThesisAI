@@ -5,13 +5,15 @@ Tests the comprehensive performance reporting capabilities including
 report generation, formatting, and dashboard data preparation.
 """
 
-import json
+# Standard Library
 import time
 from pathlib import Path
 from unittest.mock import Mock, mock_open, patch
 
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.marl.monitoring.performance_analyzer import (
     PerformanceAnalyzer,
     PerformanceInsight,
@@ -134,11 +136,11 @@ class TestPerformanceReporter:
         assert performance_reporter.performance_analyzer == mock_performance_analyzer
         assert performance_reporter.performance_monitor == mock_performance_monitor
 
-    def test_generate_summary_report(
-        self, performance_reporter, sample_performance_report
-    ):
+    def test_generate_summary_report(self, performance_reporter, sample_performance_report):
         """Test summary report generation."""
-        performance_reporter.performance_analyzer.generate_performance_report.return_value = sample_performance_report
+        performance_reporter.performance_analyzer.generate_performance_report.return_value = (
+            sample_performance_report
+        )
 
         report = performance_reporter.generate_report(
             report_type=ReportType.SUMMARY, format_type=ReportFormat.JSON
@@ -153,11 +155,11 @@ class TestPerformanceReporter:
         assert len(report["top_insights"]) <= 5
         assert len(report["recommendations"]) <= 5
 
-    def test_generate_detailed_report(
-        self, performance_reporter, sample_performance_report
-    ):
+    def test_generate_detailed_report(self, performance_reporter, sample_performance_report):
         """Test detailed report generation."""
-        performance_reporter.performance_analyzer.generate_performance_report.return_value = sample_performance_report
+        performance_reporter.performance_analyzer.generate_performance_report.return_value = (
+            sample_performance_report
+        )
 
         report = performance_reporter.generate_report(
             report_type=ReportType.DETAILED, format_type=ReportFormat.JSON
@@ -177,9 +179,7 @@ class TestPerformanceReporter:
         # Check trend analyses
         assert len(report["trend_analyses"]) == 2
         coord_trend = next(
-            t
-            for t in report["trend_analyses"]
-            if t["metric_name"] == "coordination_success_rate"
+            t for t in report["trend_analyses"] if t["metric_name"] == "coordination_success_rate"
         )
         assert coord_trend["direction"] == "improving"
         assert coord_trend["slope"] == 0.02
@@ -189,11 +189,11 @@ class TestPerformanceReporter:
         warning_insights = [i for i in report["insights"] if i["severity"] == "warning"]
         assert len(warning_insights) == 1
 
-    def test_generate_trend_analysis_report(
-        self, performance_reporter, sample_performance_report
-    ):
+    def test_generate_trend_analysis_report(self, performance_reporter, sample_performance_report):
         """Test trend analysis report generation."""
-        performance_reporter.performance_analyzer.generate_performance_report.return_value = sample_performance_report
+        performance_reporter.performance_analyzer.generate_performance_report.return_value = (
+            sample_performance_report
+        )
 
         report = performance_reporter.generate_report(
             report_type=ReportType.TREND_ANALYSIS, format_type=ReportFormat.JSON
@@ -216,15 +216,13 @@ class TestPerformanceReporter:
         # Check categorized trends
         assert len(report["improving_trends"]) == 1
         assert len(report["stable_trends"]) == 1
-        assert (
-            report["improving_trends"][0]["metric_name"] == "coordination_success_rate"
-        )
+        assert report["improving_trends"][0]["metric_name"] == "coordination_success_rate"
 
-    def test_generate_alert_report(
-        self, performance_reporter, sample_performance_report
-    ):
+    def test_generate_alert_report(self, performance_reporter, sample_performance_report):
         """Test alert report generation."""
-        performance_reporter.performance_analyzer.generate_performance_report.return_value = sample_performance_report
+        performance_reporter.performance_analyzer.generate_performance_report.return_value = (
+            sample_performance_report
+        )
 
         report = performance_reporter.generate_report(
             report_type=ReportType.ALERT_REPORT, format_type=ReportFormat.JSON
@@ -253,7 +251,9 @@ class TestPerformanceReporter:
         self, performance_reporter, sample_performance_report
     ):
         """Test agent comparison report generation."""
-        performance_reporter.performance_analyzer.generate_performance_report.return_value = sample_performance_report
+        performance_reporter.performance_analyzer.generate_performance_report.return_value = (
+            sample_performance_report
+        )
 
         report = performance_reporter.generate_report(
             report_type=ReportType.AGENT_COMPARISON, format_type=ReportFormat.JSON
@@ -303,7 +303,9 @@ class TestPerformanceReporter:
             recommendations=[],
         )
 
-        performance_reporter.performance_analyzer.generate_performance_report.return_value = empty_report
+        performance_reporter.performance_analyzer.generate_performance_report.return_value = (
+            empty_report
+        )
 
         report = performance_reporter.generate_report(
             report_type=ReportType.AGENT_COMPARISON, format_type=ReportFormat.JSON
@@ -410,9 +412,7 @@ class TestPerformanceReporter:
         report_content = "Test report content"
         output_path = Path("test_report.html")
 
-        performance_reporter._save_report(
-            report_content, output_path, ReportFormat.HTML
-        )
+        performance_reporter._save_report(report_content, output_path, ReportFormat.HTML)
 
         mock_mkdir.assert_called_once()
         mock_file.assert_called_once()
@@ -427,9 +427,7 @@ class TestPerformanceReporter:
         # Should not raise exception
         performance_reporter._save_report(report_data, output_path, ReportFormat.JSON)
 
-    def test_generate_dashboard_data(
-        self, performance_reporter, sample_performance_report
-    ):
+    def test_generate_dashboard_data(self, performance_reporter, sample_performance_report):
         """Test dashboard data generation."""
         # Mock coordination events
         mock_events = [
@@ -453,7 +451,9 @@ class TestPerformanceReporter:
             ),
         ]
         performance_reporter.performance_monitor._coordination_events = mock_events
-        performance_reporter.performance_analyzer.generate_performance_report.return_value = sample_performance_report
+        performance_reporter.performance_analyzer.generate_performance_report.return_value = (
+            sample_performance_report
+        )
 
         dashboard_data = performance_reporter.generate_dashboard_data(3600.0)
 
@@ -489,8 +489,8 @@ class TestPerformanceReporter:
 
     def test_generate_dashboard_data_error(self, performance_reporter):
         """Test dashboard data generation with error."""
-        performance_reporter.performance_analyzer.generate_performance_report.side_effect = Exception(
-            "Test error"
+        performance_reporter.performance_analyzer.generate_performance_report.side_effect = (
+            Exception("Test error")
         )
 
         dashboard_data = performance_reporter.generate_dashboard_data()
@@ -503,7 +503,9 @@ class TestPerformanceReporter:
         self, performance_reporter, sample_performance_report
     ):
         """Test report generation with file output."""
-        performance_reporter.performance_analyzer.generate_performance_report.return_value = sample_performance_report
+        performance_reporter.performance_analyzer.generate_performance_report.return_value = (
+            sample_performance_report
+        )
 
         with patch.object(performance_reporter, "_save_report") as mock_save:
             report = performance_reporter.generate_report(
@@ -517,8 +519,8 @@ class TestPerformanceReporter:
 
     def test_generate_report_error_handling(self, performance_reporter):
         """Test report generation error handling."""
-        performance_reporter.performance_analyzer.generate_performance_report.side_effect = Exception(
-            "Test error"
+        performance_reporter.performance_analyzer.generate_performance_report.side_effect = (
+            Exception("Test error")
         )
 
         report = performance_reporter.generate_report(
@@ -531,15 +533,11 @@ class TestPerformanceReporter:
 
     def test_classify_agent_performance_level(self, performance_reporter):
         """Test agent performance level classification."""
-        assert (
-            performance_reporter._classify_agent_performance_level(0.95) == "excellent"
-        )
+        assert performance_reporter._classify_agent_performance_level(0.95) == "excellent"
         assert performance_reporter._classify_agent_performance_level(0.80) == "good"
         assert performance_reporter._classify_agent_performance_level(0.65) == "average"
         assert performance_reporter._classify_agent_performance_level(0.45) == "poor"
-        assert (
-            performance_reporter._classify_agent_performance_level(0.30) == "critical"
-        )
+        assert performance_reporter._classify_agent_performance_level(0.30) == "critical"
 
 
 class TestPerformanceReporterFactory:
@@ -625,9 +623,7 @@ def test_full_report_generation_flow():
     # Test different report types
     summary_report = reporter.generate_report(ReportType.SUMMARY, ReportFormat.JSON)
     detailed_report = reporter.generate_report(ReportType.DETAILED, ReportFormat.JSON)
-    trend_report = reporter.generate_report(
-        ReportType.TREND_ANALYSIS, ReportFormat.JSON
-    )
+    trend_report = reporter.generate_report(ReportType.TREND_ANALYSIS, ReportFormat.JSON)
 
     # Verify summary report
     assert summary_report["report_type"] == "summary"

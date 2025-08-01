@@ -4,15 +4,17 @@ This module provides mock environments for isolated testing of MARL agents
 and coordination mechanisms without external dependencies.
 """
 
-import asyncio
+# Standard Library
 import random
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
+# Third-Party Library
 import numpy as np
 
+# SynThesisAI Modules
 from utils.logging_config import get_logger
 
 
@@ -47,9 +49,7 @@ class MockEnvironmentConfig:
 
     # Agent settings
     num_agents: int = 3
-    agent_types: List[str] = field(
-        default_factory=lambda: ["generator", "validator", "curriculum"]
-    )
+    agent_types: List[str] = field(default_factory=lambda: ["generator", "validator", "curriculum"])
 
     # Reward settings
     base_reward: float = 1.0
@@ -137,7 +137,7 @@ class MockMARLEnvironment:
     mechanisms with configurable scenarios and predictable behaviors.
     """
 
-    def __init__(self, config: MockEnvironmentConfig):
+    def __init__(self, config: MockEnvironmentConfig) -> None:
         """
         Initialize mock MARL environment.
 
@@ -325,9 +325,7 @@ class MockMARLEnvironment:
             agent_states=self.agent_states.copy(),
             global_state=self.global_state.copy(),
             last_actions=actions.copy(),
-            coordination_status="active"
-            if self.config.coordination_required
-            else "disabled",
+            coordination_status=("active" if self.config.coordination_required else "disabled"),
             performance_metrics=self._calculate_step_metrics(),
         )
         self.state_history.append(current_state)
@@ -435,9 +433,9 @@ class MockMARLEnvironment:
         """Evaluate validation accuracy score."""
         # Simulate validation accuracy based on action and state
         state_consistency = 1.0 - np.std(state)
-        action_appropriateness = 1.0 - abs(
-            action - self.config.action_space_size // 2
-        ) / (self.config.action_space_size // 2)
+        action_appropriateness = 1.0 - abs(action - self.config.action_space_size // 2) / (
+            self.config.action_space_size // 2
+        )
 
         accuracy = (state_consistency + action_appropriateness) / 2.0
         return np.clip(accuracy, 0.0, 1.0)
@@ -447,16 +445,12 @@ class MockMARLEnvironment:
         # Simulate coherence evaluation based on progression
         progression_factor = self.current_step / self.config.max_steps_per_episode
         state_progression = np.mean(state) * progression_factor
-        action_progression = (
-            action / self.config.action_space_size
-        ) * progression_factor
+        action_progression = (action / self.config.action_space_size) * progression_factor
 
         coherence = (state_progression + action_progression) / 2.0
         return np.clip(coherence, 0.0, 1.0)
 
-    def _generate_next_state(
-        self, current_state: np.ndarray, action: int
-    ) -> np.ndarray:
+    def _generate_next_state(self, current_state: np.ndarray, action: int) -> np.ndarray:
         """Generate next state based on current state and action."""
         # Apply action effect
         action_effect = np.zeros_like(current_state)
@@ -585,15 +579,11 @@ class MockMARLEnvironment:
             all_rewards = []
             for rewards in self.agent_rewards.values():
                 all_rewards.extend(rewards)
-            metrics["step_average_reward"] = (
-                np.mean(all_rewards) if all_rewards else 0.0
-            )
+            metrics["step_average_reward"] = np.mean(all_rewards) if all_rewards else 0.0
 
         # Calculate coordination success rate
         if self.coordination_results:
-            successful_coordinations = sum(
-                1 for r in self.coordination_results if r["success"]
-            )
+            successful_coordinations = sum(1 for r in self.coordination_results if r["success"])
             metrics["coordination_success_rate"] = successful_coordinations / len(
                 self.coordination_results
             )
@@ -604,9 +594,7 @@ class MockMARLEnvironment:
         state_qualities = [
             self._evaluate_state_quality(state) for state in self.agent_states.values()
         ]
-        metrics["average_state_quality"] = (
-            np.mean(state_qualities) if state_qualities else 0.0
-        )
+        metrics["average_state_quality"] = np.mean(state_qualities) if state_qualities else 0.0
 
         return metrics
 
@@ -635,9 +623,7 @@ class MockMARLEnvironment:
         if len(self.state_history) > 10:
             recent_rewards = []
             for state in self.state_history[-10:]:
-                recent_rewards.append(
-                    state.performance_metrics.get("step_average_reward", 0.0)
-                )
+                recent_rewards.append(state.performance_metrics.get("step_average_reward", 0.0))
 
             if len(recent_rewards) >= 2:
                 # Simple trend calculation
@@ -656,17 +642,11 @@ class MockMARLEnvironment:
         summary = {
             "episode": self.current_episode - 1,
             "total_steps": self.current_step,
-            "total_reward": sum(
-                sum(rewards) for rewards in self.agent_rewards.values()
-            ),
+            "total_reward": sum(sum(rewards) for rewards in self.agent_rewards.values()),
             "average_reward": self.performance_metrics["average_reward"],
             "coordination_attempts": len(self.coordination_requests),
-            "coordination_successes": len(
-                [r for r in self.coordination_results if r["success"]]
-            ),
-            "coordination_success_rate": self.performance_metrics[
-                "coordination_success_rate"
-            ],
+            "coordination_successes": len([r for r in self.coordination_results if r["success"]]),
+            "coordination_success_rate": self.performance_metrics["coordination_success_rate"],
             "final_state_quality": self.performance_metrics["quality_score"],
             "learning_progress": self.performance_metrics["learning_progress"],
         }
@@ -760,7 +740,9 @@ class MockMARLEnvironment:
         for agent_id in self.agent_rewards:
             self.agent_rewards[agent_id].clear()
 
-    async def run_episode(self, agent_policies: Dict[str, callable]) -> Dict[str, Any]:
+    async def run_episode(
+        self, agent_policies: Dict[str, Callable[[np.ndarray], int]]
+    ) -> Dict[str, Any]:
         """Run a complete episode with given agent policies.
 
         Args:
@@ -786,9 +768,7 @@ class MockMARLEnvironment:
                     actions[agent_id] = policy(observation)
                 else:
                     # Random action if no policy provided
-                    actions[agent_id] = random.randint(
-                        0, self.config.action_space_size - 1
-                    )
+                    actions[agent_id] = random.randint(0, self.config.action_space_size - 1)
 
             # Execute step
             observations, rewards, done, info = await self.step(actions)

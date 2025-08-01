@@ -4,18 +4,19 @@ This module provides performance validation capabilities to ensure MARL
 coordination meets the >30% improvement requirement and other performance targets.
 """
 
-import asyncio
+# Standard Library
 import statistics
 import time
+
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-import numpy as np
+# Third-Party Libraries
 
+# SynThesisAI Modules
 from utils.logging_config import get_logger
-
-from .mock_environment import MockEnvironmentConfig, MockMARLEnvironment
+from .mock_environment import MockMARLEnvironment
 
 
 class PerformanceMetric(Enum):
@@ -111,9 +112,9 @@ class PerformanceResult:
             "improvement_percent": self.improvement_percent,
             "meets_threshold": self.meets_threshold,
             "statistical_significance": self.statistical_significance,
-            "confidence_interval": list(self.confidence_interval)
-            if self.confidence_interval
-            else None,
+            "confidence_interval": (
+                list(self.confidence_interval) if self.confidence_interval else None
+            ),
             "sample_size": self.sample_size,
         }
 
@@ -169,9 +170,7 @@ class PerformanceValidator:
                         metric = PerformanceMetric(metric_name)
                         self.baseline_performance_data[metric] = values
                     except ValueError:
-                        self.logger.warning(
-                            "Unknown metric in baseline data: %s", metric_name
-                        )
+                        self.logger.warning("Unknown metric in baseline data: %s", metric_name)
 
                 self.logger.info("Loaded baseline data from %s", baseline_path)
             else:
@@ -191,13 +190,11 @@ class PerformanceValidator:
 
         # Limit sample size
         if len(self.current_performance_data[metric]) > self.config.max_sample_size:
-            self.current_performance_data[metric] = self.current_performance_data[
-                metric
-            ][-self.config.max_sample_size :]
+            self.current_performance_data[metric] = self.current_performance_data[metric][
+                -self.config.max_sample_size :
+            ]
 
-    def add_performance_batch(
-        self, performance_data: Dict[PerformanceMetric, List[float]]
-    ) -> None:
+    def add_performance_batch(self, performance_data: Dict[PerformanceMetric, List[float]]) -> None:
         """Add a batch of performance samples.
 
         Args:
@@ -207,9 +204,7 @@ class PerformanceValidator:
             for value in values:
                 self.add_performance_sample(metric, value)
 
-    def set_baseline_data(
-        self, baseline_data: Dict[PerformanceMetric, List[float]]
-    ) -> None:
+    def set_baseline_data(self, baseline_data: Dict[PerformanceMetric, List[float]]) -> None:
         """Set baseline performance data.
 
         Args:
@@ -249,18 +244,14 @@ class PerformanceValidator:
             episode_duration = time.time() - episode_start_time
 
             # Extract performance metrics
-            coordination_success_rate = episode_result.get(
-                "coordination_success_rate", 0.0
-            )
+            coordination_success_rate = episode_result.get("coordination_success_rate", 0.0)
             average_reward = episode_result.get("average_reward", 0.0)
             final_quality = episode_result.get("final_state_quality", 0.0)
 
             # Calculate derived metrics
             learning_speed = self._calculate_learning_speed(episode_result)
             response_time = episode_duration * 1000  # Convert to ms
-            throughput = episode_result.get("total_steps", 0) / max(
-                episode_duration, 0.001
-            )
+            throughput = episode_result.get("total_steps", 0) / max(episode_duration, 0.001)
             resource_efficiency = self._calculate_resource_efficiency(episode_result)
 
             # Store metrics
@@ -272,9 +263,7 @@ class PerformanceValidator:
             collected_data[PerformanceMetric.LEARNING_SPEED].append(learning_speed)
             collected_data[PerformanceMetric.RESPONSE_TIME].append(response_time)
             collected_data[PerformanceMetric.THROUGHPUT].append(throughput)
-            collected_data[PerformanceMetric.RESOURCE_EFFICIENCY].append(
-                resource_efficiency
-            )
+            collected_data[PerformanceMetric.RESOURCE_EFFICIENCY].append(resource_efficiency)
 
             if episode % 20 == 0:
                 self.logger.debug("Completed episode %d/%d", episode + 1, num_episodes)
@@ -302,9 +291,7 @@ class PerformanceValidator:
                 second_half_avg = statistics.mean(rewards[mid_point:])
 
                 if first_half_avg > 0:
-                    improvement_rate = (
-                        second_half_avg - first_half_avg
-                    ) / first_half_avg
+                    improvement_rate = (second_half_avg - first_half_avg) / first_half_avg
                     learning_speeds.append(max(0.0, improvement_rate))
 
         return statistics.mean(learning_speeds) if learning_speeds else 0.0
@@ -400,9 +387,7 @@ class PerformanceValidator:
         confidence_interval = self._calculate_confidence_interval(current_data)
 
         # Check if meets threshold
-        meets_threshold = self._check_threshold(
-            metric, current_value, improvement_percent
-        )
+        meets_threshold = self._check_threshold(metric, current_value, improvement_percent)
 
         return PerformanceResult(
             metric=metric,
@@ -458,9 +443,7 @@ class PerformanceValidator:
         baseline_mean = statistics.mean(baseline_data)
 
         current_std = statistics.stdev(current_data) if len(current_data) > 1 else 0.0
-        baseline_std = (
-            statistics.stdev(baseline_data) if len(baseline_data) > 1 else 0.0
-        )
+        baseline_std = statistics.stdev(baseline_data) if len(baseline_data) > 1 else 0.0
 
         # Pooled standard error
         n1, n2 = len(current_data), len(baseline_data)
@@ -491,7 +474,6 @@ class PerformanceValidator:
         n = len(data)
 
         # t-distribution critical value (approximation)
-        alpha = 1 - self.config.confidence_level
         if n > 30:
             t_critical = 1.96  # Normal approximation
         else:
@@ -549,9 +531,9 @@ class PerformanceValidator:
         primary_pass_rate = sum(1 for r in primary_results if r.meets_threshold) / max(
             1, len(primary_results)
         )
-        secondary_pass_rate = sum(
-            1 for r in secondary_results if r.meets_threshold
-        ) / max(1, len(secondary_results))
+        secondary_pass_rate = sum(1 for r in secondary_results if r.meets_threshold) / max(
+            1, len(secondary_results)
+        )
 
         # Calculate average improvement
         improvements = [
@@ -565,11 +547,8 @@ class PerformanceValidator:
             "primary_metrics_pass_rate": primary_pass_rate,
             "secondary_metrics_pass_rate": secondary_pass_rate,
             "average_improvement_percent": avg_improvement,
-            "meets_30_percent_threshold": avg_improvement
-            >= self.config.improvement_threshold,
-            "total_samples": sum(
-                len(data) for data in self.current_performance_data.values()
-            ),
+            "meets_30_percent_threshold": avg_improvement >= self.config.improvement_threshold,
+            "total_samples": sum(len(data) for data in self.current_performance_data.values()),
             "validation_confidence": self.config.confidence_level,
         }
 
@@ -599,9 +578,9 @@ class PerformanceValidator:
                     "current_performance": {
                         "mean": statistics.mean(current_data),
                         "median": statistics.median(current_data),
-                        "std_dev": statistics.stdev(current_data)
-                        if len(current_data) > 1
-                        else 0.0,
+                        "std_dev": (
+                            statistics.stdev(current_data) if len(current_data) > 1 else 0.0
+                        ),
                         "min": min(current_data),
                         "max": max(current_data),
                         "sample_size": len(current_data),
@@ -659,9 +638,7 @@ class PerformanceValidator:
 
         # General recommendations
         if len(recommendations) == 0:
-            recommendations.append(
-                "Performance meets all requirements. Continue monitoring."
-            )
+            recommendations.append("Performance meets all requirements. Continue monitoring.")
         else:
             recommendations.append(
                 "Consider implementing distributed coordination to improve scalability"
@@ -716,8 +693,7 @@ class PerformanceValidator:
         """
         summary = {
             "data_points": {
-                metric.value: len(data)
-                for metric, data in self.current_performance_data.items()
+                metric.value: len(data) for metric, data in self.current_performance_data.items()
             },
             "current_averages": {
                 metric.value: statistics.mean(data) if data else 0.0
@@ -729,11 +705,11 @@ class PerformanceValidator:
             },
             "validation_status": {
                 "completed": self.overall_validation_result is not None,
-                "overall_pass": self.overall_validation_result.get(
-                    "overall_pass", False
-                )
-                if self.overall_validation_result
-                else False,
+                "overall_pass": (
+                    self.overall_validation_result.get("overall_pass", False)
+                    if self.overall_validation_result
+                    else False
+                ),
             },
         }
 

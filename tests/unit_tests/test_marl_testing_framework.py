@@ -1,12 +1,14 @@
+# pylint: disable=import-error
+# pylint: disable=import-error
 """Unit tests for MARL testing framework components."""
 
-import asyncio
+# Standard Library
 import random
-import time
-from unittest.mock import Mock, patch
 
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from tests.marl_testing_framework.coordination_tester import (
     ConflictScenario,
     CoordinationTestConfig,
@@ -15,9 +17,7 @@ from tests.marl_testing_framework.coordination_tester import (
     MockAgent,
 )
 from tests.marl_testing_framework.mock_environment import (
-    ActionResult,
     DifficultyLevel,
-    EnvironmentState,
     EnvironmentType,
     MockEnvironmentConfig,
     MockMARLEnvironment,
@@ -25,7 +25,6 @@ from tests.marl_testing_framework.mock_environment import (
 from tests.marl_testing_framework.performance_validator import (
     PerformanceConfig,
     PerformanceMetric,
-    PerformanceResult,
     PerformanceValidator,
 )
 from tests.marl_testing_framework.scenario_tester import (
@@ -674,7 +673,3 @@ class TestMARLTestingFrameworkIntegration:
         assert coordination_result.test_type == CoordinationTestType.CONSENSUS_BUILDING
         assert "overall_pass" in validation_results
         assert "recommendations" in performance_report
-
-
-if __name__ == "__main__":
-    pytest.main([__file__])

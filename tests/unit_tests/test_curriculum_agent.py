@@ -5,12 +5,14 @@ Tests the Curriculum RL Agent implementation including curriculum strategies,
 learning progression, pedagogical guidance, and learning mechanisms.
 """
 
-from unittest.mock import MagicMock, Mock, patch
+# Standard Library
+from unittest.mock import patch
 
+# Third-Party Library
 import numpy as np
 import pytest
-import torch
 
+# SynThesisAI Modules
 from core.marl.agents.specialized.curriculum_agent import (
     CurriculumRLAgent,
     CurriculumStrategy,
@@ -257,7 +259,7 @@ class TestCurriculumRLAgent:
 
         assert adjustments["current_difficulty"] == "advanced"
         assert adjustments["recommended_difficulty"] == "medium"
-        assert adjustments["scaffolding_needed"] == True
+        assert adjustments["scaffolding_needed"]
         assert "beginner" in adjustments["adjustment_rationale"]
 
     def test_prerequisite_identification(self, agent):
@@ -740,7 +742,7 @@ class TestCurriculumAgentIntegration:
             }
 
             # Get curriculum suggestions
-            result = agent.suggest_curriculum_improvements(request)
+            agent.suggest_curriculum_improvements(request)
 
             # Simulate learning update
             state = agent.get_state_representation(request)
@@ -776,7 +778,3 @@ class TestCurriculumAgentIntegration:
         summary = strategy.get_performance_summary()
         assert summary["usage_count"] == initial_usage + 5
         assert summary["overall_score"] > 0
-
-
-if __name__ == "__main__":
-    pytest.main([__file__])

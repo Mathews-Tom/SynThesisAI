@@ -1,7 +1,10 @@
-from unittest.mock import MagicMock, patch
+# Standard Library
+from unittest.mock import patch
 
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.orchestration.generate_batch import _generate_and_validate_prompt
 from utils.costs import CostTracker
 

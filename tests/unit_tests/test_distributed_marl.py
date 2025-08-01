@@ -1,12 +1,13 @@
 """Unit tests for distributed MARL components."""
 
-import asyncio
+# Standard Library
 import time
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
+# Third-Party Library
 import pytest
-import torch
 
+# SynThesisAI Modules
 from core.marl.distributed.distributed_coordinator import (
     DistributedCoordinationConfig,
     DistributedCoordinationMode,
@@ -37,8 +38,6 @@ from core.marl.distributed.scalability_manager import (
     DeploymentStrategy,
     ScalabilityManager,
     ScalingConfig,
-    ScalingDirection,
-    ScalingTrigger,
 )
 
 
@@ -71,9 +70,7 @@ class TestDistributedTrainingConfig:
             patch("torch.cuda.is_available", return_value=True),
             patch("torch.cuda.device_count", return_value=4),
         ):
-            config = DistributedTrainingConfig(
-                training_mode=TrainingMode.MULTI_GPU, world_size=4
-            )
+            config = DistributedTrainingConfig(training_mode=TrainingMode.MULTI_GPU, world_size=4)
 
             assert config.gpu_ids == [0, 1, 2, 3]
 
@@ -194,9 +191,7 @@ class TestDistributedCoordinationConfig:
     def test_config_validation(self):
         """Test configuration validation."""
         # Test invalid consensus threshold
-        with pytest.raises(
-            ValueError, match="Consensus threshold must be between 0 and 1"
-        ):
+        with pytest.raises(ValueError, match="Consensus threshold must be between 0 and 1"):
             DistributedCoordinationConfig(consensus_threshold=1.5)
 
         # Test invalid coordination timeout
@@ -276,9 +271,7 @@ class TestResourceConfig:
     def test_config_validation(self):
         """Test configuration validation."""
         # Test invalid percentage
-        with pytest.raises(
-            ValueError, match="Resource percentages must be between 0 and 100"
-        ):
+        with pytest.raises(ValueError, match="Resource percentages must be between 0 and 100"):
             ResourceConfig(max_cpu_percent=150.0)
 
 
@@ -338,9 +331,7 @@ class TestResourceManager:
     @pytest.mark.asyncio
     async def test_resource_deallocation(self, manager):
         """Test resource deallocation."""
-        allocation_id = await manager.allocate_resource(
-            ResourceType.MEMORY, 4.0, "test_owner"
-        )
+        allocation_id = await manager.allocate_resource(ResourceType.MEMORY, 4.0, "test_owner")
 
         success = await manager.deallocate_resource(allocation_id)
 
@@ -500,9 +491,7 @@ class TestScalingConfig:
             ScalingConfig(min_nodes=5, max_nodes=3)
 
         # Test invalid thresholds
-        with pytest.raises(
-            ValueError, match="Scale up threshold must be between 0 and 1"
-        ):
+        with pytest.raises(ValueError, match="Scale up threshold must be between 0 and 1"):
             ScalingConfig(scale_up_threshold=1.5)
 
 

@@ -4,184 +4,132 @@ Unit tests for DSPy quality assessment.
 Tests the quality assessment functionality for DSPy optimization results.
 """
 
-import unittest
+# Standard Library
 from datetime import datetime
 from unittest import mock
 
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.dspy.base_module import STREAMContentGenerator
 from core.dspy.config import OptimizationResult
 from core.dspy.quality_assessment import (
     QualityAssessor,
-    QualityMetric,
     TrainingTimeMetric,
     ValidationAccuracyMetric,
     get_quality_assessor,
 )
 
 
-class TestQualityMetrics(unittest.TestCase):
-    """Test quality metrics."""
-
-    def setUp(self):
-        """Set up test fixtures."""
-        self.module = mock.MagicMock(spec=STREAMContentGenerator)
-        self.module.domain = "mathematics"
-
-        self.result = OptimizationResult(
-            optimized_module=self.module,
-            optimization_metrics={"accuracy": 0.95},
-            training_time=10.5,
-            validation_score=0.92,
-            cache_key="test_cache_key",
-            timestamp=datetime.now(),
-        )
-
-    def test_validation_accuracy_metric(self):
-        """Test validation accuracy metric."""
-        metric = ValidationAccuracyMetric(weight=1.0)
-
-        # Test calculation
-        value = metric.calculate(self.module, self.result)
-        self.assertEqual(value, 0.92)
-
-        # Test with different validation score
-        result_with_lower_score = OptimizationResult(
-            optimized_module=self.module,
-            optimization_metrics={"accuracy": 0.8},
-            training_time=10.5,
-            validation_score=0.75,
-            cache_key="test_cache_key",
-            timestamp=datetime.now(),
-        )
-        value = metric.calculate(self.module, result_with_lower_score)
-        self.assertEqual(value, 0.75)
-
-    def test_training_time_metric(self):
-        """Test training time metric."""
-        # Target time of 60 seconds
-        metric = TrainingTimeMetric(weight=0.5, target_time=60.0)
-
-        # Test calculation - should be 1.0 if training time is less than target
-        result_fast = OptimizationResult(
-            optimized_module=self.module,
-            optimization_metrics={"accuracy": 0.95},
-            training_time=30.0,  # Faster than target
-            validation_score=0.92,
-            cache_key="test_cache_key",
-            timestamp=datetime.now(),
-        )
-        value = metric.calculate(self.module, result_fast)
-        self.assertEqual(value, 1.0)
-
-        # Test with longer training time
-        result_slow = OptimizationResult(
-            optimized_module=self.module,
-            optimization_metrics={"accuracy": 0.95},
-            training_time=120.0,  # Slower than target
-            validation_score=0.92,
-            cache_key="test_cache_key",
-            timestamp=datetime.now(),
-        )
-        value = metric.calculate(self.module, result_slow)
-        self.assertEqual(value, 0.5)  # 60/120 = 0.5
-
-        # Test with zero training time (edge case)
-        result_zero = OptimizationResult(
-            optimized_module=self.module,
-            optimization_metrics={"accuracy": 0.95},
-            training_time=0.0,
-            validation_score=0.92,
-            cache_key="test_cache_key",
-            timestamp=datetime.now(),
-        )
-        value = metric.calculate(self.module, result_zero)
-        self.assertEqual(value, 1.0)  # Should handle zero gracefully
+@pytest.fixture
+def module():
+    module = mock.MagicMock(spec=STREAMContentGenerator)
+    module.domain = "mathematics"
+    return module
 
 
-class TestQualityAssessor(unittest.TestCase):
-    """Test quality assessor."""
+@pytest.fixture
+def result(module):
+    return OptimizationResult(
+        optimized_module=module,
+        optimization_metrics={"accuracy": 0.95},
+        training_time=10.5,
+        validation_score=0.92,
+        cache_key="test_cache_key",
+        timestamp=datetime.now(),
+    )
 
-    def setUp(self):
-        """Set up test fixtures."""
-        self.module = mock.MagicMock(spec=STREAMContentGenerator)
-        self.module.domain = "mathematics"
 
-        self.result = OptimizationResult(
-            optimized_module=self.module,
-            optimization_metrics={"accuracy": 0.95},
-            training_time=10.5,
-            validation_score=0.92,
-            cache_key="test_cache_key",
-            timestamp=datetime.now(),
-        )
+@pytest.fixture
+def quality_requirements():
+    return {"min_accuracy": 0.9, "max_training_time": 60.0}
 
-        self.quality_requirements = {
-            "min_accuracy": 0.9,
-            "max_training_time": 60.0,
-        }
 
-        self.assessor = QualityAssessor()
+def test_validation_accuracy_metric(module, result):
+    metric = ValidationAccuracyMetric(weight=1.0)
+    assert metric.calculate(module, result) == 0.92
 
-    def test_assess_quality(self):
-        """Test quality assessment."""
-        assessment = self.assessor.assess_quality(
-            self.module, self.result, self.quality_requirements
-        )
+    lower_result = OptimizationResult(
+        optimized_module=module,
+        optimization_metrics={"accuracy": 0.8},
+        training_time=10.5,
+        validation_score=0.75,
+        cache_key="test_cache_key",
+        timestamp=datetime.now(),
+    )
+    assert metric.calculate(module, lower_result) == 0.75
 
-        # Check assessment structure
-        self.assertIn("domain", assessment)
-        self.assertIn("overall_score", assessment)
-        self.assertIn("metrics", assessment)
-        self.assertIn("requirements_met", assessment)
-        self.assertIn("timestamp", assessment)
 
-        # Check domain
-        self.assertEqual(assessment["domain"], "mathematics")
+def test_training_time_metric(module, result):
+    metric = TrainingTimeMetric(weight=0.5, target_time=60.0)
 
-        # Check metrics
-        self.assertIn("validation_accuracy", assessment["metrics"])
-        self.assertIn("training_time", assessment["metrics"])
+    fast_result = OptimizationResult(
+        optimized_module=module,
+        optimization_metrics={"accuracy": 0.95},
+        training_time=30.0,
+        validation_score=0.92,
+        cache_key="test_cache_key",
+        timestamp=datetime.now(),
+    )
+    assert metric.calculate(module, fast_result) == 1.0
 
-        # Check requirements met
-        self.assertTrue(assessment["requirements_met"])
+    slow_result = OptimizationResult(
+        optimized_module=module,
+        optimization_metrics={"accuracy": 0.95},
+        training_time=120.0,
+        validation_score=0.92,
+        cache_key="test_cache_key",
+        timestamp=datetime.now(),
+    )
+    assert metric.calculate(module, slow_result) == 0.5
 
-    def test_validate_result_success(self):
-        """Test validation with successful result."""
-        is_valid, assessment = self.assessor.validate_result(
-            self.module, self.result, self.quality_requirements
-        )
+    zero_result = OptimizationResult(
+        optimized_module=module,
+        optimization_metrics={"accuracy": 0.95},
+        training_time=0.0,
+        validation_score=0.92,
+        cache_key="test_cache_key",
+        timestamp=datetime.now(),
+    )
+    assert metric.calculate(module, zero_result) == 1.0
 
-        self.assertTrue(is_valid)
-        self.assertTrue(assessment["requirements_met"])
 
-    def test_validate_result_failure(self):
-        """Test validation with failing result."""
-        # Create result that doesn't meet requirements
-        failing_result = OptimizationResult(
-            optimized_module=self.module,
-            optimization_metrics={"accuracy": 0.85},
-            training_time=10.5,
-            validation_score=0.85,  # Below min_accuracy of 0.9
-            cache_key="test_cache_key",
-            timestamp=datetime.now(),
-        )
+def test_assess_quality(module, result, quality_requirements):
+    assessor = QualityAssessor()
+    assessment = assessor.assess_quality(module, result, quality_requirements)
 
-        is_valid, assessment = self.assessor.validate_result(
-            self.module, failing_result, self.quality_requirements
-        )
+    assert assessment["domain"] == "mathematics"
+    assert "overall_score" in assessment
+    assert "metrics" in assessment
+    assert "requirements_met" in assessment
+    assert assessment["requirements_met"] is True
 
-        self.assertFalse(is_valid)
-        self.assertFalse(assessment["requirements_met"])
 
-    def test_get_quality_assessor(self):
-        """Test global quality assessor singleton."""
-        assessor1 = get_quality_assessor()
-        assessor2 = get_quality_assessor()
+def test_validate_result_success(module, result, quality_requirements):
+    assessor = QualityAssessor()
+    is_valid, assessment = assessor.validate_result(module, result, quality_requirements)
+    assert is_valid is True
+    assert assessment["requirements_met"] is True
 
-        # Should be the same instance
-        self.assertIs(assessor1, assessor2)
 
-        # Should be a QualityAssessor
-        self.assertIsInstance(assessor1, QualityAssessor)
+def test_validate_result_failure(module, quality_requirements):
+    assessor = QualityAssessor()
+    failing_result = OptimizationResult(
+        optimized_module=module,
+        optimization_metrics={"accuracy": 0.85},
+        training_time=10.5,
+        validation_score=0.85,
+        cache_key="test_cache_key",
+        timestamp=datetime.now(),
+    )
+    is_valid, assessment = assessor.validate_result(module, failing_result, quality_requirements)
+    assert is_valid is False
+    assert assessment["requirements_met"] is False
+
+
+def test_get_quality_assessor_singleton():
+    assessor1 = get_quality_assessor()
+    assessor2 = get_quality_assessor()
+    assert assessor1 is assessor2
+    assert isinstance(assessor1, QualityAssessor)

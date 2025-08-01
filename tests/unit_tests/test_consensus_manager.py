@@ -1,11 +1,9 @@
 """Unit tests for Consensus mechanisms."""
 
-import asyncio
-import time
-from unittest.mock import Mock, patch
-
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.marl.config.config_schema import ConsensusConfig
 from core.marl.config_legacy import CoordinationConfig
 from core.marl.coordination.consensus_mechanism import ConsensusMechanism
@@ -103,9 +101,9 @@ class TestConsensusIntegration:
 
         # Test that strategies are callable functions
         for strategy_name, strategy_func in mechanism.consensus_strategies.items():
-            assert callable(strategy_func), (
-                f"Strategy {strategy_name} should be callable"
-            )
+            assert callable(
+                strategy_func
+            ), f"Strategy {strategy_name} should be callable"
 
     def test_mechanism_with_different_configs(self):
         """Test mechanism with different coordination configurations."""
@@ -120,7 +118,3 @@ class TestConsensusIntegration:
         mechanism2 = ConsensusMechanism(custom_config)
         assert mechanism2 is not None
         assert mechanism2.config.consensus_strategy == "majority_vote"
-
-
-if __name__ == "__main__":
-    pytest.main([__file__])

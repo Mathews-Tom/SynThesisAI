@@ -5,11 +5,13 @@ These tests verify the functionality of the DSPyCheckerAgent class,
 including initialization, DSPy module management, and validation.
 """
 
-import unittest
+# Standard Library
 from unittest.mock import MagicMock, patch
 
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.dspy.checker_agent import DSPyCheckerAgent
 from core.dspy.exceptions import DSPyIntegrationError
 from utils.exceptions import ValidationError
@@ -56,9 +58,7 @@ class TestDSPyCheckerAgent:
 
     @patch("core.dspy.checker_agent.STREAMContentGenerator")
     @patch("core.dspy.checker_agent.get_dspy_config")
-    def test_initialize_dspy_module_failure(
-        self, mock_get_dspy_config, mock_stream_generator
-    ):
+    def test_initialize_dspy_module_failure(self, mock_get_dspy_config, mock_stream_generator):
         """Test failure in initializing DSPy module."""
         # Setup mocks
         mock_config = MagicMock()
@@ -86,9 +86,7 @@ class TestDSPyCheckerAgent:
 
         # Test other domains
         assert agent._get_domain_signature("physics", "validation") is None
-        assert (
-            agent._get_domain_signature("computer science", "equivalence_check") is None
-        )
+        assert agent._get_domain_signature("computer science", "equivalence_check") is None
 
     def test_prepare_dspy_inputs(self):
         """Test preparing inputs for DSPy module."""
@@ -230,7 +228,3 @@ class TestDSPyCheckerAgent:
         assert result["valid"] is True
         assert result["reason"] == "Legacy reason"
         assert result["dspy_validated"] is False
-
-
-if __name__ == "__main__":
-    pytest.main(["-xvs", __file__])

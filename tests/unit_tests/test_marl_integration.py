@@ -2,15 +2,17 @@
 Unit tests for MARL Integration Adapters
 """
 
-import asyncio
+# Standard Library
 from unittest.mock import AsyncMock, MagicMock, patch
 
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.marl.integration.marl_adapter import (
+    create_marl_integration,
     MARLOrchestrationAdapter,
     MARLPipelineIntegration,
-    create_marl_integration,
 )
 from utils.costs import CostTracker
 from utils.exceptions import CoordinationError, PipelineError
@@ -111,14 +113,10 @@ class TestMARLOrchestrationAdapter:
             assert adapter.success_threshold == 0.7
 
     @pytest.mark.asyncio
-    async def test_generate_content_with_marl_success(
-        self, adapter, legacy_request, marl_result
-    ):
+    async def test_generate_content_with_marl_success(self, adapter, legacy_request, marl_result):
         """Test successful MARL content generation."""
         # Mock MARL coordinator
-        adapter.marl_coordinator.coordinate_generation = AsyncMock(
-            return_value=marl_result
-        )
+        adapter.marl_coordinator.coordinate_generation = AsyncMock(return_value=marl_result)
 
         # Mock cost tracker
         cost_tracker = MagicMock(spec=CostTracker)
@@ -365,9 +363,7 @@ class TestMARLPipelineIntegration:
 
     def test_initialization(self, integration_config):
         """Test integration initialization."""
-        with patch(
-            "core.marl.integration.marl_adapter.MARLOrchestrationAdapter"
-        ) as mock_adapter:
+        with patch("core.marl.integration.marl_adapter.MARLOrchestrationAdapter") as mock_adapter:
             integration = MARLPipelineIntegration(integration_config)
 
             # Verify adapter was created
@@ -395,9 +391,7 @@ class TestMARLPipelineIntegration:
         """Test successful MARL integration generation."""
         # Mock successful MARL generation
         mock_result = {"problem_statement": "Generated content", "quality_score": 0.8}
-        integration.marl_adapter.generate_content_with_marl = AsyncMock(
-            return_value=mock_result
-        )
+        integration.marl_adapter.generate_content_with_marl = AsyncMock(return_value=mock_result)
 
         result_type, result_data = await integration.generate_with_marl_integration(
             sample_request, cost_tracker
@@ -413,9 +407,7 @@ class TestMARLPipelineIntegration:
         assert result_data == mock_result
 
     @pytest.mark.asyncio
-    async def test_generate_with_marl_disabled(
-        self, integration, sample_request, cost_tracker
-    ):
+    async def test_generate_with_marl_disabled(self, integration, sample_request, cost_tracker):
         """Test generation with MARL disabled."""
         integration.use_marl = False
 
@@ -440,9 +432,7 @@ class TestMARLPipelineIntegration:
         integration.use_marl = False
 
         with pytest.raises(PipelineError) as exc_info:
-            await integration.generate_with_marl_integration(
-                sample_request, cost_tracker
-            )
+            await integration.generate_with_marl_integration(sample_request, cost_tracker)
 
         assert "MARL disabled and no fallback generator provided" in str(exc_info.value)
 
@@ -481,16 +471,12 @@ class TestMARLPipelineIntegration:
         )
 
         with pytest.raises(PipelineError) as exc_info:
-            await integration.generate_with_marl_integration(
-                sample_request, cost_tracker
-            )
+            await integration.generate_with_marl_integration(sample_request, cost_tracker)
 
         assert "MARL generation failed and fallback disabled" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_generate_with_ab_testing(
-        self, integration, sample_request, cost_tracker
-    ):
+    async def test_generate_with_ab_testing(self, integration, sample_request, cost_tracker):
         """Test A/B testing functionality."""
         integration.marl_probability = 0.0  # Never use MARL
 
@@ -507,9 +493,7 @@ class TestMARLPipelineIntegration:
         assert result_data["content"] == "fallback result"
 
     @pytest.mark.asyncio
-    async def test_run_fallback_generation_async(
-        self, integration, sample_request, cost_tracker
-    ):
+    async def test_run_fallback_generation_async(self, integration, sample_request, cost_tracker):
         """Test fallback generation with async function."""
 
         async def async_fallback(request, tracker):
@@ -524,9 +508,7 @@ class TestMARLPipelineIntegration:
         assert result_data["generation_method"] == "fallback"
 
     @pytest.mark.asyncio
-    async def test_run_fallback_generation_sync(
-        self, integration, sample_request, cost_tracker
-    ):
+    async def test_run_fallback_generation_sync(self, integration, sample_request, cost_tracker):
         """Test fallback generation with sync function."""
 
         def sync_fallback(request, tracker):
@@ -541,9 +523,7 @@ class TestMARLPipelineIntegration:
         assert result_data["generation_method"] == "fallback"
 
     @pytest.mark.asyncio
-    async def test_run_fallback_generation_failure(
-        self, integration, sample_request, cost_tracker
-    ):
+    async def test_run_fallback_generation_failure(self, integration, sample_request, cost_tracker):
         """Test fallback generation failure."""
 
         def failing_fallback(request, tracker):
@@ -663,9 +643,7 @@ class TestMARLIntegrationIntegration:
                     },
                 }
             )
-            mock_coordinator.get_performance_summary = MagicMock(
-                return_value={"success_rate": 0.9}
-            )
+            mock_coordinator.get_performance_summary = MagicMock(return_value={"success_rate": 0.9})
             mock_coordinator.shutdown = AsyncMock()
             mock_coordinator_class.return_value = mock_coordinator
 

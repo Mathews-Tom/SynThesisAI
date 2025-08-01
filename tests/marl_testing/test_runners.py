@@ -1,14 +1,15 @@
 """Test Runners for MARL Testing Framework."""
 
+# Standard Library
 import asyncio
-import time
 from dataclasses import dataclass, field
 from enum import Enum
+import time
 from typing import Any, Dict, List, Optional, Tuple
 
+# SynThesisAI Modules
+from .test_scenarios import BaseTestScenario
 from utils.logging_config import get_logger
-
-from .test_scenarios import BaseTestScenario, ScenarioComplexity, ScenarioType
 
 
 class ExecutionStrategy(Enum):
@@ -171,9 +172,7 @@ class MARLTestRunner:
         self.logger.info("Selected %d tests to run", len(tests))
         return tests
 
-    async def _run_single_test(
-        self, test_id: str, scenario: BaseTestScenario
-    ) -> TestResult:
+    async def _run_single_test(self, test_id: str, scenario: BaseTestScenario) -> TestResult:
         """Run a single test."""
         self.logger.info("Starting test: %s", test_id)
 
@@ -213,9 +212,7 @@ class MARLTestRunner:
                     await asyncio.sleep(self.config.retry_delay)
 
             except asyncio.TimeoutError:
-                test_result.error_message = (
-                    f"Test timed out after {self.config.timeout_seconds}s"
-                )
+                test_result.error_message = f"Test timed out after {self.config.timeout_seconds}s"
                 self.logger.error("Test %s timed out", test_id)
                 break
 
@@ -260,8 +257,7 @@ class MARLTestRunner:
 
         if self.current_suite_result.test_results:
             total_test_time = sum(
-                result.execution_time
-                for result in self.current_suite_result.test_results
+                result.execution_time for result in self.current_suite_result.test_results
             )
             summary_metrics["average_execution_time"] = total_test_time / len(
                 self.current_suite_result.test_results
@@ -288,9 +284,11 @@ class MARLTestRunner:
                 "total_tests": self.current_suite_result.total_tests,
                 "passed_tests": self.current_suite_result.passed_tests,
                 "failed_tests": self.current_suite_result.failed_tests,
-                "execution_time": time.time() - self.current_suite_result.start_time
-                if self.is_running
-                else self.current_suite_result.execution_time,
+                "execution_time": (
+                    time.time() - self.current_suite_result.start_time
+                    if self.is_running
+                    else self.current_suite_result.execution_time
+                ),
             }
 
         return status

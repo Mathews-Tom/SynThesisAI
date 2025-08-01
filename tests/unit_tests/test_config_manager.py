@@ -5,38 +5,41 @@ Tests the comprehensive configuration management capabilities including
 loading, saving, validation, and configuration updates.
 """
 
+# Standard Library
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch
+from typing import Any, Dict, Iterator
 
+# Third-Party Library
 import pytest
 import yaml
 
+# SynThesisAI Modules
 from core.marl.config.config_manager import (
     ConfigurationError,
     MARLConfigManager,
     MARLConfigManagerFactory,
 )
-from core.marl.config.config_schema import AgentConfig, MARLConfig
+from core.marl.config.config_schema import MARLConfig
 
 
 class TestMARLConfigManager:
     """Test MARL configuration manager."""
 
     @pytest.fixture
-    def temp_config_dir(self):
+    def temp_config_dir(self) -> Iterator[Path]:
         """Create temporary configuration directory."""
         with tempfile.TemporaryDirectory() as temp_dir:
             yield Path(temp_dir)
 
     @pytest.fixture
-    def config_manager(self, temp_config_dir):
+    def config_manager(self, temp_config_dir: Path) -> MARLConfigManager:
         """Create configuration manager for testing."""
         return MARLConfigManager(temp_config_dir)
 
     @pytest.fixture
-    def sample_config(self):
+    def sample_config(self) -> Dict[str, Any]:
         """Create sample configuration for testing."""
         return {
             "name": "test_config",
@@ -211,9 +214,7 @@ class TestMARLConfigManager:
         assert saved_data["name"] == "test_config"
         assert saved_data["version"] == "1.0.0"
 
-    def test_save_config_with_backup(
-        self, config_manager, sample_config, temp_config_dir
-    ):
+    def test_save_config_with_backup(self, config_manager, sample_config, temp_config_dir):
         """Test saving configuration with backup."""
         config = MARLConfig.from_dict(sample_config)
         config_path = temp_config_dir / "test_config.yaml"
@@ -260,9 +261,7 @@ class TestMARLConfigManager:
         assert loaded_config.name == "test_config"
         assert loaded_config.version == "1.0.0"
 
-    def test_load_config_with_cache(
-        self, config_manager, sample_config, temp_config_dir
-    ):
+    def test_load_config_with_cache(self, config_manager, sample_config, temp_config_dir):
         """Test loading configuration with caching."""
         config_path = temp_config_dir / "test_config.json"
 
@@ -291,9 +290,7 @@ class TestMARLConfigManager:
         config_path = temp_config_dir / "test_config.txt"
         config_path.write_text("some content")
 
-        with pytest.raises(
-            ConfigurationError, match="Unsupported configuration format"
-        ):
+        with pytest.raises(ConfigurationError, match="Unsupported configuration format"):
             config_manager.load_config(config_path)
 
     def test_load_config_invalid_json(self, config_manager, temp_config_dir):
@@ -405,9 +402,7 @@ class TestMARLConfigManager:
         assert summary["device"] == "auto"
         assert summary["num_workers"] == 4
 
-    def test_export_config_template(
-        self, config_manager, sample_config, temp_config_dir
-    ):
+    def test_export_config_template(self, config_manager, sample_config, temp_config_dir):
         """Test exporting configuration as template."""
         config = MARLConfig.from_dict(sample_config)
         template_path = temp_config_dir / "template.yaml"
@@ -473,9 +468,7 @@ class TestMARLConfigManagerFactory:
 
     def test_create_with_validation(self):
         """Test creating manager with custom validation settings."""
-        manager = MARLConfigManagerFactory.create_with_validation(
-            strict_validation=True
-        )
+        manager = MARLConfigManagerFactory.create_with_validation(strict_validation=True)
 
         assert isinstance(manager, MARLConfigManager)
         # Check that strict validation settings were applied

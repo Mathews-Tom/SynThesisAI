@@ -5,10 +5,13 @@ These tests verify the integration of the DSPyCheckerAgent with the
 rest of the system, including actual validation and equivalence checking.
 """
 
+# Standard Library
 from unittest.mock import patch
 
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.dspy.checker_agent import DSPyCheckerAgent, create_dspy_checker_agent
 from utils.exceptions import ValidationError
 
@@ -18,7 +21,7 @@ class TestDSPyCheckerIntegration:
     """Integration tests for DSPyCheckerAgent."""
 
     @patch("core.dspy.base_module.DSPY_AVAILABLE", False)
-    def test_fallback_when_dspy_unavailable(self):
+    def test_fallback_when_dspy_unavailable(self) -> None:
         """Test fallback to legacy implementation when DSPy is unavailable."""
         # Create agent
         agent = create_dspy_checker_agent()
@@ -45,7 +48,7 @@ class TestDSPyCheckerIntegration:
 
     @patch("core.dspy.checker_agent.DSPyCheckerAgent._convert_dspy_result")
     @patch("core.dspy.checker_agent.DSPyCheckerAgent.initialize_dspy_module")
-    def test_dspy_result_conversion_error(self, mock_initialize, mock_convert):
+    def test_dspy_result_conversion_error(self, mock_initialize, mock_convert) -> None:
         """Test handling of conversion errors."""
         # Setup mocks
         mock_convert.side_effect = ValidationError("Test error", field="test")
@@ -68,7 +71,7 @@ class TestDSPyCheckerIntegration:
         assert "valid" in result
         assert "dspy_validated" in result and result["dspy_validated"] is False
 
-    def test_equivalence_check_with_different_formats(self):
+    def test_equivalence_check_with_different_formats(self) -> None:
         """Test equivalence checking with different answer formats."""
         # Create agent
         agent = create_dspy_checker_agent()
@@ -90,7 +93,7 @@ class TestDSPyCheckerIntegration:
         assert "equivalence_confidence" in result
 
     @pytest.mark.skipif(not hasattr(pytest, "real_dspy"), reason="Requires real DSPy")
-    def test_with_real_dspy(self):
+    def test_with_real_dspy(self) -> None:
         """Test with real DSPy if available (marked to skip if not)."""
         # This test only runs if pytest has a 'real_dspy' attribute
         # Create agent

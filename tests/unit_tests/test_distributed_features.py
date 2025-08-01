@@ -1,12 +1,14 @@
 """Comprehensive unit tests for distributed MARL features (Task 10+)."""
 
+# Standard Library
 import asyncio
-import threading
 import time
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.marl.distributed.distributed_coordinator import (
     DistributedCoordinationConfig,
     DistributedCoordinationMode,
@@ -15,30 +17,22 @@ from core.marl.distributed.distributed_coordinator import (
 )
 from core.marl.distributed.distributed_trainer import (
     DistributedMARLTrainer,
-    DistributedTrainerFactory,
     DistributedTrainingConfig,
-    SynchronizationStrategy,
     TrainingMode,
 )
 from core.marl.distributed.network_coordinator import (
     MessageType,
     NetworkConfig,
-    NetworkConnection,
     NetworkCoordinator,
     NetworkMessage,
     NetworkProtocol,
 )
 from core.marl.distributed.resource_manager import (
-    AllocationStrategy,
-    ResourceAllocation,
     ResourceConfig,
     ResourceManager,
     ResourceType,
 )
 from core.marl.distributed.scalability_manager import (
-    DeploymentStrategy,
-    NodeInfo,
-    NodeStatus,
     ScalabilityManager,
     ScalingAction,
     ScalingConfig,
@@ -114,8 +108,8 @@ class TestDistributedTrainer:
 
         with (
             patch.object(trainer, "_train_epoch") as mock_epoch,
-            patch.object(trainer, "_synchronize_agents") as mock_sync,
-            patch.object(trainer, "_save_checkpoint") as mock_checkpoint,
+            patch.object(trainer, "_synchronize_agents"),
+            patch.object(trainer, "_save_checkpoint"),
         ):
             mock_epoch.return_value = {
                 "steps": 5,
@@ -123,9 +117,7 @@ class TestDistributedTrainer:
                 "communication_time": 0.1,
             }
 
-            results = await trainer.start_distributed_training(
-                num_epochs=2, steps_per_epoch=5
-            )
+            results = await trainer.start_distributed_training(num_epochs=2, steps_per_epoch=5)
 
             assert "total_steps" in results
             assert "training_time" in results
@@ -189,19 +181,14 @@ class TestDistributedCoordinator:
         """Test coordinator initialization."""
         assert not coordinator.is_initialized
         assert not coordinator.is_active
-        assert (
-            coordinator.config.coordination_mode
-            == DistributedCoordinationMode.CENTRALIZED
-        )
+        assert coordinator.config.coordination_mode == DistributedCoordinationMode.CENTRALIZED
         assert len(coordinator.connected_nodes) == 0
 
     @pytest.mark.asyncio
     async def test_coordinator_initialization_process(self, coordinator):
         """Test coordinator initialization process."""
         with (
-            patch.object(
-                coordinator, "_initialize_coordination_components"
-            ) as mock_comp,
+            patch.object(coordinator, "_initialize_coordination_components") as mock_comp,
             patch.object(coordinator, "_setup_network_topology") as mock_topo,
             patch.object(coordinator, "_start_network_services") as mock_net,
             patch.object(coordinator, "_determine_master_node") as mock_master,
@@ -229,9 +216,7 @@ class TestDistributedCoordinator:
         with patch.object(coordinator, "_process_local_coordination") as mock_process:
             mock_process.return_value = {"result": "success"}
 
-            response = await coordinator.handle_coordination_request(
-                request, "sender_node"
-            )
+            response = await coordinator.handle_coordination_request(request, "sender_node")
 
             assert "coordination_id" in response
             assert "node_id" in response
@@ -249,7 +234,7 @@ class TestDistributedCoordinator:
         }
 
         with (
-            patch.object(coordinator, "_send_coordination_request") as mock_send,
+            patch.object(coordinator, "_send_coordination_request"),
             patch.object(coordinator, "_wait_for_coordination_completion") as mock_wait,
             patch.object(coordinator, "_process_coordination_result") as mock_process,
         ):
@@ -353,7 +338,7 @@ class TestResourceManager:
 
         # Check metrics collection
         metrics = resource_manager.get_resource_metrics(limit=5)
-        # Should have some metrics after starting
+        assert metrics is not None
 
         # Shutdown
         await resource_manager.shutdown()
@@ -414,9 +399,7 @@ class TestNetworkCoordinator:
 
         # Remove handler
         network_coordinator.remove_message_handler(MessageType.HEARTBEAT, handler)
-        assert (
-            handler not in network_coordinator.message_handlers[MessageType.HEARTBEAT]
-        )
+        assert handler not in network_coordinator.message_handlers[MessageType.HEARTBEAT]
 
     def test_network_message_serialization(self):
         """Test network message serialization."""
@@ -737,9 +720,7 @@ class TestDistributedPerformance:
 
         allocations = []
         for i in range(10):
-            allocation_id = await manager.allocate_resource(
-                ResourceType.CPU, 0.1, f"agent_{i}"
-            )
+            allocation_id = await manager.allocate_resource(ResourceType.CPU, 0.1, f"agent_{i}")
             if allocation_id:
                 allocations.append(allocation_id)
 
@@ -800,9 +781,7 @@ class TestDistributedPerformance:
 
         message_ids = []
         for i in range(message_count):
-            message_id = await coordinator.send_message(
-                MessageType.HEARTBEAT, {"sequence": i}
-            )
+            message_id = await coordinator.send_message(MessageType.HEARTBEAT, {"sequence": i})
             message_ids.append(message_id)
 
         queuing_time = time.time() - start_time
@@ -813,7 +792,3 @@ class TestDistributedPerformance:
         assert all(mid is not None for mid in message_ids)
 
         await coordinator.shutdown()
-
-
-if __name__ == "__main__":
-    pytest.main([__file__])

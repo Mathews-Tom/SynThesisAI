@@ -2,11 +2,13 @@
 Unit tests for MultiAgentRLCoordinator
 """
 
-import asyncio
+# Standard Library
 from unittest.mock import AsyncMock, MagicMock, patch
 
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.marl.coordination.marl_coordinator import MultiAgentRLCoordinator
 from utils.exceptions import CoordinationError
 
@@ -94,11 +96,6 @@ class TestMultiAgentRLCoordinator:
     def test_agent_registration(self, coordinator):
         """Test agent registration with communication protocol."""
         # Verify register_agent was called for each agent
-        expected_calls = [
-            (("generator", coordinator.generator_agent),),
-            (("validator", coordinator.validator_agent),),
-            (("curriculum", coordinator.curriculum_agent),),
-        ]
 
         actual_calls = coordinator.communication_protocol.register_agent.call_args_list
         assert len(actual_calls) == 3

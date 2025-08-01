@@ -4,16 +4,15 @@ This module provides mock environments and agents for isolated testing
 of MARL components without external dependencies.
 """
 
+# Standard Library
 import asyncio
 import random
 import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple
-from unittest.mock import MagicMock, Mock
 
-import numpy as np
-
+# SynThesisAI Modules
 from utils.logging_config import get_logger
 
 
@@ -159,9 +158,7 @@ class MockAgent:
         # Notify callbacks
         await self._notify_action_callbacks(action)
 
-        self.logger.debug(
-            "Agent %s selected action: %s", self.agent_id, action.action_type
-        )
+        self.logger.debug("Agent %s selected action: %s", self.agent_id, action.action_type)
         return action
 
     def _generate_action_by_type(self, state: Dict[str, Any]) -> MockAction:
@@ -185,9 +182,7 @@ class MockAgent:
                 parameters={
                     "validation_criteria": ["quality", "accuracy", "relevance"],
                     "threshold": random.uniform(0.6, 0.9),
-                    "feedback_detail": random.choice(
-                        ["basic", "detailed", "comprehensive"]
-                    ),
+                    "feedback_detail": random.choice(["basic", "detailed", "comprehensive"]),
                 },
                 confidence=random.uniform(0.7, 1.0),
             )
@@ -199,9 +194,7 @@ class MockAgent:
                 parameters={
                     "difficulty_level": random.uniform(0.3, 0.8),
                     "learning_objectives": random.randint(3, 8),
-                    "progression_strategy": random.choice(
-                        ["linear", "adaptive", "branching"]
-                    ),
+                    "progression_strategy": random.choice(["linear", "adaptive", "branching"]),
                 },
                 confidence=random.uniform(0.6, 0.9),
             )
@@ -277,9 +270,7 @@ class MockAgent:
 
         return {"type": "generic", "score": random.uniform(0.5, 0.8)}
 
-    def _detect_mock_conflicts(
-        self, other_agents: List["MockAgent"]
-    ) -> List[Dict[str, Any]]:
+    def _detect_mock_conflicts(self, other_agents: List["MockAgent"]) -> List[Dict[str, Any]]:
         """Detect mock conflicts with other agents."""
         conflicts = []
 
@@ -556,9 +547,7 @@ class MockCoordinationScenario:
                 action = await agent.select_action(agent.current_state)
                 step_results["actions"].append(action)
             except Exception as e:
-                self.logger.warning(
-                    "Agent %s action failed: %s", agent.agent_id, str(e)
-                )
+                self.logger.warning("Agent %s action failed: %s", agent.agent_id, str(e))
 
         # Perform coordination
         coordination_pairs = self._generate_coordination_pairs()
@@ -610,9 +599,7 @@ class MockCoordinationScenario:
         self, conflict: Dict[str, Any]
     ) -> Optional[Dict[str, Any]]:
         """Attempt to resolve a conflict."""
-        resolution_probability = self.scenario_config.get(
-            "conflict_resolution_probability", 0.7
-        )
+        resolution_probability = self.scenario_config.get("conflict_resolution_probability", 0.7)
 
         if random.random() < resolution_probability:
             return {
@@ -648,9 +635,7 @@ class MockCoordinationScenario:
         self.results["conflicts_resolved"] += len(step_results["resolutions"])
 
         # Update rates
-        total_coordinations = sum(
-            agent.metrics["coordination_attempts"] for agent in self.agents
-        )
+        total_coordinations = sum(agent.metrics["coordination_attempts"] for agent in self.agents)
         if total_coordinations > 0:
             self.results["coordination_success_rate"] = (
                 self.results["successful_coordinations"] / total_coordinations
@@ -662,21 +647,16 @@ class MockCoordinationScenario:
             )
 
         # Update average response time
-        total_response_time = sum(
-            agent.metrics["average_response_time"] for agent in self.agents
-        )
+        total_response_time = sum(agent.metrics["average_response_time"] for agent in self.agents)
         if len(self.agents) > 0:
-            self.results["average_response_time"] = total_response_time / len(
-                self.agents
-            )
+            self.results["average_response_time"] = total_response_time / len(self.agents)
 
     async def _should_terminate(self) -> bool:
         """Check if scenario should terminate early."""
         # Terminate if all agents have high success rates
         if self.scenario_type == "cooperation":
             avg_success_rate = sum(
-                agent.metrics["successful_actions"]
-                / max(agent.metrics["actions_taken"], 1)
+                agent.metrics["successful_actions"] / max(agent.metrics["actions_taken"], 1)
                 for agent in self.agents
             ) / len(self.agents)
 
@@ -695,9 +675,7 @@ class MockCoordinationScenario:
         # Aggregate final metrics from agents
         for agent in self.agents:
             agent_metrics = agent.get_metrics()
-            self.logger.debug(
-                "Agent %s final metrics: %s", agent.agent_id, agent_metrics
-            )
+            self.logger.debug("Agent %s final metrics: %s", agent.agent_id, agent_metrics)
 
         self.logger.debug("Scenario finalized: %s", self.scenario_id)
 
@@ -891,9 +869,7 @@ class MockMARLEnvironment:
                     "step": self.current_step,
                     "agent_id": agent_id,
                     "environment_state": self.state.value,
-                    "other_agents": [
-                        aid for aid in self.agents.keys() if aid != agent_id
-                    ],
+                    "other_agents": [aid for aid in self.agents.keys() if aid != agent_id],
                     "random_factor": random.uniform(0, 1),
                 },
                 reward=random.uniform(-0.1, 0.1),  # Small random reward
@@ -957,9 +933,7 @@ class MockMARLEnvironment:
         self, episode_results: Dict[str, Any], step_results: Dict[str, Any]
     ) -> None:
         """Update episode results with step data."""
-        episode_results["coordination_events"] += len(
-            step_results["coordination_events"]
-        )
+        episode_results["coordination_events"] += len(step_results["coordination_events"])
         episode_results["conflicts_detected"] += len(step_results["conflicts"])
 
         # Count resolved conflicts (simplified)
@@ -974,8 +948,7 @@ class MockMARLEnvironment:
         # Terminate if all agents are performing very well
         if len(self.agents) > 0:
             avg_success_rate = sum(
-                agent.metrics["successful_actions"]
-                / max(agent.metrics["actions_taken"], 1)
+                agent.metrics["successful_actions"] / max(agent.metrics["actions_taken"], 1)
                 for agent in self.agents.values()
             ) / len(self.agents)
 

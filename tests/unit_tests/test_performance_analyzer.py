@@ -5,12 +5,15 @@ Tests the comprehensive performance analysis capabilities including
 trend analysis, performance insights, and report generation.
 """
 
+# Standard Library
 import time
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock
 
+# Third-Party Library
 import numpy as np
 import pytest
 
+# SynThesisAI Modules
 from core.marl.monitoring.performance_analyzer import (
     AnalysisConfig,
     PerformanceAnalyzer,
@@ -161,9 +164,7 @@ class TestPerformanceAnalyzer:
         """Create performance analyzer for testing."""
         return PerformanceAnalyzer(mock_performance_monitor, analysis_config)
 
-    def test_initialization(
-        self, performance_analyzer, mock_performance_monitor, analysis_config
-    ):
+    def test_initialization(self, performance_analyzer, mock_performance_monitor, analysis_config):
         """Test performance analyzer initialization."""
         assert performance_analyzer.performance_monitor == mock_performance_monitor
         assert performance_analyzer.config == analysis_config
@@ -176,9 +177,7 @@ class TestPerformanceAnalyzer:
         # Mock empty metric data
         performance_analyzer._get_system_metric_data = Mock(return_value=[])
 
-        trend = performance_analyzer.analyze_trend(
-            "test_metric", MetricType.COORDINATION_SUCCESS
-        )
+        trend = performance_analyzer.analyze_trend("test_metric", MetricType.COORDINATION_SUCCESS)
 
         assert trend.metric_name == "test_metric"
         assert trend.direction == TrendDirection.INSUFFICIENT_DATA
@@ -190,15 +189,15 @@ class TestPerformanceAnalyzer:
         """Test trend analysis with sufficient data."""
         # Create mock metric data with improving trend
         base_time = time.time()
-        mock_metrics = []
-        for i in range(10):
-            metric = PerformanceMetric(
+        mock_metrics = [
+            PerformanceMetric(
                 timestamp=base_time + i * 60,
                 metric_type=MetricType.COORDINATION_SUCCESS,
                 agent_id=None,
                 value=0.5 + i * 0.05,  # Improving trend
             )
-            mock_metrics.append(metric)
+            for i in range(10)
+        ]
 
         performance_analyzer._get_system_metric_data = Mock(return_value=mock_metrics)
 
@@ -216,15 +215,15 @@ class TestPerformanceAnalyzer:
         """Test trend analysis with declining trend."""
         # Create mock metric data with declining trend
         base_time = time.time()
-        mock_metrics = []
-        for i in range(10):
-            metric = PerformanceMetric(
+        mock_metrics = [
+            PerformanceMetric(
                 timestamp=base_time + i * 60,
                 metric_type=MetricType.COORDINATION_SUCCESS,
                 agent_id=None,
                 value=0.9 - i * 0.05,  # Declining trend
             )
-            mock_metrics.append(metric)
+            for i in range(10)
+        ]
 
         performance_analyzer._get_system_metric_data = Mock(return_value=mock_metrics)
 
@@ -239,15 +238,15 @@ class TestPerformanceAnalyzer:
         """Test trend analysis with stable trend."""
         # Create mock metric data with stable values
         base_time = time.time()
-        mock_metrics = []
-        for i in range(10):
-            metric = PerformanceMetric(
+        mock_metrics = [
+            PerformanceMetric(
                 timestamp=base_time + i * 60,
                 metric_type=MetricType.COORDINATION_SUCCESS,
                 agent_id=None,
                 value=0.75 + (i % 2) * 0.01,  # Stable with minor fluctuation
             )
-            mock_metrics.append(metric)
+            for i in range(10)
+        ]
 
         performance_analyzer._get_system_metric_data = Mock(return_value=mock_metrics)
 
@@ -274,14 +273,10 @@ class TestPerformanceAnalyzer:
         performance_analyzer._get_system_metric_data = Mock(return_value=mock_metrics)
 
         # First call should compute trend
-        trend1 = performance_analyzer.analyze_trend(
-            "test_metric", MetricType.COORDINATION_SUCCESS
-        )
+        trend1 = performance_analyzer.analyze_trend("test_metric", MetricType.COORDINATION_SUCCESS)
 
         # Second call should use cache
-        trend2 = performance_analyzer.analyze_trend(
-            "test_metric", MetricType.COORDINATION_SUCCESS
-        )
+        trend2 = performance_analyzer.analyze_trend("test_metric", MetricType.COORDINATION_SUCCESS)
 
         assert trend1 == trend2
         # Should only call _get_system_metric_data once due to caching
@@ -375,9 +370,7 @@ class TestPerformanceAnalyzer:
         agent_insights = performance_analyzer._analyze_agent_performance(None)
 
         # Should generate insight about performance disparity
-        disparity_insights = [
-            i for i in agent_insights if "disparity" in i.title.lower()
-        ]
+        disparity_insights = [i for i in agent_insights if "disparity" in i.title.lower()]
         assert len(disparity_insights) > 0
 
         disparity_insight = disparity_insights[0]
@@ -445,8 +438,8 @@ class TestPerformanceAnalyzer:
     def test_generate_performance_report_error_handling(self, performance_analyzer):
         """Test performance report generation with errors."""
         # Mock methods to raise exceptions
-        performance_analyzer.performance_monitor.get_coordination_success_rate.side_effect = Exception(
-            "Test error"
+        performance_analyzer.performance_monitor.get_coordination_success_rate.side_effect = (
+            Exception("Test error")
         )
 
         report = performance_analyzer.generate_performance_report()
@@ -465,9 +458,7 @@ class TestPerformanceAnalyzer:
             }
         }
 
-        health_score = performance_analyzer._calculate_system_health_score(
-            system_summary
-        )
+        health_score = performance_analyzer._calculate_system_health_score(system_summary)
 
         # Should be high score for low resource usage
         assert health_score > 0.5
@@ -477,9 +468,7 @@ class TestPerformanceAnalyzer:
         """Test system health score with no data."""
         system_summary = {"system_metrics": {}}
 
-        health_score = performance_analyzer._calculate_system_health_score(
-            system_summary
-        )
+        health_score = performance_analyzer._calculate_system_health_score(system_summary)
 
         assert health_score == 0.5  # Neutral score
 
@@ -500,26 +489,11 @@ class TestPerformanceAnalyzer:
 
     def test_classify_performance_level(self, performance_analyzer):
         """Test performance level classification."""
-        assert (
-            performance_analyzer._classify_performance_level(0.98)
-            == PerformanceLevel.EXCELLENT
-        )
-        assert (
-            performance_analyzer._classify_performance_level(0.88)
-            == PerformanceLevel.GOOD
-        )
-        assert (
-            performance_analyzer._classify_performance_level(0.72)
-            == PerformanceLevel.AVERAGE
-        )
-        assert (
-            performance_analyzer._classify_performance_level(0.55)
-            == PerformanceLevel.POOR
-        )
-        assert (
-            performance_analyzer._classify_performance_level(0.30)
-            == PerformanceLevel.CRITICAL
-        )
+        assert performance_analyzer._classify_performance_level(0.98) == PerformanceLevel.EXCELLENT
+        assert performance_analyzer._classify_performance_level(0.88) == PerformanceLevel.GOOD
+        assert performance_analyzer._classify_performance_level(0.72) == PerformanceLevel.AVERAGE
+        assert performance_analyzer._classify_performance_level(0.55) == PerformanceLevel.POOR
+        assert performance_analyzer._classify_performance_level(0.30) == PerformanceLevel.CRITICAL
 
     def test_clear_cache(self, performance_analyzer):
         """Test cache clearing."""
@@ -644,20 +618,15 @@ def test_trend_analysis_integration():
 
     # Create realistic metric data with trend
     base_time = time.time()
-    metrics = []
-    for i in range(20):
-        # Simulate improving coordination success rate with some noise
-        base_value = 0.6 + i * 0.015  # Improving trend
-        noise = np.random.normal(0, 0.02)  # Small random noise
-        value = max(0.0, min(1.0, base_value + noise))
-
-        metric = PerformanceMetric(
+    metrics = [
+        PerformanceMetric(
             timestamp=base_time + i * 300,  # Every 5 minutes
             metric_type=MetricType.COORDINATION_SUCCESS,
             agent_id=None,
-            value=value,
+            value=max(0.0, min(1.0, 0.6 + i * 0.015 + np.random.normal(0, 0.02))),
         )
-        metrics.append(metric)
+        for i in range(20)
+    ]
 
     # Mock the data retrieval
     analyzer._get_system_metric_data = Mock(return_value=metrics)

@@ -4,10 +4,13 @@ Unit tests for MARL Configuration Validator.
 Tests configuration validation, compatibility checking, and optimization suggestions.
 """
 
+# Standard Library
 from unittest.mock import Mock
 
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.marl.config.config_schema import (
     AgentConfig,
     ConsensusConfig,
@@ -249,9 +252,7 @@ class TestConfigValidator:
                     agent_type="generator",
                     state_dim=128,
                     action_dim=10,
-                    optimization=OptimizationConfig(
-                        learning_rate=-0.001  # Invalid negative
-                    ),
+                    optimization=OptimizationConfig(learning_rate=-0.001),  # Invalid negative
                 )
             },
         )
@@ -295,9 +296,7 @@ class TestConfigValidator:
 
         # Should have errors for invalid epsilon values
         assert len(errors) >= 2
-        assert any(
-            "Initial epsilon must be between 0 and 1" in error for error in errors
-        )
+        assert any("Initial epsilon must be between 0 and 1" in error for error in errors)
         assert any("Final epsilon must be between 0 and 1" in error for error in errors)
 
         # Test epsilon ordering warning
@@ -308,8 +307,7 @@ class TestConfigValidator:
 
         # Should have warning for incorrect epsilon ordering
         assert any(
-            "Initial epsilon" in warning and "final epsilon" in warning
-            for warning in warnings
+            "Initial epsilon" in warning and "final epsilon" in warning for warning in warnings
         )
 
     def test_validate_network_configuration(self):
@@ -325,9 +323,7 @@ class TestConfigValidator:
                     agent_type="generator",
                     state_dim=128,
                     action_dim=10,
-                    network=NetworkConfig(
-                        hidden_layers=[2048, 4096, 8192]  # Very large network
-                    ),
+                    network=NetworkConfig(hidden_layers=[2048, 4096, 8192]),  # Very large network
                 )
             },
         )
@@ -370,9 +366,7 @@ class TestConfigValidator:
 
         # Should have error for negative capacity
         assert len(errors) > 0
-        assert any(
-            "Replay buffer capacity must be positive" in error for error in errors
-        )
+        assert any("Replay buffer capacity must be positive" in error for error in errors)
 
         # Test batch size larger than capacity
         config.agents["agent1"].replay_buffer.capacity = 100
@@ -381,10 +375,7 @@ class TestConfigValidator:
         errors, warnings = validator.validate_config(config)
 
         # Should have error for batch size > capacity
-        assert any(
-            "Batch size" in error and "exceed buffer capacity" in error
-            for error in errors
-        )
+        assert any("Batch size" in error and "exceed buffer capacity" in error for error in errors)
 
         # Test small buffer warning
         config.agents["agent1"].replay_buffer.capacity = 1000
@@ -393,10 +384,7 @@ class TestConfigValidator:
         errors, warnings = validator.validate_config(config)
 
         # Should have warning for small buffer relative to batch size
-        assert any(
-            "buffer capacity" in warning and "batch size" in warning
-            for warning in warnings
-        )
+        assert any("buffer capacity" in warning and "batch size" in warning for warning in warnings)
 
     def test_validate_coordination_configuration(self):
         """Test validation of coordination configuration."""
@@ -413,9 +401,7 @@ class TestConfigValidator:
                     action_dim=10,
                 )
             },
-            coordination=CoordinationConfig(
-                coordination_timeout=-30.0  # Invalid negative
-            ),
+            coordination=CoordinationConfig(coordination_timeout=-30.0),  # Invalid negative
         )
 
         errors, warnings = validator.validate_config(config)
@@ -460,10 +446,7 @@ class TestConfigValidator:
 
         # Should have error for missing expert weights
         assert len(errors) > 0
-        assert any(
-            "Expert priority consensus requires expert_weights" in error
-            for error in errors
-        )
+        assert any("Expert priority consensus requires expert_weights" in error for error in errors)
 
         # Should have warning for consensus timeout > coordination timeout
         assert any(
@@ -535,16 +518,10 @@ class TestConfigValidator:
 
         # Should have error for negative buffer size
         assert len(errors) > 0
-        assert any(
-            "Shared experience buffer size must be positive" in error
-            for error in errors
-        )
+        assert any("Shared experience buffer size must be positive" in error for error in errors)
 
         # Should have warning for shared learning with single agent
-        assert any(
-            "Shared learning enabled with only one agent" in warning
-            for warning in warnings
-        )
+        assert any("Shared learning enabled with only one agent" in warning for warning in warnings)
 
     def test_validate_system_configuration(self):
         """Test validation of system configuration."""
@@ -638,21 +615,15 @@ class TestConfigValidator:
                     agent_type="generator",
                     state_dim=128,
                     action_dim=10,
-                    optimization=OptimizationConfig(
-                        learning_rate=0.05  # High learning rate
-                    ),
+                    optimization=OptimizationConfig(learning_rate=0.05),  # High learning rate
                     replay_buffer=ReplayBufferConfig(
                         batch_size=8,  # Small batch size
                         capacity=50000,
                     ),
-                    network=NetworkConfig(
-                        hidden_layers=[1024, 1024, 1024]  # Large network
-                    ),
+                    network=NetworkConfig(hidden_layers=[1024, 1024, 1024]),  # Large network
                 )
             },
-            coordination=CoordinationConfig(
-                coordination_timeout=300.0  # Long timeout
-            ),
+            coordination=CoordinationConfig(coordination_timeout=300.0),  # Long timeout
         )
 
         suggestions = validator.generate_optimization_suggestions(config)

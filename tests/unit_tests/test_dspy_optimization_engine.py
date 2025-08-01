@@ -5,16 +5,17 @@ These tests verify the functionality of the DSPyOptimizationEngine and
 TrainingDataManager classes.
 """
 
+# Standard Library
 import json
 import tempfile
-import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.dspy.config import TrainingExample
-from core.dspy.exceptions import OptimizationFailureError, TrainingDataError
 from core.dspy.optimization_engine import DSPyOptimizationEngine, TrainingDataManager
 
 

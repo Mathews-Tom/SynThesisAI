@@ -5,14 +5,15 @@ Tests agent monitoring, deadlock detection, learning monitoring,
 memory management, and fault tolerance coordination.
 """
 
-import asyncio
-import time
+# Standard Library
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
+# Third-Party Library
 import numpy as np
 import pytest
 
+# SynThesisAI Modules
 from core.marl.fault_tolerance.agent_monitor import (
     AgentHealthMetrics,
     AgentHealthStatus,
@@ -820,7 +821,3 @@ class TestFaultToleranceManager:
 
         assert not fault_tolerance_manager.is_running
         assert len(fault_tolerance_manager.registered_agents) == 0
-
-
-if __name__ == "__main__":
-    pytest.main([__file__])
