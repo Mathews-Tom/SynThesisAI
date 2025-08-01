@@ -55,4 +55,9 @@ dependencies = [
     "scipy>=1.16.0",
     "matplotlib>=3.10.3",
     "packaging>=25.0",
+    "mypy>=1.17.0",
+    "torchvision>=0.22.1",
+    "torchaudio>=2.7.1",
+    "pylint>=3.3.7",
+    "ruff>=0.12.5",
 ]

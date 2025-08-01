@@ -5,6 +5,10 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.test_cache/
+pytest.ini
 
 # Environments Configurations
 .env
@@ -34,3 +38,4 @@ download_gpqa_diamomd.py
 *.pth
 
 PR_MESSAGE.md
+refactor_log.md
