@@ -5,9 +5,12 @@ Script to run all Phase 1 DSPy integration tests.
 This script runs all unit tests and integration tests for Phase 1 of the DSPy integration.
 """
 
+# Standard Library
 import logging
 import subprocess
 import sys
+from subprocess import CompletedProcess
+from typing import Dict, List
 
 # Configure logging
 logging.basicConfig(
@@ -18,12 +21,17 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def run_tests():
-    """Run all Phase 1 tests."""
+def run_tests() -> int:
+    """
+    Run all Phase 1 tests.
+
+    Returns:
+        int: 0 if all tests passed, 1 otherwise.
+    """
     logger.info("🚀 Running Phase 1 DSPy integration tests...")
 
     # Define test categories and their corresponding test files
-    test_categories = {
+    test_categories: Dict[str, List[str]] = {
         "DSPy Adapter": ["tests/unit_tests/test_dspy_adapter.py"],
         "Continuous Learning": ["tests/unit_tests/test_dspy_continuous_learning.py"],
         "Feedback Systems": ["tests/unit_tests/test_dspy_feedback.py"],
@@ -33,12 +41,12 @@ def run_tests():
     }
 
     # Track results
-    all_results = {}
-    overall_success = True
+    all_results: Dict[str, CompletedProcess] = {}
+    overall_success: bool = True
 
     # Run tests by category
     for category, test_files in test_categories.items():
-        logger.info(f"\n📋 Running {category} tests...")
+        logger.info("\n📋 Running %s tests...", category)
 
         result = subprocess.run(
             ["uv", "run", "python", "-m", "pytest"] + test_files + ["-v", "--tb=short"],
@@ -51,9 +59,9 @@ def run_tests():
 
         # Print results
         if result.returncode == 0:
-            logger.info(f"✅ {category} tests PASSED")
+            logger.info("✅ %s tests PASSED", category)
         else:
-            logger.error(f"❌ {category} tests FAILED")
+            logger.error("❌ %s tests FAILED", category)
             overall_success = False
 
         # Print test output (abbreviated)
@@ -62,14 +70,14 @@ def run_tests():
             # Show summary line
             for line in lines:
                 if "passed" in line and "failed" in line:
-                    logger.info(f"   {line.strip()}")
+                    logger.info("   %s", line.strip())
                     break
                 elif "passed" in line and line.strip().endswith("passed"):
-                    logger.info(f"   {line.strip()}")
+                    logger.info("   %s", line.strip())
                     break
 
         if result.stderr and result.returncode != 0:
-            logger.error(f"   Error output: {result.stderr[:200]}...")
+            logger.error("   Error output: %s...", result.stderr[:200])
 
     # Print comprehensive summary
     logger.info("\n" + "=" * 60)
@@ -83,10 +91,10 @@ def run_tests():
 
     for category, result in all_results.items():
         status = "✅ PASSED" if result.returncode == 0 else "❌ FAILED"
-        logger.info(f"{category:.<30} {status}")
+        logger.info("%s %s", category.ljust(30, "."), status)
 
     logger.info("-" * 60)
-    logger.info(f"Categories passed: {passed_categories}/{total_categories}")
+    logger.info("Categories passed: %s/%s", passed_categories, total_categories)
 
     if overall_success:
         logger.info("🎉 ALL PHASE 1 TESTS PASSED! DSPy integration is ready!")
@@ -99,7 +107,7 @@ def run_tests():
 
     failed_categories = total_categories - passed_categories
     logger.error(
-        f"⚠️  {failed_categories} test categories failed. Please review and fix."
+        "⚠️  %s test categories failed. Please review and fix.", failed_categories
     )
     logger.error("🔧 Common issues to check:")
     logger.error("   • Missing dependencies or imports")

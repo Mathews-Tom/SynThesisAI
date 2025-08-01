@@ -5,10 +5,14 @@ Script to run all Phase 2 MARL coordination tests.
 This script runs all unit tests and integration tests for Phase 2 of the MARL coordination system.
 """
 
+# Standard Library
 import logging
 import subprocess
 import sys
 from pathlib import Path
+from typing import Dict, List
+from subprocess import CompletedProcess
+
 
 # Configure logging
 logging.basicConfig(
@@ -19,12 +23,16 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def run_tests():
-    """Run all Phase 2 tests."""
+def run_tests() -> int:
+    """Run all Phase 2 tests.
+
+    Returns:
+        int: 0 if all tests pass, 1 if any tests fail.
+    """
     logger.info("🚀 Running Phase 2 MARL coordination tests...")
 
     # Define test categories and their corresponding test files
-    test_categories = {
+    test_categories: Dict[str, List[str]] = {
         "MARL Agents": [
             "tests/unit_tests/test_base_agent.py",
             "tests/unit_tests/test_generator_agent.py",
@@ -62,12 +70,12 @@ def run_tests():
     }
 
     # Track overall results
-    all_results = {}
+    all_results: Dict[str, CompletedProcess] = {}
     overall_success = True
 
     # Run tests by category
     for category, test_files in test_categories.items():
-        logger.info(f"\n📋 Running {category} tests...")
+        logger.info("\n📋 Running %s tests...", category)
 
         # Filter existing test files
         existing_files = []
@@ -75,17 +83,15 @@ def run_tests():
             if Path(test_file).exists():
                 existing_files.append(test_file)
             else:
-                logger.warning(f"⚠️  Test file not found: {test_file}")
+                logger.warning("⚠️  Test file not found: %s", test_file)
 
         if not existing_files:
-            logger.warning(f"⚠️  No test files found for {category}")
+            logger.warning("⚠️  No test files found for %s", category)
             continue
 
         # Run tests for this category
         result = subprocess.run(
-            ["uv", "run", "python", "-m", "pytest"]
-            + existing_files
-            + ["-v", "--tb=short"],
+            ["uv", "run", "python", "-m", "pytest"] + existing_files + ["-v", "--tb=short"],
             capture_output=True,
             text=True,
             check=False,
@@ -95,9 +101,9 @@ def run_tests():
 
         # Print results
         if result.returncode == 0:
-            logger.info(f"✅ {category} tests PASSED")
+            logger.info("✅ %s tests PASSED", category)
         else:
-            logger.error(f"❌ {category} tests FAILED")
+            logger.error("❌ %s tests FAILED", category)
             overall_success = False
 
         # Print test output (abbreviated)
@@ -106,14 +112,14 @@ def run_tests():
             # Show summary line
             for line in lines:
                 if "passed" in line and "failed" in line:
-                    logger.info(f"   {line.strip()}")
+                    logger.info("   %s", line.strip())
                     break
                 elif "passed" in line and line.strip().endswith("passed"):
-                    logger.info(f"   {line.strip()}")
+                    logger.info("   %s", line.strip())
                     break
 
         if result.stderr and result.returncode != 0:
-            logger.error(f"   Error output: {result.stderr[:200]}...")
+            logger.error("   Error output: %s...", result.stderr[:200])
 
     # Run end-to-end tests
     logger.info("\n📋 Running End-to-End tests...")
@@ -141,7 +147,7 @@ def run_tests():
         logger.error("❌ End-to-End tests FAILED")
         overall_success = False
         if e2e_result.stderr:
-            logger.error(f"   Error output: {e2e_result.stderr[:200]}...")
+            logger.error("   Error output: %s...", e2e_result.stderr[:200])
 
     # Print comprehensive summary
     logger.info("\n" + "=" * 60)
@@ -149,16 +155,14 @@ def run_tests():
     logger.info("=" * 60)
 
     total_categories = len(all_results)
-    passed_categories = sum(
-        1 for result in all_results.values() if result.returncode == 0
-    )
+    passed_categories = sum(1 for result in all_results.values() if result.returncode == 0)
 
     for category, result in all_results.items():
         status = "✅ PASSED" if result.returncode == 0 else "❌ FAILED"
-        logger.info(f"{category:.<30} {status}")
+        logger.info("%s", f"{category:.<30} {status}")
 
     logger.info("-" * 60)
-    logger.info(f"Categories passed: {passed_categories}/{total_categories}")
+    logger.info("Categories passed: %d/%d", passed_categories, total_categories)
 
     if overall_success:
         logger.info("🎉 ALL PHASE 2 TESTS PASSED! MARL coordination system is ready!")
@@ -174,7 +178,8 @@ def run_tests():
     else:
         failed_categories = total_categories - passed_categories
         logger.error(
-            f"⚠️  {failed_categories} test categories failed. Please review and fix."
+            "⚠️  %d test categories failed. Please review and fix.",
+            failed_categories,
         )
         logger.error("🔧 Common issues to check:")
         logger.error("   • Missing dependencies or imports")
@@ -184,8 +189,12 @@ def run_tests():
         return 1
 
 
-def print_detailed_results():
-    """Print detailed test results for debugging."""
+def print_detailed_results() -> None:
+    """Print detailed test results for debugging.
+
+    Returns:
+        None
+    """
     logger.info("\n🔍 For detailed test output, run individual test categories:")
     logger.info("   uv run pytest tests/unit_tests/test_error_handling.py -v")
     logger.info("   uv run pytest tests/unit_tests/test_fault_tolerance.py -v")

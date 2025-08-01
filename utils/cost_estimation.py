@@ -1,37 +1,31 @@
+from typing import Any, Mapping
 from utils.logging_config import get_logger
+from utils.costs import CostTracker
 
 # Get logger instance
 logger = get_logger(__name__)
 
 
 def safe_log_cost(
-    cost_tracker,
-    model_config,
-    tokens_prompt: int = 0,
-    tokens_completion: int = 0,
+    cost_tracker: CostTracker,
+    model_config: Mapping[str, Any],
+    prompt_tokens: int = 0,
+    completion_tokens: int = 0,
     raw_output: str = "",
     raw_prompt: str = "",
-):
-    """
-    Safely log model cost with fallback values and exception handling.
+) -> None:
+    """Safely log model cost with fallback values and exception handling.
 
     Args:
-        cost_tracker: CostTracker instance
-        model_config: Dict containing at least "provider" and "model_name"
-        tokens_prompt: Number of tokens in the prompt (estimated or actual)
-        tokens_completion: Number of tokens in the model output (estimated or actual)
-        raw_output: Raw output string from model
-        raw_prompt: Raw prompt string sent to model
+        cost_tracker: CostTracker instance.
+        model_config: Mapping containing at least "provider" and "model_name".
+        prompt_tokens: Number of tokens in the prompt (estimated or actual).
+        completion_tokens: Number of tokens in the model output (estimated or actual).
+        raw_output: Raw output string from model.
+        raw_prompt: Raw prompt string sent to model.
     """
     try:
-        cost_tracker.log(
-            {
-                **model_config,
-                "raw_output": raw_output,
-                "raw_prompt": raw_prompt,
-            },
-            tokens_prompt or 0,
-            tokens_completion or 0,
-        )
-    except Exception as e:
-        logger.error("⚠️ Failed to log model cost: %s", str(e), exc_info=True)
+        tracker_args = {**model_config, "raw_output": raw_output, "raw_prompt": raw_prompt}
+        cost_tracker.log(tracker_args, prompt_tokens, completion_tokens)
+    except Exception as exc:
+        logger.error("Failed to log model cost: %s", exc, exc_info=True)

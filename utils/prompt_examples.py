@@ -5,7 +5,13 @@ This module provides curated examples and techniques to improve the quality
 and difficulty of generated math problems as part of Phase 3 enhancements.
 """
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
+
+__all__ = [
+    "get_few_shot_examples",
+    "get_adversarial_techniques",
+    "build_enhanced_prompt_context",
+]
 
 # Few-shot examples organized by subject and difficulty level
 FEW_SHOT_EXAMPLES = {
@@ -149,9 +155,7 @@ DIFFICULTY_STRATEGIES = {
 }
 
 
-def get_few_shot_examples(
-    subject: str, topic: str, max_examples: int = 2
-) -> List[Dict]:
+def get_few_shot_examples(subject: str, topic: str, max_examples: int = 2) -> List[Dict[str, Any]]:
     """
     Get few-shot examples for a specific subject and topic.
 
@@ -179,11 +183,10 @@ def get_adversarial_techniques(difficulty_level: str = None) -> List[str]:
     Returns:
         List of adversarial techniques and strategies
     """
-    techniques = ADVERSARIAL_TECHNIQUES.copy()
-
-    if difficulty_level and difficulty_level in DIFFICULTY_STRATEGIES:
-        techniques.extend(DIFFICULTY_STRATEGIES[difficulty_level])
-
+    techniques = list(ADVERSARIAL_TECHNIQUES)
+    extra = DIFFICULTY_STRATEGIES.get(difficulty_level)
+    if extra:
+        techniques.extend(extra)
     return techniques
 
 
@@ -226,11 +229,9 @@ def build_enhanced_prompt_context(
         )
 
     # Add adversarial techniques
-    techniques = get_adversarial_techniques(difficulty_level)[
-        :3
-    ]  # Use top 3 techniques
+    techniques = get_adversarial_techniques(difficulty_level)[:3]  # Use top 3 techniques
     if techniques:
-        context_parts.append(f"\nUse these techniques to make the problem challenging:")
+        context_parts.append("\nUse these techniques to make the problem challenging:")
         for i, technique in enumerate(techniques, 1):
             context_parts.append(f"{i}. {technique}")
 

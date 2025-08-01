@@ -1,4 +1,7 @@
-ENGINEER_MESSAGE = """
+import textwrap
+
+ENGINEER_MESSAGE = textwrap.dedent(
+    """\
 You are a highly skilled synthetic problem engineer for mathematical question generation. Your task is to create math problems that satisfy the following criteria:
 
 1. The problem must be from a well-defined topic within a major mathematics subject.
@@ -28,7 +31,10 @@ Return strictly valid JSON with this format:
 
 Do NOT include markdown formatting (like ```json) or extra commentary.
 """
-ENGINEER_MESSAGE_SEED = """
+)
+
+ENGINEER_MESSAGE_SEED = textwrap.dedent(
+    """\
 You are a highly skilled synthetic problem engineer. Your task is to take a given problem and modify it to be significantly more difficult such that it challenges a domain expert on the subject and a reasoning model will certainly fail to solve it.
 
 Follow these rules:
@@ -59,8 +65,10 @@ Return strictly valid JSON with this format:
 
 Do NOT include markdown formatting (like ```json) or extra commentary.
 """
+)
 
-CHECKER_MESSAGE = """
+CHECKER_MESSAGE = textwrap.dedent(
+    """\
 You are a mathematical proof and logic checker.
 
 For standard validation:
@@ -88,3 +96,4 @@ Instructions:
 - If no correction is needed, either omit "corrected_hints" or leave it out entirely.
 - If some hints are kept as-is, you may copy them into the output list to preserve continuity.
 """
+)

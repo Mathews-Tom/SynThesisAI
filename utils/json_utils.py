@@ -1,11 +1,19 @@
+"""
+Module for robust JSON parsing with multi-layered repair strategy.
+"""
+
+# Standard Library
 import json
 import re
+from typing import Any, Dict, Optional
 
+# Third-Party Library
 try:
     import json_repair
 except ImportError:
     json_repair = None
 
+# SynThesisAI Modules
 from core.llm.openai_utils import call_openai_model
 from utils.exceptions import JSONParsingError
 from utils.logging_config import get_logger
@@ -14,10 +22,18 @@ from utils.logging_config import get_logger
 logger = get_logger(__name__)
 
 
-def _initial_json_cleaning(raw_text):
+def _initial_json_cleaning(raw_text: str) -> str:
     """
     Performs initial cleaning of raw text to extract and prepare JSON content.
-    This includes the same cleaning logic as the original safe_json_parse function.
+
+    Args:
+        raw_text: Raw text potentially containing JSON.
+
+    Returns:
+        Cleaned JSON text string.
+
+    Raises:
+        JSONParsingError: If no JSON block detected.
     """
     raw_text = raw_text.strip()
 
@@ -41,10 +57,15 @@ def _initial_json_cleaning(raw_text):
     return raw_text
 
 
-def _attempt_json_repair_with_library(malformed_json):
+def _attempt_json_repair_with_library(malformed_json: str) -> Optional[str]:
     """
     Attempts to repair malformed JSON using the json-repair library.
-    Returns the repaired JSON string if successful, None otherwise.
+
+    Args:
+        malformed_json: JSON string that failed to parse.
+
+    Returns:
+        Repaired JSON string if successful, otherwise None.
     """
     if json_repair is None:
         logger.debug("json-repair library not available, skipping automated repair")
@@ -58,14 +79,22 @@ def _attempt_json_repair_with_library(malformed_json):
         logger.debug("✅ Automated JSON repair successful")
         return repaired_json
     except (ValueError, json.JSONDecodeError, Exception) as e:
-        logger.debug(f"❌ Automated JSON repair failed: {e}")
+        logger.debug("❌ Automated JSON repair failed: %s", e)
         return None
 
 
-def _attempt_json_repair_with_llm(malformed_json):
+def _attempt_json_repair_with_llm(malformed_json: str) -> Optional[str]:
     """
     Attempts to repair malformed JSON using an LLM call.
-    Returns the repaired JSON string if successful, None otherwise.
+
+    Args:
+        malformed_json: JSON string that failed to parse.
+
+    Returns:
+        Repaired JSON string if successful, otherwise None.
+
+    Raises:
+        JSONParsingError: If LLM call or parsing raises unexpected errors.
     """
     try:
         logger.debug("Attempting LLM-based JSON repair")
@@ -77,9 +106,7 @@ def _attempt_json_repair_with_llm(malformed_json):
             "or alter the existing data. Only output the corrected JSON."
         )
 
-        user_prompt = (
-            f"Please fix the following JSON:\n\n```json\n{malformed_json}\n```"
-        )
+        user_prompt = f"Please fix the following JSON:\n\n```json\n{malformed_json}\n```"
 
         # Combine system and user prompts for the LLM call
         full_prompt = f"{system_prompt}\n\n{user_prompt}"
@@ -104,11 +131,11 @@ def _attempt_json_repair_with_llm(malformed_json):
             return None
 
     except Exception as e:
-        logger.debug(f"❌ LLM-based JSON repair failed: {e}")
+        logger.debug("❌ LLM-based JSON repair failed: %s", e)
         return None
 
 
-def safe_json_parse(raw_text):
+def safe_json_parse(raw_text: str) -> Dict[str, Any]:
     """
     Robust JSON parsing function with multi-layered repair strategy.
 
@@ -143,7 +170,7 @@ def safe_json_parse(raw_text):
             logger.debug("✅ Direct JSON parsing successful")
             return result
         except json.JSONDecodeError as e:
-            logger.debug(f"❌ Direct JSON parsing failed: {e}")
+            logger.debug("❌ Direct JSON parsing failed: %s", e)
             repair_attempts.append(f"Direct parse failed: {e}")
 
         # Step 3: Automated repair with json-repair library
@@ -155,7 +182,7 @@ def safe_json_parse(raw_text):
                 logger.debug("✅ JSON parsing successful after automated repair")
                 return result
             except json.JSONDecodeError as e:
-                logger.debug(f"❌ Automated repair produced invalid JSON: {e}")
+                logger.debug("❌ Automated repair produced invalid JSON: %s", e)
                 repair_attempts.append(f"json-repair library failed: {e}")
         else:
             repair_attempts.append(
@@ -171,7 +198,7 @@ def safe_json_parse(raw_text):
                 logger.debug("✅ JSON parsing successful after LLM repair")
                 return result
             except json.JSONDecodeError as e:
-                logger.debug(f"❌ LLM repair produced invalid JSON: {e}")
+                logger.debug("❌ LLM repair produced invalid JSON: %s", e)
                 repair_attempts.append(f"LLM-based repair failed: {e}")
         else:
             repair_attempts.append("LLM-based repair failed: No valid repair produced")
@@ -182,7 +209,7 @@ def safe_json_parse(raw_text):
         logger.error(f"🧹 Cleaned text: {cleaned_text[:200]}...")
         logger.error("🔧 Repair attempts:")
         for i, attempt in enumerate(repair_attempts, 1):
-            logger.error(f"   {i}. {attempt}")
+            logger.error("   %d. %s", i, attempt)
 
         raise JSONParsingError(
             f"All JSON parsing and repair attempts failed. "

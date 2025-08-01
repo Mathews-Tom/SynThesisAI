@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 """Test script with the final parsing function."""
 
+# Standard Library
+import logging
 import re
+from typing import Any, Dict
+
+logger = logging.getLogger(__name__)
 
 
-def parse_test_results(output: str) -> dict:
+def parse_test_results(output: str) -> Dict[str, Any]:
     """
     Parse test output to extract pass/fail statistics.
 
@@ -12,9 +17,18 @@ def parse_test_results(output: str) -> dict:
         output: Test output string
 
     Returns:
-        Dictionary with test statistics
+        Dictionary with test statistics:
+            {
+                "total_tests": int,
+                "passed_tests": int,
+                "failed_tests": int,
+                "pass_percentage": float
+            }
+
+    Raises:
+        None
     """
-    stats = {
+    stats: Dict[str, Any] = {
         "total_tests": 0,
         "passed_tests": 0,
         "failed_tests": 0,
@@ -24,78 +38,73 @@ def parse_test_results(output: str) -> dict:
     total_passed = 0
     total_failed = 0
 
-    print("=== PARSING DEBUG ===")
-    print(f"Input length: {len(output)} chars")
+    logger.debug("=== PARSING DEBUG ===")
+    logger.debug("Input length: %d chars", len(output))
 
-    # Look for pytest summary lines and extract numbers
     # Pattern 1: "X failed, Y passed, Z errors in T.Ts" or "X failed, Y passed in T.Ts"
     failed_passed_pattern = r"(\d+)\s+failed,\s*(\d+)\s+passed"
     matches = re.findall(failed_passed_pattern, output)
-    print(f"Failed-Passed pattern matches: {matches}")
-    for match in matches:
-        failed, passed = int(match[0]), int(match[1])
-        print(f"  -> Failed: {failed}, Passed: {passed}")
+    logger.debug("Failed-Passed pattern matches: %s", matches)
+    for failed_str, passed_str in matches:
+        failed = int(failed_str)
+        passed = int(passed_str)
+        logger.debug("  -> Failed: %d, Passed: %d", failed, passed)
         total_failed += failed
         total_passed += passed
 
     # Pattern 2: "Y passed, X failed in T.Ts"
     passed_failed_pattern = r"(\d+)\s+passed,\s*(\d+)\s+failed"
     matches = re.findall(passed_failed_pattern, output)
-    print(f"Passed-Failed pattern matches: {matches}")
-    for match in matches:
-        passed, failed = int(match[0]), int(match[1])
-        print(f"  -> Passed: {passed}, Failed: {failed}")
+    logger.debug("Passed-Failed pattern matches: %s", matches)
+    for passed_str, failed_str in matches:
+        passed = int(passed_str)
+        failed = int(failed_str)
+        logger.debug("  -> Passed: %d, Failed: %d", passed, failed)
         total_passed += passed
         total_failed += failed
 
     # Pattern 3: "Y passed in T.Ts" (only passed, no failures)
-    # Look for lines with only "passed" and no "failed"
-    print("Checking for passed-only lines:")
-    for line in output.split("\n"):
+    logger.debug("Checking for passed-only lines")
+    for line in output.splitlines():
         line = line.strip()
-        if (
-            "passed" in line
-            and "failed" not in line
-            and "in" in line
-            and "s ==" in line
-        ):
-            # Try to extract just the passed count
+        if "passed" in line and "failed" not in line and "in" in line and "s ==" in line:
             passed_match = re.search(r"(\d+)\s+passed\s+in\s+[\d.]+s", line)
             if passed_match:
                 passed = int(passed_match.group(1))
-                print(f"  -> Passed only: {passed} (from line: {line})")
+                logger.debug("  -> Passed only: %d (from line: %s)", passed, line)
                 total_passed += passed
 
-    print(f"Total accumulated - Passed: {total_passed}, Failed: {total_failed}")
+    logger.debug("Total accumulated - Passed: %d, Failed: %d", total_passed, total_failed)
 
-    # If we found individual test results, use them
     if total_passed > 0 or total_failed > 0:
         stats["passed_tests"] = total_passed
         stats["failed_tests"] = total_failed
         stats["total_tests"] = total_passed + total_failed
     else:
-        # Fallback: look for category-based results like "Categories passed: 6/8"
         category_pattern = r"Categories passed:\s*(\d+)/(\d+)"
         category_match = re.search(category_pattern, output)
-
         if category_match:
             passed_categories = int(category_match.group(1))
             total_categories = int(category_match.group(2))
-            print(f"Category match: {passed_categories}/{total_categories}")
+            logger.debug("Category match: %d/%d", passed_categories, total_categories)
             stats["passed_tests"] = passed_categories
             stats["total_tests"] = total_categories
             stats["failed_tests"] = total_categories - passed_categories
 
-    # Calculate percentage
     if stats["total_tests"] > 0:
         stats["pass_percentage"] = (stats["passed_tests"] / stats["total_tests"]) * 100
 
-    print(f"Final stats: {stats}")
+    logger.debug("Final stats: %s", stats)
+
     return stats
 
 
-# Test with Phase 1 output
-PHASE1_OUTPUT = """
+def _main() -> None:
+    """
+    Execute example parsing with sample Phase 1 and Phase 2 outputs.
+    """
+    # Test with Phase 1 output
+    phase1_output = """
 cachedir: .pytest_cache
 rootdir: /Users/druk/WorkSpace/AetherForge/SynThesisAI
 configfile: pytest.ini
@@ -105,12 +114,12 @@ collecting ... collected 1 item
 tests/end_to_end/test_phase1_comprehensive.py::TestPhase1QualityAssurance::test_quality_metrics_calculation PASSED [100%]
 ============================== 1 passed in 1.13s ===============================
 """
+    logger.info("=== PHASE 1 TEST ===")
+    result1 = parse_test_results(phase1_output)
+    logger.info("Phase 1 Result: %s", result1)
 
-print("=== PHASE 1 TEST ===")
-result1 = parse_test_results(PHASE1_OUTPUT)
-
-# Test with Phase 2 output (updated with recent output)
-PHASE2_OUTPUT = """
+    # Test with Phase 2 output (updated with recent output)
+    phase2_output = """
 🚀 Running Phase 2 MARL coordination tests...
 
 📋 Running MARL Agents tests...
@@ -158,6 +167,11 @@ End-to-End.................... ❌ FAILED
 ------------------------------------------------------------
 Categories passed: 4/9
 """
+    logger.info("\n=== PHASE 2 TEST ===")
+    result2 = parse_test_results(phase2_output)
+    logger.info("Phase 2 Result: %s", result2)
 
-print("\n=== PHASE 2 TEST ===")
-result2 = parse_test_results(PHASE2_OUTPUT)
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
+    _main()
