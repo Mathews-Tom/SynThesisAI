@@ -5,13 +5,15 @@ This module implements continuous learning workflows for real-time adaptation
 of multi-agent reinforcement learning systems.
 """
 
+# Standard Library
 import asyncio
-import logging
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
+# Third-Party Library
 import numpy as np
 
+# SynThesisAI Modules
 from core.marl.agents.base_agent import BaseRLAgent
 from core.marl.learning.shared_experience import SharedExperienceManager
 from utils.logging_config import get_logger
@@ -81,7 +83,7 @@ class PerformanceTracker:
         reward: float,
         loss: Optional[float] = None,
         additional_metrics: Optional[Dict[str, float]] = None,
-    ):
+    ) -> None:
         """
         Record performance metrics.
 
@@ -191,7 +193,7 @@ class PerformanceTracker:
 
         return False
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset performance tracking."""
         self.performance_history.clear()
         self.reward_history.clear()
@@ -225,7 +227,7 @@ class AdaptiveLearningRate:
         self.adaptation_factor = adaptation_factor
         self.logger = get_logger(__name__ + ".AdaptiveLearningRate")
 
-    def update_rate(self, performance_improving: bool = True):
+    def update_rate(self, performance_improving: bool = True) -> None:
         """
         Update learning rate based on performance.
 
@@ -252,7 +254,7 @@ class AdaptiveLearningRate:
         """Get current learning rate."""
         return self.current_rate
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset to initial learning rate."""
         self.current_rate = self.initial_rate
         self.logger.debug("Learning rate reset to %.6f", self.current_rate)
@@ -305,7 +307,7 @@ class ContinuousLearningManager:
 
         self.logger.info("Initialized ContinuousLearningManager")
 
-    def register_agent(self, agent_id: str, agent: BaseRLAgent):
+    def register_agent(self, agent_id: str, agent: BaseRLAgent) -> None:
         """
         Register an agent for continuous learning.
 
@@ -329,7 +331,7 @@ class ContinuousLearningManager:
 
         self.logger.info("Registered agent for continuous learning: %s", agent_id)
 
-    def start_continuous_learning(self):
+    def start_continuous_learning(self) -> None:
         """Start the continuous learning process."""
         if self.learning_active:
             self.logger.warning("Continuous learning is already active")
@@ -339,7 +341,7 @@ class ContinuousLearningManager:
         self.learning_task = asyncio.create_task(self._learning_loop())
         self.logger.info("Started continuous learning process")
 
-    async def stop_continuous_learning(self):
+    async def stop_continuous_learning(self) -> None:
         """Stop the continuous learning process."""
         if not self.learning_active:
             return
@@ -355,7 +357,7 @@ class ContinuousLearningManager:
 
         self.logger.info("Stopped continuous learning process")
 
-    async def _learning_loop(self):
+    async def _learning_loop(self) -> None:
         """Main continuous learning loop."""
         self.logger.info("Starting continuous learning loop")
 
@@ -378,7 +380,7 @@ class ContinuousLearningManager:
         except Exception as e:
             self.logger.error("Error in continuous learning loop: %s", str(e))
 
-    async def _perform_learning_update(self):
+    async def _perform_learning_update(self) -> None:
         """Perform learning updates for all registered agents."""
         self.logger.debug("Performing continuous learning update")
         self.learning_stats["total_learning_updates"] += 1
@@ -526,7 +528,7 @@ class ContinuousLearningManager:
         agent_id: str,
         reward: float,
         additional_metrics: Optional[Dict[str, float]] = None,
-    ):
+    ) -> None:
         """
         Record performance for an agent.
 
@@ -569,7 +571,7 @@ class ContinuousLearningManager:
             },
         }
 
-    def reset_learning_progress(self):
+    def reset_learning_progress(self) -> None:
         """Reset learning progress for all agents."""
         for tracker in self.performance_trackers.values():
             tracker.reset()
@@ -588,7 +590,7 @@ class ContinuousLearningManager:
 
         self.logger.info("Reset learning progress for all agents")
 
-    async def shutdown(self):
+    async def shutdown(self) -> None:
         """Gracefully shutdown the continuous learning manager."""
         self.logger.info("Shutting down continuous learning manager")
         await self.stop_continuous_learning()

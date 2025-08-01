@@ -6,6 +6,7 @@ of the MARL system, including agent-specific metrics, coordination metrics,
 and system resource metrics.
 """
 
+# Standard Library
 import asyncio
 import time
 from collections import defaultdict, deque
@@ -13,10 +14,12 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
+# Third-Party Library
 import numpy as np
 import psutil
 import torch
 
+# SynThesisAI Modules
 from utils.logging_config import get_logger
 
 
@@ -334,9 +337,9 @@ class MetricsCollector:
             "max": np.max(numeric_values),
             "median": np.median(numeric_values),
             "latest": numeric_values[-1],
-            "time_span_seconds": metrics[-1].timestamp - metrics[0].timestamp
-            if len(metrics) > 1
-            else 0,
+            "time_span_seconds": (
+                metrics[-1].timestamp - metrics[0].timestamp if len(metrics) > 1 else 0
+            ),
         }
 
     def add_event_handler(self, metric_name: str, handler: Callable):
@@ -440,14 +443,10 @@ class MetricsCollector:
 
     def _collect_coordination_success_rate(self) -> Optional[float]:
         """Collect coordination success rate from recent events."""
-        # This would typically interface with the performance monitor
-        # For now, return a placeholder
         return None
 
     def _collect_communication_overhead(self) -> Optional[float]:
         """Collect communication overhead metrics."""
-        # This would typically interface with the communication protocol
-        # For now, return a placeholder
         return None
 
     def get_all_metrics_summary(self) -> Dict[str, Any]:

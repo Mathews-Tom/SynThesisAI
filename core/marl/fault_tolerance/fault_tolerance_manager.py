@@ -7,15 +7,16 @@ agent monitoring, deadlock detection, learning monitoring, and
 memory management.
 """
 
+# Standard Library
 import asyncio
 from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, List, Optional
 
+# SynThesisAI Modules
 from utils.logging_config import get_logger
-
 from .agent_monitor import AgentHealthStatus, AgentMonitor
-from .deadlock_detector import DeadlockDetector, DeadlockType
-from .learning_monitor import LearningMonitor, LearningStatus
+from .deadlock_detector import DeadlockDetector
+from .learning_monitor import LearningMonitor
 from .memory_manager import MemoryManager, MemoryStatus
 
 
@@ -129,9 +130,7 @@ class FaultToleranceManager:
 
         self.logger.info("Fault tolerance monitoring stopped")
 
-    def register_agent(
-        self, agent_id: str, agent_component: Optional[Any] = None
-    ) -> None:
+    def register_agent(self, agent_id: str, agent_component: Optional[Any] = None) -> None:
         """Register an agent for fault tolerance monitoring."""
         if agent_id not in self.registered_agents:
             self.registered_agents.append(agent_id)
@@ -142,9 +141,7 @@ class FaultToleranceManager:
 
             # Register agent component with memory manager if provided
             if agent_component:
-                self.memory_manager.register_component(
-                    f"agent_{agent_id}", agent_component
-                )
+                self.memory_manager.register_component(f"agent_{agent_id}", agent_component)
 
             self.logger.info("Registered agent for fault tolerance: %s", agent_id)
 
@@ -170,9 +167,7 @@ class FaultToleranceManager:
             "type": "agent_failure",
             "agent_id": agent_id,
             "timestamp": datetime.now(),
-            "details": metrics.to_dict()
-            if hasattr(metrics, "to_dict")
-            else str(metrics),
+            "details": metrics.to_dict() if hasattr(metrics, "to_dict") else str(metrics),
         }
 
         self.fault_events.append(fault_event)
@@ -189,9 +184,7 @@ class FaultToleranceManager:
             "type": "agent_recovery",
             "agent_id": agent_id,
             "timestamp": datetime.now(),
-            "details": metrics.to_dict()
-            if hasattr(metrics, "to_dict")
-            else str(metrics),
+            "details": metrics.to_dict() if hasattr(metrics, "to_dict") else str(metrics),
         }
 
         self.recovery_actions.append(recovery_event)
@@ -292,9 +285,7 @@ class FaultToleranceManager:
                 divergence_event.agent_id, success=False, response_time=1.0
             )
 
-    async def _handle_learning_correction(
-        self, divergence_event: Any, strategy: str
-    ) -> None:
+    async def _handle_learning_correction(self, divergence_event: Any, strategy: str) -> None:
         """Handle learning correction."""
         self.logger.info(
             "Learning correction applied for agent %s: %s",
@@ -363,9 +354,7 @@ class FaultToleranceManager:
             agents_to_pause = healthy_agents[::2]  # Every other agent
 
             for agent_id in agents_to_pause:
-                self.logger.warning(
-                    "Temporarily pausing learning for agent: %s", agent_id
-                )
+                self.logger.warning("Temporarily pausing learning for agent: %s", agent_id)
                 # This would typically call a method on the actual agent
                 # For now, we'll just record the action
 
@@ -380,9 +369,7 @@ class FaultToleranceManager:
 
     async def _initiate_agent_recovery(self, agent_id: str, failure_type: str) -> None:
         """Initiate agent recovery process."""
-        self.logger.info(
-            "Initiating recovery for agent %s (failure: %s)", agent_id, failure_type
-        )
+        self.logger.info("Initiating recovery for agent %s (failure: %s)", agent_id, failure_type)
 
         recovery_strategies = {
             "agent_failure": self._recover_failed_agent,
@@ -390,9 +377,7 @@ class FaultToleranceManager:
             "memory_issue": self._recover_memory_agent,
         }
 
-        recovery_func = recovery_strategies.get(
-            failure_type, self._recover_failed_agent
-        )
+        recovery_func = recovery_strategies.get(failure_type, self._recover_failed_agent)
 
         try:
             success = await recovery_func(agent_id)
@@ -409,9 +394,7 @@ class FaultToleranceManager:
             await self._notify_recovery_callbacks(recovery_event)
 
         except Exception as e:
-            self.logger.error(
-                "Error during recovery for agent %s: %s", agent_id, str(e)
-            )
+            self.logger.error("Error during recovery for agent %s: %s", agent_id, str(e))
 
     async def _recover_failed_agent(self, agent_id: str) -> bool:
         """Recover a failed agent."""
@@ -448,9 +431,7 @@ class FaultToleranceManager:
             return True
 
         except Exception as e:
-            self.logger.error(
-                "Failed to recover learning for agent %s: %s", agent_id, str(e)
-            )
+            self.logger.error("Failed to recover learning for agent %s: %s", agent_id, str(e))
             return False
 
     async def _recover_memory_agent(self, agent_id: str) -> bool:
@@ -466,9 +447,7 @@ class FaultToleranceManager:
             return True
 
         except Exception as e:
-            self.logger.error(
-                "Failed to recover memory for agent %s: %s", agent_id, str(e)
-            )
+            self.logger.error("Failed to recover memory for agent %s: %s", agent_id, str(e))
             return False
 
     async def _check_system_health(self) -> None:
@@ -509,9 +488,7 @@ class FaultToleranceManager:
 
     # Public interface methods
 
-    def record_agent_action(
-        self, agent_id: str, success: bool, response_time: float = 0.0
-    ) -> None:
+    def record_agent_action(self, agent_id: str, success: bool, response_time: float = 0.0) -> None:
         """Record an agent action for monitoring."""
         # Auto-register agent if not already registered
         if agent_id not in self.registered_agents:
@@ -532,9 +509,7 @@ class FaultToleranceManager:
         if agent_id not in self.registered_agents:
             self.register_agent(agent_id)
 
-        self.learning_monitor.update_agent_learning(
-            agent_id, episode, reward, loss, q_values
-        )
+        self.learning_monitor.update_agent_learning(agent_id, episode, reward, loss, q_values)
 
     def record_coordination_wait(
         self,
@@ -544,9 +519,7 @@ class FaultToleranceManager:
         timeout: Optional[float] = None,
     ) -> None:
         """Record that an agent is waiting for coordination."""
-        self.deadlock_detector.record_agent_wait(
-            agent_id, waiting_for, wait_type, timeout
-        )
+        self.deadlock_detector.record_agent_wait(agent_id, waiting_for, wait_type, timeout)
 
     def clear_coordination_wait(self, agent_id: str) -> None:
         """Clear an agent's coordination wait."""
@@ -582,9 +555,7 @@ class FaultToleranceManager:
         else:
             health_scores.append(1.0)  # No deadlocks is good
 
-        overall_health_score = (
-            sum(health_scores) / len(health_scores) if health_scores else 0.0
-        )
+        overall_health_score = sum(health_scores) / len(health_scores) if health_scores else 0.0
 
         # Determine overall status
         if overall_health_score >= 0.8:
@@ -624,19 +595,13 @@ class FaultToleranceManager:
         """Get recent fault events."""
         cutoff_time = datetime.now() - timedelta(hours=hours)
 
-        return [
-            event for event in self.fault_events if event["timestamp"] >= cutoff_time
-        ]
+        return [event for event in self.fault_events if event["timestamp"] >= cutoff_time]
 
     def get_recovery_actions(self, hours: int = 24) -> List[Dict[str, Any]]:
         """Get recent recovery actions."""
         cutoff_time = datetime.now() - timedelta(hours=hours)
 
-        return [
-            action
-            for action in self.recovery_actions
-            if action["timestamp"] >= cutoff_time
-        ]
+        return [action for action in self.recovery_actions if action["timestamp"] >= cutoff_time]
 
     def add_fault_callback(self, callback: Callable) -> None:
         """Add fault detection callback."""

@@ -1,24 +1,25 @@
 """
-MARL-Specific Exception Classes
+MARL-Specific Exception Classes.
 
 This module defines custom exception classes for multi-agent reinforcement learning
 operations, following the development standards for proper exception handling
 with specific exception types and explicit exception chaining.
 """
 
-from typing import Any, Dict, Optional
+# Standard Library
+from typing import Any, Dict, List, Optional
 
 
 class MARLError(Exception):
     """Base exception class for MARL-related errors."""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None) -> None:
         """
         Initialize MARL error.
 
         Args:
-            message: Error message
-            details: Additional error details and context
+            message: Error message.
+            details: Additional error details and context.
         """
         super().__init__(message)
         self.details = details or {}
@@ -33,15 +34,15 @@ class CoordinationError(MARLError):
         coordination_type: str = "unknown",
         agent_states: Optional[Dict[str, Any]] = None,
         details: Optional[Dict[str, Any]] = None,
-    ):
+    ) -> None:
         """
         Initialize coordination error.
 
         Args:
-            message: Error message
-            coordination_type: Type of coordination that failed
-            agent_states: Current states of agents involved
-            details: Additional error details
+            message: Error message.
+            coordination_type: Type of coordination that failed.
+            agent_states: Current states of agents involved.
+            details: Additional error details.
         """
         super().__init__(message, details)
         self.coordination_type = coordination_type
@@ -58,16 +59,16 @@ class AgentFailureError(MARLError):
         failure_type: str = "unknown",
         agent_state: Optional[Dict[str, Any]] = None,
         details: Optional[Dict[str, Any]] = None,
-    ):
+    ) -> None:
         """
         Initialize agent failure error.
 
         Args:
-            message: Error message
-            agent_id: ID of the failed agent
-            failure_type: Type of failure (e.g., 'policy_divergence', 'memory_overflow')
-            agent_state: Current state of the failed agent
-            details: Additional error details
+            message: Error message.
+            agent_id: ID of the failed agent.
+            failure_type: Type of failure (e.g., 'policy_divergence').
+            agent_state: Current state of the failed agent.
+            details: Additional error details.
         """
         super().__init__(message, details)
         self.agent_id = agent_id
@@ -84,15 +85,15 @@ class OptimizationFailureError(MARLError):
         optimizer_type: str = "unknown",
         optimization_params: Optional[Dict[str, Any]] = None,
         details: Optional[Dict[str, Any]] = None,
-    ):
+    ) -> None:
         """
         Initialize optimization failure error.
 
         Args:
-            message: Error message
-            optimizer_type: Type of optimizer that failed
-            optimization_params: Parameters used during optimization
-            details: Additional error details including performance metrics
+            message: Error message.
+            optimizer_type: Type of optimizer that failed.
+            optimization_params: Parameters used during optimization.
+            details: Additional error details.
         """
         super().__init__(message, details)
         self.optimizer_type = optimizer_type
@@ -100,7 +101,7 @@ class OptimizationFailureError(MARLError):
 
 
 class LearningDivergenceError(MARLError):
-    """Exception raised when agent learning diverges or becomes unstable."""
+    """Exception raised when agent learning diverges."""
 
     def __init__(
         self,
@@ -108,15 +109,15 @@ class LearningDivergenceError(MARLError):
         agent_id: str,
         divergence_metrics: Optional[Dict[str, float]] = None,
         details: Optional[Dict[str, Any]] = None,
-    ):
+    ) -> None:
         """
         Initialize learning divergence error.
 
         Args:
-            message: Error message
-            agent_id: ID of the agent with divergent learning
-            divergence_metrics: Metrics indicating divergence (loss, reward variance, etc.)
-            details: Additional error details
+            message: Error message.
+            agent_id: ID of the agent with divergent learning.
+            divergence_metrics: Metrics indicating divergence.
+            details: Additional error details.
         """
         super().__init__(message, details)
         self.agent_id = agent_id
@@ -132,15 +133,15 @@ class ConsensusTimeoutError(CoordinationError):
         timeout_duration: float,
         partial_consensus: Optional[Dict[str, Any]] = None,
         details: Optional[Dict[str, Any]] = None,
-    ):
+    ) -> None:
         """
         Initialize consensus timeout error.
 
         Args:
-            message: Error message
-            timeout_duration: Duration of timeout in seconds
-            partial_consensus: Partial consensus reached before timeout
-            details: Additional error details
+            message: Error message.
+            timeout_duration: Duration of timeout in seconds.
+            partial_consensus: Partial consensus reached before timeout.
+            details: Additional error details.
         """
         super().__init__(message, "consensus_timeout", details=details)
         self.timeout_duration = timeout_duration
@@ -157,16 +158,16 @@ class CommunicationError(MARLError):
         receiver_id: str,
         message_type: str = "unknown",
         details: Optional[Dict[str, Any]] = None,
-    ):
+    ) -> None:
         """
         Initialize communication error.
 
         Args:
-            message: Error message
-            sender_id: ID of the sending agent
-            receiver_id: ID of the receiving agent
-            message_type: Type of message that failed
-            details: Additional error details
+            message: Error message.
+            sender_id: ID of the sending agent.
+            receiver_id: ID of the receiving agent.
+            message_type: Type of message that failed.
+            details: Additional error details.
         """
         super().__init__(message, details)
         self.sender_id = sender_id
@@ -184,16 +185,16 @@ class ExperienceBufferError(MARLError):
         buffer_size: Optional[int] = None,
         operation: str = "unknown",
         details: Optional[Dict[str, Any]] = None,
-    ):
+    ) -> None:
         """
         Initialize experience buffer error.
 
         Args:
-            message: Error message
-            buffer_type: Type of buffer (shared, agent-specific, etc.)
-            buffer_size: Current buffer size
-            operation: Operation that failed (add, sample, etc.)
-            details: Additional error details
+            message: Error message.
+            buffer_type: Type of buffer (e.g., 'shared').
+            buffer_size: Current buffer size.
+            operation: Operation that failed (e.g., 'add', 'sample').
+            details: Additional error details.
         """
         super().__init__(message, details)
         self.buffer_type = buffer_type
@@ -211,16 +212,16 @@ class PolicyNetworkError(MARLError):
         network_type: str = "q_network",
         operation: str = "unknown",
         details: Optional[Dict[str, Any]] = None,
-    ):
+    ) -> None:
         """
         Initialize policy network error.
 
         Args:
-            message: Error message
-            agent_id: ID of the agent whose network failed
-            network_type: Type of network (q_network, target_network, etc.)
-            operation: Operation that failed (forward, backward, update, etc.)
-            details: Additional error details
+            message: Error message.
+            agent_id: ID of the agent whose network failed.
+            network_type: Type of network (e.g., 'q_network').
+            operation: Operation that failed (e.g., 'forward').
+            details: Additional error details.
         """
         super().__init__(message, details)
         self.agent_id = agent_id
@@ -235,19 +236,19 @@ class CoordinationFailureError(CoordinationError):
         self,
         message: str,
         coordination_type: str = "policy_coordination",
-        agents_involved: Optional[list] = None,
+        agents_involved: Optional[List[str]] = None,
         failure_context: Optional[Dict[str, Any]] = None,
         details: Optional[Dict[str, Any]] = None,
-    ):
+    ) -> None:
         """
         Initialize coordination failure error.
 
         Args:
-            message: Error message
-            coordination_type: Type of coordination that failed
-            agents_involved: List of agents involved in failed coordination
-            failure_context: Context information about the failure
-            details: Additional error details
+            message: Error message.
+            coordination_type: Type of coordination that failed.
+            agents_involved: List of agents involved in failed coordination.
+            failure_context: Context information about the failure.
+            details: Additional error details.
         """
         super().__init__(message, coordination_type, details=details)
         self.agents_involved = agents_involved or []
@@ -260,20 +261,20 @@ class ConflictResolutionError(MARLError):
     def __init__(
         self,
         message: str,
-        conflict_types: Optional[list] = None,
-        agents_involved: Optional[list] = None,
+        conflict_types: Optional[List[str]] = None,
+        agents_involved: Optional[List[str]] = None,
         resolution_context: Optional[Dict[str, Any]] = None,
         details: Optional[Dict[str, Any]] = None,
-    ):
+    ) -> None:
         """
         Initialize conflict resolution error.
 
         Args:
-            message: Error message
-            conflict_types: Types of conflicts that couldn't be resolved
-            agents_involved: List of agents involved in the conflict
-            resolution_context: Context information about the resolution attempt
-            details: Additional error details
+            message: Error message.
+            conflict_types: Types of conflicts that couldn't be resolved.
+            agents_involved: List of agents involved in the conflict.
+            resolution_context: Context information about the resolution attempt.
+            details: Additional error details.
         """
         super().__init__(message, details)
         self.conflict_types = conflict_types or []
@@ -291,16 +292,16 @@ class ConsensusFailureError(MARLError):
         proposals_count: int = 0,
         failure_context: Optional[Dict[str, Any]] = None,
         details: Optional[Dict[str, Any]] = None,
-    ):
+    ) -> None:
         """
         Initialize consensus failure error.
 
         Args:
-            message: Error message
-            consensus_strategy: Strategy used for consensus building
-            proposals_count: Number of proposals involved
-            failure_context: Context information about the failure
-            details: Additional error details
+            message: Error message.
+            consensus_strategy: Strategy used for consensus building.
+            proposals_count: Number of proposals involved.
+            failure_context: Context information about the failure.
+            details: Additional error details.
         """
         super().__init__(message, details)
         self.consensus_strategy = consensus_strategy

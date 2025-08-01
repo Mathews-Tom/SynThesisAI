@@ -6,16 +6,19 @@ Reinforcement Learning coordination system, tracking coordination success rates,
 agent performance, learning progress, and system efficiency metrics.
 """
 
+# Standard Library
 import asyncio
 import time
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Union
 
+# Third-Party Library
 import numpy as np
 
+# SynThesisAI Modules
 from utils.logging_config import get_logger
 
 
@@ -458,9 +461,9 @@ class MARLPerformanceMonitor:
                 "improving": trend < 0,  # For loss metrics, decreasing is improving
             },
             "latest_value": values[-1],
-            "time_span_seconds": timestamps[-1] - timestamps[0]
-            if len(timestamps) > 1
-            else 0,
+            "time_span_seconds": (
+                timestamps[-1] - timestamps[0] if len(timestamps) > 1 else 0
+            ),
         }
 
     def check_alert_conditions(self) -> List[Dict[str, Any]]:

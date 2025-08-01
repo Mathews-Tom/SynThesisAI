@@ -1,17 +1,17 @@
-"""
-Agent Monitoring and Failure Detection.
+"""Agent Monitoring and Failure Detection.
 
 This module provides monitoring capabilities for detecting agent failures
 and health issues in the multi-agent reinforcement learning system.
 """
 
+# Standard Library
 import asyncio
-import time
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
+# SynThesisAI Modules
 from utils.logging_config import get_logger
 
 
@@ -27,7 +27,26 @@ class AgentHealthStatus(Enum):
 
 @dataclass
 class AgentHealthMetrics:
-    """Agent health metrics."""
+    """Agent health metrics.
+
+    Attributes:
+        agent_id: The unique identifier for the agent.
+        status: The current health status of the agent.
+        last_heartbeat: The timestamp of the last received heartbeat.
+        response_time: The average response time of the agent.
+        error_rate: The rate of errors encountered by the agent.
+        memory_usage: The memory usage of the agent.
+        cpu_usage: The CPU usage of the agent.
+        action_success_rate: The success rate of the agent's actions.
+        learning_progress: The learning progress of the agent.
+        total_actions: The total number of actions performed by the agent.
+        successful_actions: The number of successful actions.
+        failed_actions: The number of failed actions.
+        consecutive_failures: The number of consecutive failures.
+        last_action_time: The timestamp of the last action.
+        last_error_time: The timestamp of the last error.
+        status_change_time: The timestamp of the last status change.
+    """
 
     agent_id: str
     status: AgentHealthStatus = AgentHealthStatus.UNKNOWN
@@ -51,7 +70,12 @@ class AgentHealthMetrics:
     status_change_time: Optional[datetime] = field(default_factory=datetime.now)
 
     def update_action_result(self, success: bool, response_time: float = 0.0) -> None:
-        """Update action result metrics."""
+        """Update action result metrics.
+
+        Args:
+            success: Whether the action was successful.
+            response_time: The response time for the action.
+        """
         self.total_actions += 1
         self.last_action_time = datetime.now()
         self.response_time = response_time
@@ -73,12 +97,21 @@ class AgentHealthMetrics:
             self.error_rate = self.failed_actions / self.total_actions
 
     def update_resource_usage(self, memory_usage: float, cpu_usage: float) -> None:
-        """Update resource usage metrics."""
+        """Update resource usage metrics.
+
+        Args:
+            memory_usage: The current memory usage.
+            cpu_usage: The current CPU usage.
+        """
         self.memory_usage = memory_usage
         self.cpu_usage = cpu_usage
 
     def update_learning_progress(self, progress: float) -> None:
-        """Update learning progress."""
+        """Update learning progress.
+
+        Args:
+            progress: The learning progress value.
+        """
         self.learning_progress = progress
 
     def record_heartbeat(self) -> None:
@@ -86,7 +119,11 @@ class AgentHealthMetrics:
         self.last_heartbeat = datetime.now()
 
     def get_health_score(self) -> float:
-        """Calculate overall health score (0.0 to 1.0)."""
+        """Calculate overall health score (0.0 to 1.0).
+
+        Returns:
+            The calculated health score.
+        """
         score = 0.0
         factors = 0
 
@@ -115,11 +152,17 @@ class AgentHealthMetrics:
         # Normalize by actual factors
         if factors > 0:
             return score / factors
-        else:
-            return 0.5  # Default neutral score
+        return 0.5  # Default neutral score
 
     def is_responsive(self, timeout_seconds: float = 30.0) -> bool:
-        """Check if agent is responsive based on heartbeat."""
+        """Check if agent is responsive based on heartbeat.
+
+        Args:
+            timeout_seconds: The timeout in seconds.
+
+        Returns:
+            True if the agent is responsive, False otherwise.
+        """
         if not self.last_heartbeat:
             return False
 
@@ -127,13 +170,15 @@ class AgentHealthMetrics:
         return time_since_heartbeat.total_seconds() <= timeout_seconds
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert metrics to dictionary."""
+        """Convert metrics to dictionary.
+
+        Returns:
+            A dictionary representation of the metrics.
+        """
         return {
             "agent_id": self.agent_id,
             "status": self.status.value,
-            "last_heartbeat": self.last_heartbeat.isoformat()
-            if self.last_heartbeat
-            else None,
+            "last_heartbeat": (self.last_heartbeat.isoformat() if self.last_heartbeat else None),
             "response_time": self.response_time,
             "error_rate": self.error_rate,
             "memory_usage": self.memory_usage,
@@ -150,8 +195,7 @@ class AgentHealthMetrics:
 
 
 class AgentMonitor:
-    """
-    Monitors agent health and detects failures.
+    """Monitors agent health and detects failures.
 
     Provides comprehensive monitoring of agent status, performance,
     and health metrics with configurable thresholds and alerts.
@@ -166,16 +210,15 @@ class AgentMonitor:
         unhealthy_threshold: float = 0.4,
         enable_auto_recovery: bool = True,
     ):
-        """
-        Initialize agent monitor.
+        """Initialize agent monitor.
 
         Args:
-            heartbeat_interval: Interval between heartbeat checks (seconds)
-            response_timeout: Timeout for agent responsiveness (seconds)
-            failure_threshold: Consecutive failures before marking as failed
-            degraded_threshold: Health score threshold for degraded status
-            unhealthy_threshold: Health score threshold for unhealthy status
-            enable_auto_recovery: Enable automatic recovery attempts
+            heartbeat_interval: Interval between heartbeat checks (seconds).
+            response_timeout: Timeout for agent responsiveness (seconds).
+            failure_threshold: Consecutive failures before marking as failed.
+            degraded_threshold: Health score threshold for degraded status.
+            unhealthy_threshold: Health score threshold for unhealthy status.
+            enable_auto_recovery: Enable automatic recovery attempts.
         """
         self.logger = get_logger(__name__)
 
@@ -203,21 +246,26 @@ class AgentMonitor:
         self.logger.info("Agent monitor initialized")
 
     def register_agent(self, agent_id: str) -> None:
-        """Register an agent for monitoring."""
+        """Register an agent for monitoring.
+
+        Args:
+            agent_id: The ID of the agent to register.
+        """
         if agent_id not in self.agent_metrics:
             self.agent_metrics[agent_id] = AgentHealthMetrics(agent_id=agent_id)
             self.monitored_agents.append(agent_id)
-
             self.logger.info("Registered agent for monitoring: %s", agent_id)
 
     def unregister_agent(self, agent_id: str) -> None:
-        """Unregister an agent from monitoring."""
+        """Unregister an agent from monitoring.
+
+        Args:
+            agent_id: The ID of the agent to unregister.
+        """
         if agent_id in self.agent_metrics:
             del self.agent_metrics[agent_id]
-
         if agent_id in self.monitored_agents:
             self.monitored_agents.remove(agent_id)
-
         self.logger.info("Unregistered agent from monitoring: %s", agent_id)
 
     async def start_monitoring(self) -> None:
@@ -228,7 +276,6 @@ class AgentMonitor:
 
         self.is_monitoring = True
         self.monitoring_task = asyncio.create_task(self._monitoring_loop())
-
         self.logger.info("Agent monitoring started")
 
     async def stop_monitoring(self) -> None:
@@ -237,14 +284,12 @@ class AgentMonitor:
             return
 
         self.is_monitoring = False
-
         if self.monitoring_task:
             self.monitoring_task.cancel()
             try:
                 await self.monitoring_task
             except asyncio.CancelledError:
                 pass
-
         self.logger.info("Agent monitoring stopped")
 
     async def _monitoring_loop(self) -> None:
@@ -253,11 +298,10 @@ class AgentMonitor:
             try:
                 await self._check_all_agents()
                 await asyncio.sleep(self.heartbeat_interval)
-
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                self.logger.error("Error in monitoring loop: %s", str(e), exc_info=True)
+                self.logger.error("Error in monitoring loop: %s", e, exc_info=True)
                 await asyncio.sleep(5.0)  # Wait before retrying
 
     async def _check_all_agents(self) -> None:
@@ -266,7 +310,7 @@ class AgentMonitor:
             try:
                 await self._check_agent_health(agent_id)
             except Exception as e:
-                self.logger.error("Error checking agent %s: %s", agent_id, str(e))
+                self.logger.error("Error checking agent %s: %s", agent_id, e)
 
     async def _check_agent_health(self, agent_id: str) -> None:
         """Check health of a specific agent."""
@@ -339,7 +383,7 @@ class AgentMonitor:
                 else:
                     callback(agent_id, self.agent_metrics[agent_id])
             except Exception as e:
-                self.logger.error("Error in failure callback: %s", str(e))
+                self.logger.error("Error in failure callback: %s", e)
 
         # Attempt auto-recovery if enabled
         if self.enable_auto_recovery:
@@ -357,7 +401,7 @@ class AgentMonitor:
                 else:
                     callback(agent_id, self.agent_metrics[agent_id])
             except Exception as e:
-                self.logger.error("Error in recovery callback: %s", str(e))
+                self.logger.error("Error in recovery callback: %s", e)
 
     async def _notify_status_change(
         self,
@@ -373,7 +417,7 @@ class AgentMonitor:
                 else:
                     callback(agent_id, old_status, new_status)
             except Exception as e:
-                self.logger.error("Error in status change callback: %s", str(e))
+                self.logger.error("Error in status change callback: %s", e)
 
     async def _attempt_agent_recovery(self, agent_id: str) -> None:
         """Attempt to recover a failed agent."""
@@ -398,58 +442,91 @@ class AgentMonitor:
             self.logger.info("Recovery attempt completed for agent: %s", agent_id)
 
         except Exception as e:
-            self.logger.error(
-                "Recovery attempt failed for agent %s: %s", agent_id, str(e)
-            )
+            self.logger.error("Recovery attempt failed for agent %s: %s", agent_id, e)
 
-    def record_agent_action(
-        self, agent_id: str, success: bool, response_time: float = 0.0
-    ) -> None:
-        """Record an agent action result."""
+    def record_agent_action(self, agent_id: str, success: bool, response_time: float = 0.0) -> None:
+        """Record an agent action result.
+
+        Args:
+            agent_id: The ID of the agent.
+            success: Whether the action was successful.
+            response_time: The response time for the action.
+        """
         if agent_id not in self.agent_metrics:
             self.register_agent(agent_id)
-
         self.agent_metrics[agent_id].update_action_result(success, response_time)
 
     def record_agent_heartbeat(self, agent_id: str) -> None:
-        """Record agent heartbeat."""
+        """Record agent heartbeat.
+
+        Args:
+            agent_id: The ID of the agent.
+        """
         if agent_id not in self.agent_metrics:
             self.register_agent(agent_id)
-
         self.agent_metrics[agent_id].record_heartbeat()
 
-    def update_agent_resources(
-        self, agent_id: str, memory_usage: float, cpu_usage: float
-    ) -> None:
-        """Update agent resource usage."""
+    def update_agent_resources(self, agent_id: str, memory_usage: float, cpu_usage: float) -> None:
+        """Update agent resource usage.
+
+        Args:
+            agent_id: The ID of the agent.
+            memory_usage: The current memory usage.
+            cpu_usage: The current CPU usage.
+        """
         if agent_id not in self.agent_metrics:
             self.register_agent(agent_id)
-
         self.agent_metrics[agent_id].update_resource_usage(memory_usage, cpu_usage)
 
     def update_agent_learning_progress(self, agent_id: str, progress: float) -> None:
-        """Update agent learning progress."""
+        """Update agent learning progress.
+
+        Args:
+            agent_id: The ID of the agent.
+            progress: The learning progress value.
+        """
         if agent_id not in self.agent_metrics:
             self.register_agent(agent_id)
-
         self.agent_metrics[agent_id].update_learning_progress(progress)
 
     def get_agent_status(self, agent_id: str) -> Optional[AgentHealthStatus]:
-        """Get current agent status."""
+        """Get current agent status.
+
+        Args:
+            agent_id: The ID of the agent.
+
+        Returns:
+            The current status of the agent, or None if not found.
+        """
         if agent_id in self.agent_metrics:
             return self.agent_metrics[agent_id].status
         return None
 
     def get_agent_metrics(self, agent_id: str) -> Optional[AgentHealthMetrics]:
-        """Get agent health metrics."""
+        """Get agent health metrics.
+
+        Args:
+            agent_id: The ID of the agent.
+
+        Returns:
+            The health metrics of the agent, or None if not found.
+        """
         return self.agent_metrics.get(agent_id)
 
     def get_all_agent_metrics(self) -> Dict[str, AgentHealthMetrics]:
-        """Get all agent health metrics."""
+        """Get all agent health metrics.
+
+        Returns:
+            A dictionary of all agent health metrics.
+        """
         return self.agent_metrics.copy()
 
     def get_failed_agents(self) -> List[str]:
-        """Get list of failed agents."""
+        """Get list of failed agents.
+
+        Returns:
+            A list of failed agent IDs.
+        """
         return [
             agent_id
             for agent_id, metrics in self.agent_metrics.items()
@@ -457,7 +534,11 @@ class AgentMonitor:
         ]
 
     def get_healthy_agents(self) -> List[str]:
-        """Get list of healthy agents."""
+        """Get list of healthy agents.
+
+        Returns:
+            A list of healthy agent IDs.
+        """
         return [
             agent_id
             for agent_id, metrics in self.agent_metrics.items()
@@ -465,7 +546,11 @@ class AgentMonitor:
         ]
 
     def get_system_health_summary(self) -> Dict[str, Any]:
-        """Get system-wide health summary."""
+        """Get system-wide health summary.
+
+        Returns:
+            A dictionary containing the system health summary.
+        """
         if not self.agent_metrics:
             return {
                 "total_agents": 0,
@@ -507,29 +592,53 @@ class AgentMonitor:
         }
 
     def add_failure_callback(self, callback: Callable) -> None:
-        """Add callback for agent failures."""
+        """Add callback for agent failures.
+
+        Args:
+            callback: The callback function to add.
+        """
         self.failure_callbacks.append(callback)
 
     def add_recovery_callback(self, callback: Callable) -> None:
-        """Add callback for agent recoveries."""
+        """Add callback for agent recoveries.
+
+        Args:
+            callback: The callback function to add.
+        """
         self.recovery_callbacks.append(callback)
 
     def add_status_change_callback(self, callback: Callable) -> None:
-        """Add callback for status changes."""
+        """Add callback for status changes.
+
+        Args:
+            callback: The callback function to add.
+        """
         self.status_change_callbacks.append(callback)
 
     def remove_failure_callback(self, callback: Callable) -> None:
-        """Remove failure callback."""
+        """Remove failure callback.
+
+        Args:
+            callback: The callback function to remove.
+        """
         if callback in self.failure_callbacks:
             self.failure_callbacks.remove(callback)
 
     def remove_recovery_callback(self, callback: Callable) -> None:
-        """Remove recovery callback."""
+        """Remove recovery callback.
+
+        Args:
+            callback: The callback function to remove.
+        """
         if callback in self.recovery_callbacks:
             self.recovery_callbacks.remove(callback)
 
     def remove_status_change_callback(self, callback: Callable) -> None:
-        """Remove status change callback."""
+        """Remove status change callback.
+
+        Args:
+            callback: The callback function to remove.
+        """
         if callback in self.status_change_callbacks:
             self.status_change_callbacks.remove(callback)
 

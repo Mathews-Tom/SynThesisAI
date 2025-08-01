@@ -1,18 +1,20 @@
 """
-Neural Network Architectures for RL Agents
+Neural Network Architectures for RL Agents.
 
 This module provides neural network implementations for deep Q-learning,
 including Q-networks and target networks with configurable architectures
 following the development standards.
 """
 
+# Standard Library
 import logging
-from typing import List, Optional
+from typing import List
 
+# Third-Party Library
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
+# SynThesisAI Modules
 from ..exceptions import PolicyNetworkError
 
 logger = logging.getLogger(__name__)
@@ -33,17 +35,17 @@ class QNetwork(nn.Module):
         action_size: int,
         hidden_layers: List[int],
         activation: str = "relu",
-    ):
+    ) -> None:
         """
         Initialize Q-Network.
 
         Args:
-            state_size: Dimension of input state
-            action_size: Number of possible actions
-            hidden_layers: List of hidden layer sizes
-            activation: Activation function name
+            state_size: Dimension of input state.
+            action_size: Number of possible actions.
+            hidden_layers: List of hidden layer sizes.
+            activation: Activation function name.
         """
-        super(QNetwork, self).__init__()
+        super().__init__()
 
         if state_size <= 0:
             raise PolicyNetworkError(
@@ -52,7 +54,6 @@ class QNetwork(nn.Module):
                 network_type="q_network",
                 operation="initialize",
             )
-
         if action_size <= 0:
             raise PolicyNetworkError(
                 f"Action size must be positive, got {action_size}",
@@ -60,7 +61,6 @@ class QNetwork(nn.Module):
                 network_type="q_network",
                 operation="initialize",
             )
-
         if not hidden_layers:
             raise PolicyNetworkError(
                 "Hidden layers list cannot be empty",
@@ -112,7 +112,6 @@ class QNetwork(nn.Module):
             "elu": nn.ELU(),
             "gelu": nn.GELU(),
         }
-
         if activation.lower() not in activation_functions:
             raise PolicyNetworkError(
                 f"Unknown activation function: {activation}",
@@ -120,7 +119,6 @@ class QNetwork(nn.Module):
                 network_type="q_network",
                 operation="initialize",
             )
-
         return activation_functions[activation.lower()]
 
     def _initialize_weights(self) -> None:
@@ -135,10 +133,10 @@ class QNetwork(nn.Module):
         Forward pass through the network.
 
         Args:
-            state: Input state tensor
+            state: Input state tensor.
 
         Returns:
-            Q-values for all actions
+            Q-values for all actions.
         """
         try:
             x = state
@@ -146,15 +144,10 @@ class QNetwork(nn.Module):
             # Forward through hidden layers with activation
             for layer in self.layers[:-1]:
                 x = self.activation(layer(x))
-
-            # Output layer (no activation)
-            x = self.layers[-1](x)
-
-            return x
-
+            return self.layers[-1](x)
         except Exception as e:
             error_msg = "Forward pass failed in Q-Network"
-            logger.error("%s: %s", error_msg, str(e))
+            logger.error("%s: %s", error_msg, e, exc_info=True)
             raise PolicyNetworkError(
                 error_msg,
                 agent_id="unknown",
@@ -183,8 +176,7 @@ class DuelingQNetwork(nn.Module):
     Dueling Deep Q-Network architecture.
 
     Separates the value function and advantage function to improve learning
-    stability and performance, especially in environments where many actions
-    have similar values.
+    stability and performance.
     """
 
     def __init__(
@@ -193,17 +185,17 @@ class DuelingQNetwork(nn.Module):
         action_size: int,
         hidden_layers: List[int],
         activation: str = "relu",
-    ):
+    ) -> None:
         """
         Initialize Dueling Q-Network.
 
         Args:
-            state_size: Dimension of input state
-            action_size: Number of possible actions
-            hidden_layers: List of hidden layer sizes
-            activation: Activation function name
+            state_size: Dimension of input state.
+            action_size: Number of possible actions.
+            hidden_layers: List of hidden layer sizes.
+            activation: Activation function name.
         """
-        super(DuelingQNetwork, self).__init__()
+        super().__init__()
 
         if len(hidden_layers) < 2:
             raise PolicyNetworkError(
@@ -289,10 +281,10 @@ class DuelingQNetwork(nn.Module):
         Forward pass through the dueling network.
 
         Args:
-            state: Input state tensor
+            state: Input state tensor.
 
         Returns:
-            Q-values for all actions
+            Q-values for all actions.
         """
         try:
             # Forward through shared feature layers
@@ -306,13 +298,10 @@ class DuelingQNetwork(nn.Module):
 
             # Combine value and advantage
             # Q(s,a) = V(s) + A(s,a) - mean(A(s,a))
-            q_values = value + advantage - advantage.mean(dim=1, keepdim=True)
-
-            return q_values
-
+            return value + advantage - advantage.mean(dim=1, keepdim=True)
         except Exception as e:
             error_msg = "Forward pass failed in Dueling Q-Network"
-            logger.error("%s: %s", error_msg, str(e))
+            logger.error("%s: %s", error_msg, e, exc_info=True)
             raise PolicyNetworkError(
                 error_msg,
                 agent_id="unknown",
@@ -329,27 +318,25 @@ def build_q_network(
     network_type: str = "standard",
 ) -> nn.Module:
     """
-    Factory function to build Q-network.
+    Factory function to build a Q-network.
 
     Args:
-        state_size: Dimension of input state
-        action_size: Number of possible actions
-        hidden_layers: List of hidden layer sizes
-        activation: Activation function name
-        network_type: Type of network ("standard" or "dueling")
+        state_size: Dimension of the input state.
+        action_size: Number of possible actions.
+        hidden_layers: List of hidden layer sizes.
+        activation: Activation function name.
+        network_type: Type of network ("standard" or "dueling").
 
     Returns:
-        Initialized Q-network
+        An initialized Q-network.
     """
     try:
         if network_type.lower() == "dueling":
             return DuelingQNetwork(state_size, action_size, hidden_layers, activation)
-        else:
-            return QNetwork(state_size, action_size, hidden_layers, activation)
-
+        return QNetwork(state_size, action_size, hidden_layers, activation)
     except Exception as e:
         error_msg = f"Failed to build Q-network of type {network_type}"
-        logger.error("%s: %s", error_msg, str(e))
+        logger.error("%s: %s", error_msg, e, exc_info=True)
         raise PolicyNetworkError(
             error_msg, agent_id="unknown", network_type=network_type, operation="build"
         ) from e
@@ -357,13 +344,13 @@ def build_q_network(
 
 def build_target_network(q_network: nn.Module) -> nn.Module:
     """
-    Build target network as a copy of the Q-network.
+    Build a target network as a copy of the Q-network.
 
     Args:
-        q_network: Source Q-network to copy
+        q_network: The source Q-network to copy.
 
     Returns:
-        Target network with same architecture and weights
+        A target network with the same architecture and weights.
     """
     try:
         # Create a copy of the network
@@ -377,17 +364,15 @@ def build_target_network(q_network: nn.Module) -> nn.Module:
         # Copy weights
         target_network.load_state_dict(q_network.state_dict())
 
-        # Set to evaluation mode and freeze parameters
+        # Set to evaluation mode and freeze
         target_network.eval()
         for param in target_network.parameters():
             param.requires_grad = False
-
         logger.info("Built target network from Q-network")
         return target_network
-
     except Exception as e:
         error_msg = "Failed to build target network"
-        logger.error("%s: %s", error_msg, str(e))
+        logger.error("%s: %s", error_msg, e, exc_info=True)
         raise PolicyNetworkError(
             error_msg,
             agent_id="unknown",
@@ -401,10 +386,10 @@ def get_network_summary(network: nn.Module) -> str:
     Get a summary string of the network architecture.
 
     Args:
-        network: Neural network to summarize
+        network: The neural network to summarize.
 
     Returns:
-        String summary of the network
+        A string summary of the network.
     """
     try:
         total_params = sum(p.numel() for p in network.parameters())
@@ -412,7 +397,7 @@ def get_network_summary(network: nn.Module) -> str:
             p.numel() for p in network.parameters() if p.requires_grad
         )
 
-        summary = f"Network Summary:\n"
+        summary = "Network Summary:\n"
         summary += f"  Type: {type(network).__name__}\n"
         summary += f"  Total Parameters: {total_params:,}\n"
         summary += f"  Trainable Parameters: {trainable_params:,}\n"
@@ -425,7 +410,6 @@ def get_network_summary(network: nn.Module) -> str:
             summary += f"  Activation: {info['activation']}\n"
 
         return summary
-
     except Exception as e:
-        logger.error("Failed to generate network summary: %s", str(e))
+        logger.error("Failed to generate network summary: %s", e, exc_info=True)
         return f"Network: {type(network).__name__} (summary unavailable)"

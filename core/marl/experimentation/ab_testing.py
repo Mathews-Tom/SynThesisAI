@@ -5,17 +5,19 @@ This module provides specialized A/B testing capabilities for MARL systems,
 including statistical analysis, significance testing, and result interpretation.
 """
 
+# Standard Library
 import math
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
+# Third-Party Library
 import numpy as np
 from scipy import stats
 
+# SynThesisAI Modules
 from utils.logging_config import get_logger
-
-from .experiment_manager import Experiment, ExperimentStatus, ExperimentType
+from .experiment_manager import Experiment, ExperimentType
 
 
 class ABTestResult(Enum):
@@ -187,9 +189,7 @@ class ABTestManager:
             self.logger.error("Sample size calculation failed: %s", str(e))
             return 100  # Default fallback
 
-    def analyze_ab_test(
-        self, experiment: Experiment, metric_name: str
-    ) -> Optional[ABTestAnalysis]:
+    def analyze_ab_test(self, experiment: Experiment, metric_name: str) -> Optional[ABTestAnalysis]:
         """
         Analyze A/B test results for a specific metric.
 
@@ -201,9 +201,7 @@ class ABTestManager:
             A/B test analysis results or None if insufficient data
         """
         if experiment.experiment_type != ExperimentType.AB_TEST:
-            self.logger.error(
-                "Experiment is not an A/B test: %s", experiment.experiment_id
-            )
+            self.logger.error("Experiment is not an A/B test: %s", experiment.experiment_id)
             return None
 
         # Get control and treatment results
@@ -258,9 +256,7 @@ class ABTestManager:
             return None
 
         except Exception as e:
-            self.logger.warning(
-                "Failed to extract metric data for %s: %s", metric_name, str(e)
-            )
+            self.logger.warning("Failed to extract metric data for %s: %s", metric_name, str(e))
             return None
 
     def _perform_statistical_analysis(
@@ -282,9 +278,7 @@ class ABTestManager:
         treatment_n = len(treatment_data)
 
         # Perform t-test
-        t_stat, t_p_value = stats.ttest_ind(
-            treatment_data, control_data, equal_var=False
-        )
+        t_stat, t_p_value = stats.ttest_ind(treatment_data, control_data, equal_var=False)
         t_test = StatisticalTest(
             test_name="Welch's t-test",
             statistic=t_stat,
@@ -293,9 +287,7 @@ class ABTestManager:
         )
 
         # Calculate confidence interval for difference in means
-        pooled_se = math.sqrt(
-            (control_std**2 / control_n) + (treatment_std**2 / treatment_n)
-        )
+        pooled_se = math.sqrt((control_std**2 / control_n) + (treatment_std**2 / treatment_n))
         df = ((control_std**2 / control_n) + (treatment_std**2 / treatment_n)) ** 2 / (
             (control_std**2 / control_n) ** 2 / (control_n - 1)
             + (treatment_std**2 / treatment_n) ** 2 / (treatment_n - 1)
@@ -336,9 +328,7 @@ class ABTestManager:
 
         # Calculate practical significance
         relative_improvement = (
-            (treatment_mean - control_mean) / control_mean * 100
-            if control_mean != 0
-            else 0.0
+            (treatment_mean - control_mean) / control_mean * 100 if control_mean != 0 else 0.0
         )
         absolute_improvement = treatment_mean - control_mean
 
@@ -381,10 +371,7 @@ class ABTestManager:
         try:
             # Pooled standard deviation
             pooled_std = math.sqrt(
-                (
-                    (control_n - 1) * control_std**2
-                    + (treatment_n - 1) * treatment_std**2
-                )
+                ((control_n - 1) * control_std**2 + (treatment_n - 1) * treatment_std**2)
                 / (control_n + treatment_n - 2)
             )
 
@@ -421,9 +408,7 @@ class ABTestManager:
         """Interpret A/B test results and provide recommendation."""
 
         # Check for statistical significance
-        is_statistically_significant = (
-            t_test.is_significant or mann_whitney_test.is_significant
-        )
+        is_statistically_significant = t_test.is_significant or mann_whitney_test.is_significant
 
         # Check for practical significance
         is_practically_significant = abs(cohens_d) >= self.minimum_effect_size
@@ -520,9 +505,7 @@ class ABTestManager:
 
             for analysis in results.values():
                 # Update significance based on corrected alpha
-                analysis.t_test.is_significant = (
-                    analysis.t_test.p_value < corrected_alpha
-                )
+                analysis.t_test.is_significant = analysis.t_test.p_value < corrected_alpha
                 analysis.mann_whitney_test.is_significant = (
                     analysis.mann_whitney_test.p_value < corrected_alpha
                 )
@@ -544,9 +527,7 @@ class ABTestManager:
             )
 
         except Exception as e:
-            self.logger.warning(
-                "Failed to apply multiple comparison correction: %s", str(e)
-            )
+            self.logger.warning("Failed to apply multiple comparison correction: %s", str(e))
 
     def generate_ab_test_report(
         self, experiment: Experiment, metric_names: List[str]
@@ -590,15 +571,11 @@ class ABTestManager:
             "methodology": {
                 "statistical_tests": ["Welch's t-test", "Mann-Whitney U test"],
                 "effect_size_measures": ["Cohen's d", "Hedges' g"],
-                "multiple_comparison_correction": "Bonferroni"
-                if len(analyses) > 1
-                else None,
+                "multiple_comparison_correction": "Bonferroni" if len(analyses) > 1 else None,
             },
         }
 
-    def _generate_overall_recommendation(
-        self, analyses: Dict[str, ABTestAnalysis]
-    ) -> str:
+    def _generate_overall_recommendation(self, analyses: Dict[str, ABTestAnalysis]) -> str:
         """Generate overall recommendation based on multiple metric analyses."""
         if not analyses:
             return "No valid analyses available."
@@ -618,10 +595,7 @@ class ABTestManager:
         elif result_counts.get(ABTestResult.CONTROL_WINS, 0) > total_metrics / 2:
             return "Overall recommendation: Keep control. Majority of metrics favor the control configuration."
 
-        elif (
-            result_counts.get(ABTestResult.NO_SIGNIFICANT_DIFFERENCE, 0)
-            > total_metrics / 2
-        ):
+        elif result_counts.get(ABTestResult.NO_SIGNIFICANT_DIFFERENCE, 0) > total_metrics / 2:
             return "Overall recommendation: No clear winner. Consider business factors and implementation costs."
 
         else:

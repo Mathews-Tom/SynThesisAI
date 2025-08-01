@@ -5,6 +5,7 @@ This module provides learning infrastructure for multi-agent reinforcement learn
 including shared experience management and continuous learning systems.
 """
 
+# SynThesisAI Modules
 from .shared_experience import (
     ExperienceConfig,
     ExperienceFilter,
@@ -16,11 +17,11 @@ from .shared_experience import (
 )
 
 __all__ = [
+    "create_shared_experience_manager",
     "ExperienceConfig",
-    "ExperienceMetadata",
     "ExperienceFilter",
-    "StateNoveltyTracker",
+    "ExperienceMetadata",
     "ExperienceSharing",
     "SharedExperienceManager",
-    "create_shared_experience_manager",
+    "StateNoveltyTracker",
 ]

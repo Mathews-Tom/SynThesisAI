@@ -1,18 +1,22 @@
-"""
-MARL Experiment Runner.
+"""MARL Experiment Runner.
 
 This module provides experiment execution capabilities for MARL systems,
 including parallel execution, progress tracking, and result collection.
 """
+
+# Standard Library
 
 import asyncio
 import time
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
-from utils.logging_config import get_logger
+# Third-Party Library
 
-from .experiment_manager import Experiment, ExperimentResult, ExperimentStatus
+# SynThesisAI Modules
+
+from utils.logging_config import get_logger
+from .experiment_manager import Experiment, ExperimentStatus
 
 
 class ExperimentExecutionError(Exception):
@@ -33,13 +37,15 @@ class ExperimentRunner:
         self,
         max_parallel_experiments: int = 4,
         progress_callback: Optional[Callable] = None,
-    ):
-        """
-        Initialize the experiment runner.
+    ) -> None:
+        """Initialize the experiment runner.
 
         Args:
-            max_parallel_experiments: Maximum number of parallel experiments
-            progress_callback: Optional callback for progress updates
+            max_parallel_experiments (int): Maximum number of parallel experiments.
+            progress_callback (Optional[Callable]): Optional callback for progress updates.
+
+        Returns:
+            None
         """
         self.logger = get_logger(__name__)
         self.max_parallel_experiments = max_parallel_experiments
@@ -60,21 +66,18 @@ class ExperimentRunner:
         marl_system_factory: Callable,
         environment_factory: Callable,
     ) -> bool:
-        """
-        Run a complete experiment.
+        """Run a complete experiment.
 
         Args:
-            experiment: Experiment to run
-            marl_system_factory: Factory function for creating MARL systems
-            environment_factory: Factory function for creating environments
+            experiment (Experiment): Experiment to run.
+            marl_system_factory (Callable): Factory function for creating MARL systems.
+            environment_factory (Callable): Factory function for creating environments.
 
         Returns:
-            True if experiment completed successfully
+            bool: True if experiment completed successfully.
         """
         if experiment.status == ExperimentStatus.RUNNING:
-            self.logger.warning(
-                "Experiment %s is already running", experiment.experiment_id
-            )
+            self.logger.warning("Experiment %s is already running", experiment.experiment_id)
             return False
 
         self.logger.info("Starting experiment: %s", experiment.name)
@@ -97,9 +100,7 @@ class ExperimentRunner:
             if success:
                 experiment.status = ExperimentStatus.COMPLETED
                 experiment.completed_at = datetime.now()
-                self.logger.info(
-                    "Experiment completed successfully: %s", experiment.name
-                )
+                self.logger.info("Experiment completed successfully: %s", experiment.name)
             else:
                 experiment.status = ExperimentStatus.FAILED
                 self.logger.error("Experiment failed: %s", experiment.name)
@@ -117,7 +118,16 @@ class ExperimentRunner:
         marl_system_factory: Callable,
         environment_factory: Callable,
     ) -> bool:
-        """Run experiment conditions in parallel."""
+        """Run experiment conditions in parallel.
+
+        Args:
+            experiment (Experiment): Experiment to run.
+            marl_system_factory (Callable): Factory for MARL systems.
+            environment_factory (Callable): Factory for environments.
+
+        Returns:
+            bool: True if at least one condition succeeded.
+        """
         self.logger.info("Running experiment in parallel mode: %s", experiment.name)
 
         # Create tasks for each condition
@@ -156,7 +166,16 @@ class ExperimentRunner:
         marl_system_factory: Callable,
         environment_factory: Callable,
     ) -> bool:
-        """Run experiment conditions sequentially."""
+        """Run experiment conditions sequentially.
+
+        Args:
+            experiment (Experiment): Experiment to run.
+            marl_system_factory (Callable): Factory for MARL systems.
+            environment_factory (Callable): Factory for environments.
+
+        Returns:
+            bool: True if at least one condition succeeded.
+        """
         self.logger.info("Running experiment in sequential mode: %s", experiment.name)
 
         success_count = 0
@@ -176,12 +195,8 @@ class ExperimentRunner:
                     self.logger.warning("Condition %s failed", condition.condition_id)
 
             except Exception as e:
-                self.logger.error(
-                    "Condition %s error: %s", condition.condition_id, str(e)
-                )
-                experiment.results[
-                    condition.condition_id
-                ].status = ExperimentStatus.FAILED
+                self.logger.error("Condition %s error: %s", condition.condition_id, str(e))
+                experiment.results[condition.condition_id].status = ExperimentStatus.FAILED
                 experiment.results[condition.condition_id].error_message = str(e)
 
         return success_count > 0
@@ -193,17 +208,16 @@ class ExperimentRunner:
         marl_system_factory: Callable,
         environment_factory: Callable,
     ) -> bool:
-        """
-        Run a single experimental condition.
+        """Run a single experimental condition.
 
         Args:
-            experiment: Parent experiment
-            condition_id: Condition to run
-            marl_system_factory: Factory for MARL systems
-            environment_factory: Factory for environments
+            experiment (Experiment): Parent experiment.
+            condition_id (str): Condition identifier.
+            marl_system_factory (Callable): Factory for MARL systems.
+            environment_factory (Callable): Factory for environments.
 
         Returns:
-            True if condition completed successfully
+            bool: True if condition completed successfully.
         """
         async with self._execution_semaphore:
             condition = experiment.get_condition(condition_id)
@@ -246,9 +260,7 @@ class ExperimentRunner:
                     self.logger.warning("Condition failed: %s", condition.name)
 
                 result.end_time = datetime.now()
-                result.duration_seconds = (
-                    result.end_time - result.start_time
-                ).total_seconds()
+                result.duration_seconds = (result.end_time - result.start_time).total_seconds()
 
                 return success
 
@@ -257,32 +269,42 @@ class ExperimentRunner:
                 result.error_message = str(e)
                 result.end_time = datetime.now()
                 if result.start_time:
-                    result.duration_seconds = (
-                        result.end_time - result.start_time
-                    ).total_seconds()
+                    result.duration_seconds = (result.end_time - result.start_time).total_seconds()
 
                 self.logger.error("Condition execution error: %s", str(e))
                 return False
 
-    async def _apply_parameters(self, marl_system: Any, parameters: Dict[str, Any]):
-        """Apply parameter overrides to MARL system."""
+    async def _apply_parameters(self, marl_system: Any, parameters: Dict[str, Any]) -> None:
+        """Apply parameter overrides to a MARL system.
+
+        Args:
+            marl_system: MARL system instance with a parameter_manager attribute.
+            parameters: Dictionary of parameters to apply.
+
+        Returns:
+            None
+        """
         try:
             # This would depend on the specific MARL system interface
             # For now, assume the system has a parameter manager
             if hasattr(marl_system, "parameter_manager"):
-                success, errors = marl_system.parameter_manager.set_parameters(
-                    parameters
-                )
+                success, errors = marl_system.parameter_manager.set_parameters(parameters)
                 if not success:
-                    self.logger.warning(
-                        "Parameter application errors: %s", "; ".join(errors)
-                    )
+                    self.logger.warning("Parameter application errors: %s", "; ".join(errors))
 
         except Exception as e:
             self.logger.warning("Failed to apply parameters: %s", str(e))
 
-    async def _set_random_seed(self, marl_system: Any, seed: int):
-        """Set random seed for reproducibility."""
+    async def _set_random_seed(self, marl_system: Any, seed: int) -> None:
+        """Set random seed for reproducibility.
+
+        Args:
+            marl_system: MARL system instance to set seed in.
+            seed: Seed value for random number generators.
+
+        Returns:
+            None
+        """
         try:
             import random
 
@@ -318,17 +340,16 @@ class ExperimentRunner:
         marl_system: Any,
         environment: Any,
     ) -> bool:
-        """
-        Run training episodes for a condition.
+        """Run training episodes for a condition.
 
         Args:
-            experiment: Parent experiment
-            condition_id: Condition ID
-            marl_system: MARL system instance
-            environment: Environment instance
+            experiment (Experiment): Parent experiment.
+            condition_id (str): Condition identifier.
+            marl_system (Any): MARL system instance.
+            environment (Any): Environment instance.
 
         Returns:
-            True if training completed successfully
+            bool: True if training completed successfully.
         """
         result = experiment.get_result(condition_id)
         if not result:
@@ -349,14 +370,10 @@ class ExperimentRunner:
                     break
 
                 # Run single episode
-                episode_result = await self._run_single_episode(
-                    marl_system, environment, episode
-                )
+                episode_result = await self._run_single_episode(marl_system, environment, episode)
 
                 if episode_result is None:
-                    self.logger.warning(
-                        "Episode %d failed for condition %s", episode, condition_id
-                    )
+                    self.logger.warning("Episode %d failed for condition %s", episode, condition_id)
                     continue
 
                 # Collect metrics
@@ -366,9 +383,7 @@ class ExperimentRunner:
                 )
 
                 # Record metrics in result
-                result.add_metric(
-                    "episode_reward", episode_result.get("total_reward", 0.0)
-                )
+                result.add_metric("episode_reward", episode_result.get("total_reward", 0.0))
                 result.add_metric(
                     "coordination_success_rate",
                     episode_result.get("coordination_success_rate", 0.0),
@@ -389,9 +404,7 @@ class ExperimentRunner:
 
                 # Log progress periodically
                 if episode % 100 == 0:
-                    avg_reward = sum(episode_rewards[-100:]) / min(
-                        len(episode_rewards), 100
-                    )
+                    avg_reward = sum(episode_rewards[-100:]) / min(len(episode_rewards), 100)
                     avg_coordination = sum(coordination_success_rates[-100:]) / min(
                         len(coordination_success_rates), 100
                     )
@@ -406,9 +419,7 @@ class ExperimentRunner:
 
             # Store final performance data
             result.add_performance_data("episode_rewards", episode_rewards)
-            result.add_performance_data(
-                "coordination_success_rates", coordination_success_rates
-            )
+            result.add_performance_data("coordination_success_rates", coordination_success_rates)
 
             # Calculate final metrics
             if episode_rewards:
@@ -430,25 +441,22 @@ class ExperimentRunner:
             return True
 
         except Exception as e:
-            self.logger.error(
-                "Training episodes failed for condition %s: %s", condition_id, str(e)
-            )
+            self.logger.error("Training episodes failed for condition %s: %s", condition_id, str(e))
             result.error_message = str(e)
             return False
 
     async def _run_single_episode(
         self, marl_system: Any, environment: Any, episode_num: int
     ) -> Optional[Dict[str, Any]]:
-        """
-        Run a single training episode.
+        """Run a single training episode.
 
         Args:
-            marl_system: MARL system instance
-            environment: Environment instance
-            episode_num: Episode number
+            marl_system (Any): MARL system instance.
+            environment (Any): Environment instance.
+            episode_num (int): Episode number.
 
         Returns:
-            Episode results dictionary or None if failed
+            Optional[Dict[str, Any]]: Episode results dictionary or None if failed.
         """
         try:
             # This is a simplified interface - actual implementation would depend
@@ -524,14 +532,13 @@ class ExperimentRunner:
             return None
 
     def cancel_experiment(self, experiment_id: str) -> bool:
-        """
-        Cancel a running experiment.
+        """Cancel a running experiment.
 
         Args:
-            experiment_id: Experiment ID to cancel
+            experiment_id (str): Experiment ID to cancel.
 
         Returns:
-            True if cancelled successfully
+            bool: True if cancelled successfully.
         """
         if experiment_id in self._running_experiments:
             task = self._running_experiments[experiment_id]
@@ -544,27 +551,37 @@ class ExperimentRunner:
         return False
 
     def get_running_experiments(self) -> List[str]:
-        """Get list of currently running experiment IDs."""
+        """Get list of currently running experiment IDs.
+
+        Returns:
+            List[str]: List of experiment IDs currently running.
+        """
         return list(self._running_experiments.keys())
 
     def is_experiment_running(self, experiment_id: str) -> bool:
-        """Check if an experiment is currently running."""
+        """Check if an experiment is currently running.
+
+        Args:
+            experiment_id (str): Experiment ID to check.
+
+        Returns:
+            bool: True if the experiment is running, False otherwise.
+        """
         return experiment_id in self._running_experiments
 
 
 class ExperimentRunnerFactory:
-    """Factory for creating experiment runners."""
+    """Factory for creating ExperimentRunner instances."""
 
     @staticmethod
     def create(max_parallel_experiments: int = 4) -> ExperimentRunner:
-        """
-        Create an experiment runner.
+        """Create an ExperimentRunner.
 
         Args:
-            max_parallel_experiments: Maximum parallel experiments
+            max_parallel_experiments (int): Maximum number of parallel experiments.
 
         Returns:
-            Experiment runner
+            ExperimentRunner: A new ExperimentRunner instance.
         """
         return ExperimentRunner(max_parallel_experiments)
 
@@ -572,14 +589,13 @@ class ExperimentRunnerFactory:
     def create_with_progress_callback(
         max_parallel_experiments: int = 4, progress_callback: Optional[Callable] = None
     ) -> ExperimentRunner:
-        """
-        Create an experiment runner with progress callback.
+        """Create an ExperimentRunner with a progress callback.
 
         Args:
-            max_parallel_experiments: Maximum parallel experiments
-            progress_callback: Progress callback function
+            max_parallel_experiments (int): Maximum number of parallel experiments.
+            progress_callback (Optional[Callable]): Callback function for progress updates.
 
         Returns:
-            Experiment runner with progress callback
+            ExperimentRunner: A new ExperimentRunner instance with progress callback.
         """
         return ExperimentRunner(max_parallel_experiments, progress_callback)

@@ -5,6 +5,7 @@ This module provides comprehensive error handling and recovery mechanisms
 for the multi-agent reinforcement learning coordination system.
 """
 
+# SynThesisAI Modules
 from .error_analyzer import ErrorAnalyzer
 from .error_handler import MARLErrorHandler
 from .error_types import (
@@ -20,15 +21,15 @@ from .error_types import (
 from .recovery_strategies import RecoveryStrategyManager
 
 __all__ = [
-    "MARLError",
     "AgentError",
-    "CoordinationError",
-    "LearningError",
     "CommunicationError",
-    "ConsensusError",
-    "PerformanceError",
     "ConfigurationError",
-    "MARLErrorHandler",
+    "ConsensusError",
+    "CoordinationError",
     "ErrorAnalyzer",
+    "LearningError",
+    "MARLError",
+    "MARLErrorHandler",
+    "PerformanceError",
     "RecoveryStrategyManager",
 ]

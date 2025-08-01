@@ -5,11 +5,15 @@ This module provides pre-defined configuration templates for different
 deployment scenarios and use cases.
 """
 
-from typing import Dict, List, Optional
+# Standard Library
+from __future__ import annotations
+import logging
+from typing import Callable, Dict, List, Optional
 
-from utils.logging_config import get_logger
+# Third-Party Library
 
-from .config_schema import (
+# SynThesisAI Modules
+from core.marl.config.config_schema import (
     AgentConfig,
     ConsensusConfig,
     ConsensusStrategy,
@@ -18,7 +22,6 @@ from .config_schema import (
     ExplorationStrategy,
     LearningConfig,
     MARLConfig,
-    NetworkArchitecture,
     NetworkConfig,
     OptimizationConfig,
     OptimizationType,
@@ -38,10 +41,10 @@ class ConfigTemplateManager:
 
     def __init__(self):
         """Initialize the template manager."""
-        self.logger = get_logger(__name__)
+        self.logger = logging.getLogger(__name__)
 
         # Register built-in templates
-        self._templates: Dict[str, callable] = {
+        self._templates: Dict[str, Callable] = {
             "development": self._create_development_template,
             "production": self._create_production_template,
             "research": self._create_research_template,
@@ -80,9 +83,7 @@ class ConfigTemplateManager:
         """
         if template_name not in self._templates:
             available = ", ".join(self._templates.keys())
-            raise ValueError(
-                f"Template '{template_name}' not found. Available: {available}"
-            )
+            raise ValueError(f"Template '{template_name}' not found. Available: {available}")
 
         template_func = self._templates[template_name]
         config = template_func(**kwargs)
@@ -128,12 +129,8 @@ class ConfigTemplateManager:
             agent_id="validator",
             agent_type="validator",
             network=NetworkConfig(hidden_layers=[128, 64], dropout_rate=0.1),
-            optimization=OptimizationConfig(
-                learning_rate=0.003, learning_rate_decay=0.99
-            ),
-            exploration=ExplorationConfig(
-                initial_epsilon=0.8, epsilon_decay_steps=5000
-            ),
+            optimization=OptimizationConfig(learning_rate=0.003, learning_rate_decay=0.99),
+            exploration=ExplorationConfig(initial_epsilon=0.8, epsilon_decay_steps=5000),
             replay_buffer=ReplayBufferConfig(capacity=10000, batch_size=32),
             state_dim=256,
             action_dim=5,
@@ -148,12 +145,8 @@ class ConfigTemplateManager:
                 hidden_layers=[64, 32],  # Even smaller for curriculum
                 dropout_rate=0.1,
             ),
-            optimization=OptimizationConfig(
-                learning_rate=0.003, learning_rate_decay=0.99
-            ),
-            exploration=ExplorationConfig(
-                initial_epsilon=0.8, epsilon_decay_steps=5000
-            ),
+            optimization=OptimizationConfig(learning_rate=0.003, learning_rate_decay=0.99),
+            exploration=ExplorationConfig(initial_epsilon=0.8, epsilon_decay_steps=5000),
             replay_buffer=ReplayBufferConfig(capacity=5000, batch_size=16),
             state_dim=64,
             action_dim=8,
@@ -541,9 +534,7 @@ class ConfigTemplateManager:
                     dropout_rate=0.1,
                     batch_normalization=False,
                 ),
-                optimization=OptimizationConfig(
-                    learning_rate=0.001, gradient_clipping=0.5
-                ),
+                optimization=OptimizationConfig(learning_rate=0.001, gradient_clipping=0.5),
                 exploration=ExplorationConfig(
                     initial_epsilon=0.8,
                     final_epsilon=0.05,
@@ -689,13 +680,9 @@ class ConfigTemplateManager:
             description=f"Single-agent configuration for {agent_type} testing",
             version="1.0.0",
             agents=agents,
-            coordination=CoordinationConfig(
-                max_concurrent_coordinations=1  # Single agent
-            ),
+            coordination=CoordinationConfig(max_concurrent_coordinations=1),  # Single agent
             learning=LearningConfig(
-                shared_learning=SharedLearningConfig(
-                    enabled=False  # No sharing with single agent
-                )
+                shared_learning=SharedLearningConfig(enabled=False)  # No sharing with single agent
             ),
             system=SystemConfig(num_workers=1),
         )
@@ -763,12 +750,10 @@ class ConfigTemplateManager:
                     sharing_strategy="adaptive",
                 )
             ),
-            system=SystemConfig(
-                num_workers=len(domains) * 2  # Scale workers with domains
-            ),
+            system=SystemConfig(num_workers=len(domains) * 2),  # Scale workers with domains
         )
 
-    def register_custom_template(self, name: str, template_func: callable):
+    def register_custom_template(self, name: str, template_func: Callable):
         """
         Register a custom template function.
 
@@ -810,7 +795,7 @@ class ConfigTemplateManagerFactory:
 
     @staticmethod
     def create_with_custom_templates(
-        custom_templates: Dict[str, callable],
+        custom_templates: Dict[str, Callable],
     ) -> ConfigTemplateManager:
         """
         Create a template manager with custom templates.

@@ -5,13 +5,15 @@ This module implements the shared experience management system that enables
 cross-agent learning by sharing valuable experiences between agents.
 """
 
-import logging
+# Standard Library
 import time
 from collections import defaultdict, deque
 from typing import Any, Dict, List, Optional, Tuple
 
+# Third-Party Library
 import numpy as np
 
+# SynThesisAI Modules
 from core.marl.agents.base_agent import Experience
 from utils.logging_config import get_logger
 
@@ -154,9 +156,7 @@ class ExperienceFilter:
         # Compare state similarity with recent experiences
         similarities = []
         for hist_exp in agent_history[-50:]:  # Compare with last 50 experiences
-            similarity = self._calculate_state_similarity(
-                experience.state, hist_exp.state
-            )
+            similarity = self._calculate_state_similarity(experience.state, hist_exp.state)
             similarities.append(similarity)
 
         # Novelty is inverse of maximum similarity
@@ -165,9 +165,7 @@ class ExperienceFilter:
 
         return max(0.0, min(1.0, novelty_score))
 
-    def _calculate_state_similarity(
-        self, state1: np.ndarray, state2: np.ndarray
-    ) -> float:
+    def _calculate_state_similarity(self, state1: np.ndarray, state2: np.ndarray) -> float:
         """Calculate similarity between two states."""
         try:
             # Ensure states are numpy arrays
@@ -237,9 +235,7 @@ class StateNoveltyTracker:
                 if hist_state.shape == state_array.shape:
                     # Calculate Euclidean distance normalized by state dimension
                     distance = np.linalg.norm(state_array - hist_state)
-                    max_distance = np.sqrt(
-                        len(state_array)
-                    )  # Maximum possible distance
+                    max_distance = np.sqrt(len(state_array))  # Maximum possible distance
                     similarity = 1.0 - (distance / max_distance)
                     similarities.append(max(0.0, similarity))
             except Exception as e:
@@ -304,9 +300,7 @@ class ExperienceSharing:
             )
             return []
 
-        strategy_func = self.sharing_strategies.get(
-            self.current_strategy, self._adaptive_strategy
-        )
+        strategy_func = self.sharing_strategies.get(self.current_strategy, self._adaptive_strategy)
 
         return strategy_func(agent_id, experiences, metadata_list)
 
@@ -491,14 +485,10 @@ class SharedExperienceManager:
             return True
 
         except Exception as e:
-            self.logger.error(
-                "Failed to store experience for agent %s: %s", agent_id, str(e)
-            )
+            self.logger.error("Failed to store experience for agent %s: %s", agent_id, str(e))
             return False
 
-    def _share_experience(
-        self, experience: Experience, metadata: ExperienceMetadata, reason: str
-    ):
+    def _share_experience(self, experience: Experience, metadata: ExperienceMetadata, reason: str):
         """Share an experience to the shared buffer."""
         # Update metadata with sharing reason
         metadata.sharing_reason = reason
@@ -592,9 +582,7 @@ class SharedExperienceManager:
 
         return sampled_experiences
 
-    def get_agent_experiences(
-        self, agent_id: str, count: Optional[int] = None
-    ) -> List[Experience]:
+    def get_agent_experiences(self, agent_id: str, count: Optional[int] = None) -> List[Experience]:
         """
         Get experiences for a specific agent.
 

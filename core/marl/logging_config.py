@@ -1,68 +1,65 @@
 """
-MARL Logging Configuration
+MARL Logging Configuration.
 
-This module provides specialized logging configuration for multi-agent reinforcement
-learning components, following the development standards for proper logging with
-lazy % formatting and structured log messages.
+This module provides specialized logging configuration for multi-agent
+reinforcement learning components, following the development standards for
+proper logging with lazy % formatting and structured log messages.
 """
 
+# Standard Library
 import logging
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
+# SynThesisAI Modules
 from .config import MARLConfig
 
 
 class MARLLogger:
     """Specialized logger for MARL components with structured logging."""
 
-    def __init__(self, name: str, config: Optional[MARLConfig] = None):
+    def __init__(self, name: str, config: Optional[MARLConfig] = None) -> None:
         """
         Initialize MARL logger.
 
         Args:
-            name: Logger name
-            config: MARL configuration for logging settings
+            name: Logger name.
+            config: MARL configuration for logging settings.
         """
         self.logger = logging.getLogger(name)
         self.config = config
-
         if config:
             self._configure_logger()
 
     def _configure_logger(self) -> None:
         """Configure logger based on MARL configuration."""
-        # Set log level
+        if not self.config:
+            return
+
         log_level = getattr(logging, self.config.log_level.upper(), logging.INFO)
         self.logger.setLevel(log_level)
 
-        # Create formatter with MARL-specific format
         formatter = logging.Formatter(
             fmt="%(asctime)s - %(name)s - %(levelname)s - [MARL] %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
         )
 
-        # Console handler
         if not self.logger.handlers:
             console_handler = logging.StreamHandler(sys.stdout)
             console_handler.setFormatter(formatter)
             self.logger.addHandler(console_handler)
 
-            # File handler for debug mode
             if self.config.debug_mode:
                 log_dir = Path("logs/marl")
                 log_dir.mkdir(parents=True, exist_ok=True)
-
-                log_file = (
-                    log_dir / f"marl_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-                )
+                log_file = log_dir / f"marl_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
                 file_handler = logging.FileHandler(log_file)
                 file_handler.setFormatter(formatter)
                 self.logger.addHandler(file_handler)
 
-    def log_coordination_start(self, request_id: str, agents: list) -> None:
+    def log_coordination_start(self, request_id: str, agents: List[str]) -> None:
         """Log coordination start with proper lazy formatting."""
         self.logger.info(
             "Starting coordination for request %s with agents: %s",
@@ -127,7 +124,7 @@ class MARLLogger:
         context_str = ", ".join([f"{k}: {v}" for k, v in context.items()])
         self.logger.error(
             "MARL error occurred: %s - Context: %s",
-            str(error),
+            error,
             context_str,
             exc_info=True,
         )
@@ -155,7 +152,7 @@ class MARLLogger:
         )
 
     def log_checkpoint_save(
-        self, checkpoint_path: str, episode: int, agents_saved: list
+        self, checkpoint_path: Path, episode: int, agents_saved: List[str]
     ) -> None:
         """Log checkpoint saving."""
         self.logger.info(
@@ -165,9 +162,7 @@ class MARLLogger:
             ", ".join(agents_saved),
         )
 
-    def log_distributed_training(
-        self, worker_id: int, node_count: int, sync_status: str
-    ) -> None:
+    def log_distributed_training(self, worker_id: int, node_count: int, sync_status: str) -> None:
         """Log distributed training status."""
         self.logger.info(
             "Distributed training - Worker %d/%d, Sync status: %s",
@@ -182,14 +177,11 @@ def setup_marl_logging(config: MARLConfig) -> Dict[str, MARLLogger]:
     Set up logging for all MARL components.
 
     Args:
-        config: MARL configuration
+        config: MARL configuration.
 
     Returns:
-        Dictionary of configured loggers for different components
+        A dictionary of configured loggers for different components.
     """
-    loggers = {}
-
-    # Main MARL components
     component_names = [
         "marl.coordinator",
         "marl.generator_agent",
@@ -202,11 +194,7 @@ def setup_marl_logging(config: MARLConfig) -> Dict[str, MARLLogger]:
         "marl.performance_monitor",
         "marl.error_handler",
     ]
-
-    for component_name in component_names:
-        loggers[component_name] = MARLLogger(component_name, config)
-
-    return loggers
+    return {name: MARLLogger(name, config) for name in component_names}
 
 
 def get_marl_logger(name: str, config: Optional[MARLConfig] = None) -> MARLLogger:
@@ -214,10 +202,10 @@ def get_marl_logger(name: str, config: Optional[MARLConfig] = None) -> MARLLogge
     Get a MARL logger instance.
 
     Args:
-        name: Logger name
-        config: Optional MARL configuration
+        name: Logger name.
+        config: Optional MARL configuration.
 
     Returns:
-        Configured MARL logger
+        A configured MARL logger.
     """
     return MARLLogger(f"marl.{name}", config)

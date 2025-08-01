@@ -5,17 +5,14 @@ This module implements conflict resolution mechanisms for multi-agent RL coordin
 including negotiation strategies, priority-based resolution, and compromise generation.
 """
 
-import logging
+# Standard Library
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
-import numpy as np
-
+# SynThesisAI Modules
 from ..config import CoordinationConfig
 from ..exceptions import ConflictResolutionError
 from ..logging_config import get_marl_logger
-
-logger = logging.getLogger(__name__)
 
 
 class ConflictResolver:
@@ -50,9 +47,7 @@ class ConflictResolver:
         self.resolution_metrics = {
             "total_conflicts": 0,
             "resolved_conflicts": 0,
-            "resolution_strategy_usage": {
-                strategy: 0 for strategy in self.resolution_strategies
-            },
+            "resolution_strategy_usage": {strategy: 0 for strategy in self.resolution_strategies},
             "average_resolution_time": 0.0,
             "resolution_success_rate": 0.0,
         }
@@ -112,14 +107,10 @@ class ConflictResolver:
 
             # Apply resolution strategy
             resolution_func = self.resolution_strategies[strategy]
-            resolved_proposals = await resolution_func(
-                conflicts, proposals, state, agent_context
-            )
+            resolved_proposals = await resolution_func(conflicts, proposals, state, agent_context)
 
             # Validate resolution
-            if resolved_proposals and self._validate_resolution(
-                resolved_proposals, conflicts
-            ):
+            if resolved_proposals and self._validate_resolution(resolved_proposals, conflicts):
                 resolution_time = time.time() - resolution_start_time
                 self._record_resolution_success(strategy, resolution_time)
 
@@ -154,9 +145,7 @@ class ConflictResolver:
                         resolved_proposals, conflicts
                     ):
                         resolution_time = time.time() - resolution_start_time
-                        self._record_resolution_success(
-                            fallback_strategy, resolution_time
-                        )
+                        self._record_resolution_success(fallback_strategy, resolution_time)
                         return resolved_proposals
 
                 # All resolution attempts failed
@@ -263,14 +252,10 @@ class ConflictResolver:
 
             # Negotiate each conflicting pair
             for prop1, prop2 in conflicting_pairs:
-                negotiated_proposals = self._negotiate_proposal_pair(
-                    prop1, prop2, state
-                )
+                negotiated_proposals = self._negotiate_proposal_pair(prop1, prop2, state)
 
                 # Replace original proposals with negotiated ones
-                resolved_proposals = [
-                    p for p in resolved_proposals if p not in [prop1, prop2]
-                ]
+                resolved_proposals = [p for p in resolved_proposals if p not in [prop1, prop2]]
                 resolved_proposals.extend(negotiated_proposals)
 
         return resolved_proposals
@@ -332,10 +317,7 @@ class ConflictResolver:
 
         for agent_type in priority_order:
             for proposal in proposals:
-                if (
-                    proposal.agent_id == agent_type
-                    and proposal.agent_id not in used_agents
-                ):
+                if proposal.agent_id == agent_type and proposal.agent_id not in used_agents:
                     resolved_proposals.append(proposal)
                     used_agents.add(proposal.agent_id)
                     break
@@ -353,10 +335,8 @@ class ConflictResolver:
         # Calculate performance scores for each agent
         performance_scores = {}
         for proposal in proposals:
-            performance_scores[proposal.agent_id] = (
-                self._calculate_agent_performance_score(
-                    proposal.agent_id, agent_context
-                )
+            performance_scores[proposal.agent_id] = self._calculate_agent_performance_score(
+                proposal.agent_id, agent_context
             )
 
         # Filter out low-confidence proposals from low-performing agents
@@ -369,9 +349,7 @@ class ConflictResolver:
                 resolved_proposals.append(proposal)
             elif proposal.confidence > 0.5 and agent_performance > 0.6:
                 # Reduce confidence for marginal proposals
-                adjusted_proposal = self._create_adjusted_proposal(
-                    proposal, confidence_factor=0.8
-                )
+                adjusted_proposal = self._create_adjusted_proposal(proposal, confidence_factor=0.8)
                 resolved_proposals.append(adjusted_proposal)
 
         return resolved_proposals
@@ -407,9 +385,7 @@ class ConflictResolver:
 
         return True
 
-    def _detect_conflicts_in_proposals(
-        self, proposals: List[Any]
-    ) -> Dict[str, List[str]]:
+    def _detect_conflicts_in_proposals(self, proposals: List[Any]) -> Dict[str, List[str]]:
         """Detect conflicts in a list of proposals."""
         conflicts = {}
 
@@ -459,9 +435,7 @@ class ConflictResolver:
 
         return conflicts
 
-    def _get_agent_performance_weight(
-        self, agent_id: str, agent_context: Dict[str, Any]
-    ) -> float:
+    def _get_agent_performance_weight(self, agent_id: str, agent_context: Dict[str, Any]) -> float:
         """Get performance weight for an agent."""
         agent_performance = agent_context.get("agent_performance", {})
         if agent_id in agent_performance:
@@ -485,9 +459,7 @@ class ConflictResolver:
 
         return strategy_pair in incompatible_pairs or reverse_pair in incompatible_pairs
 
-    def _identify_conflicting_pairs(
-        self, proposals: List[Any]
-    ) -> List[Tuple[Any, Any]]:
+    def _identify_conflicting_pairs(self, proposals: List[Any]) -> List[Tuple[Any, Any]]:
         """Identify pairs of proposals that conflict."""
         conflicting_pairs = []
 
@@ -498,9 +470,7 @@ class ConflictResolver:
 
         return conflicting_pairs
 
-    def _negotiate_proposal_pair(
-        self, prop1: Any, prop2: Any, state: Dict[str, Any]
-    ) -> List[Any]:
+    def _negotiate_proposal_pair(self, prop1: Any, prop2: Any, state: Dict[str, Any]) -> List[Any]:
         """Negotiate between two conflicting proposals."""
         # Create compromise proposals
         compromise1 = self._create_adjusted_proposal(prop1, confidence_factor=0.9)
@@ -513,9 +483,7 @@ class ConflictResolver:
 
         return [compromise1, compromise2]
 
-    def _create_generator_validator_compromise(
-        self, gen_proposal: Any, val_proposal: Any
-    ) -> Any:
+    def _create_generator_validator_compromise(self, gen_proposal: Any, val_proposal: Any) -> Any:
         """Create compromise between generator and validator proposals."""
         # Blend strategy parameters
         compromise_params = {}
@@ -563,17 +531,14 @@ class ConflictResolver:
         adjusted_params = curriculum_proposal.strategy_parameters.copy()
 
         # Make curriculum more flexible to accommodate compromises
-        adjusted_params["adaptivity"] = min(
-            adjusted_params.get("adaptivity", 0.7) + 0.1, 1.0
-        )
+        adjusted_params["adaptivity"] = min(adjusted_params.get("adaptivity", 0.7) + 0.1, 1.0)
         adjusted_params["flexibility"] = 0.8
 
         adjusted_proposal = type(curriculum_proposal)(
             agent_id=curriculum_proposal.agent_id,
             strategy_name=curriculum_proposal.strategy_name,
             strategy_parameters=adjusted_params,
-            confidence=curriculum_proposal.confidence
-            * 0.95,  # Slight confidence reduction
+            confidence=curriculum_proposal.confidence * 0.95,  # Slight confidence reduction
             metadata={**curriculum_proposal.metadata, "adjusted_for_compromise": True},
         )
 
@@ -593,9 +558,7 @@ class ConflictResolver:
         consistency = perf_data.get("consistency", 0.5)
 
         # Weighted performance score
-        performance_score = (
-            0.5 * success_rate + 0.3 * avg_confidence + 0.2 * consistency
-        )
+        performance_score = 0.5 * success_rate + 0.3 * avg_confidence + 0.2 * consistency
 
         return performance_score
 
@@ -614,9 +577,7 @@ class ConflictResolver:
 
         return adjusted_proposal
 
-    def _adjust_generator_for_validator(
-        self, gen_proposal: Any, val_proposal: Any
-    ) -> Any:
+    def _adjust_generator_for_validator(self, gen_proposal: Any, val_proposal: Any) -> Any:
         """Adjust generator proposal to be more compatible with validator."""
         adjusted_params = gen_proposal.strategy_parameters.copy()
 
@@ -627,9 +588,7 @@ class ConflictResolver:
 
         return self._create_adjusted_proposal(gen_proposal)
 
-    def _adjust_validator_for_generator(
-        self, val_proposal: Any, gen_proposal: Any
-    ) -> Any:
+    def _adjust_validator_for_generator(self, val_proposal: Any, gen_proposal: Any) -> Any:
         """Adjust validator proposal to be more compatible with generator."""
         adjusted_params = val_proposal.strategy_parameters.copy()
 
@@ -711,9 +670,13 @@ class ConflictResolver:
                 key=lambda x: x[1],
                 default=("none", 0),
             )[0],
-            "performance_status": "excellent"
-            if self.resolution_metrics["resolution_success_rate"] > 0.9
-            else "good"
-            if self.resolution_metrics["resolution_success_rate"] > 0.7
-            else "needs_improvement",
+            "performance_status": (
+                "excellent"
+                if self.resolution_metrics["resolution_success_rate"] > 0.9
+                else (
+                    "good"
+                    if self.resolution_metrics["resolution_success_rate"] > 0.7
+                    else "needs_improvement"
+                )
+            ),
         }

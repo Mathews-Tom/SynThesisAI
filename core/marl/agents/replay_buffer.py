@@ -1,18 +1,21 @@
 """
-Experience Replay Buffer Implementation
+Experience Replay Buffer Implementation.
 
 This module provides experience replay buffer classes for storing and sampling
 experiences in reinforcement learning, including both standard and prioritized
 replay buffers for improved learning stability and sample efficiency.
 """
 
+# Standard Library
 import logging
 import random
 from collections import deque
 from typing import List, Optional, Tuple
 
+# Third-Party Library
 import numpy as np
 
+# SynThesisAI Modules
 from ..exceptions import ExperienceBufferError
 from .experience import Experience
 
@@ -28,12 +31,12 @@ class ReplayBuffer:
     proper error handling and logging.
     """
 
-    def __init__(self, capacity: int):
+    def __init__(self, capacity: int) -> None:
         """
         Initialize replay buffer.
 
         Args:
-            capacity: Maximum number of experiences to store
+            capacity: Maximum number of experiences to store.
         """
         if capacity <= 0:
             raise ExperienceBufferError(
@@ -42,32 +45,26 @@ class ReplayBuffer:
                 buffer_size=capacity,
                 operation="initialize",
             )
-
         self.capacity = capacity
-        self.buffer = deque(maxlen=capacity)
+        self.buffer: deque = deque(maxlen=capacity)
         self.position = 0
-
         logger.info("Initialized replay buffer with capacity %d", capacity)
 
     def add(self, experience: Experience) -> None:
         """
-        Add experience to the buffer.
+        Add an experience to the buffer.
 
         Args:
-            experience: Experience tuple to add
+            experience: The experience tuple to add.
         """
         try:
             self.buffer.append(experience)
             self.position = (self.position + 1) % self.capacity
-
             if len(self.buffer) % 10000 == 0:
-                logger.debug(
-                    "Replay buffer size: %d/%d", len(self.buffer), self.capacity
-                )
-
+                logger.debug("Replay buffer size: %d/%d", len(self.buffer), self.capacity)
         except Exception as e:
             error_msg = "Failed to add experience to replay buffer"
-            logger.error("%s: %s", error_msg, str(e))
+            logger.error("%s: %s", error_msg, e, exc_info=True)
             raise ExperienceBufferError(
                 error_msg,
                 buffer_type="standard",
@@ -80,13 +77,13 @@ class ReplayBuffer:
         Sample a batch of experiences uniformly at random.
 
         Args:
-            batch_size: Number of experiences to sample
+            batch_size: The number of experiences to sample.
 
         Returns:
-            List of sampled experiences
+            A list of sampled experiences.
 
         Raises:
-            ExperienceBufferError: If not enough experiences or sampling fails
+            ExperienceBufferError: If not enough experiences are available.
         """
         if len(self.buffer) < batch_size:
             raise ExperienceBufferError(
@@ -95,13 +92,11 @@ class ReplayBuffer:
                 buffer_size=len(self.buffer),
                 operation="sample",
             )
-
         try:
             return random.sample(list(self.buffer), batch_size)
-
         except Exception as e:
             error_msg = f"Failed to sample {batch_size} experiences from buffer"
-            logger.error("%s: %s", error_msg, str(e))
+            logger.error("%s: %s", error_msg, e, exc_info=True)
             raise ExperienceBufferError(
                 error_msg,
                 buffer_type="standard",
@@ -110,15 +105,15 @@ class ReplayBuffer:
             ) from e
 
     def __len__(self) -> int:
-        """Return current buffer size."""
+        """Return the current size of the buffer."""
         return len(self.buffer)
 
     def is_full(self) -> bool:
-        """Check if buffer is at capacity."""
+        """Check if the buffer is at full capacity."""
         return len(self.buffer) == self.capacity
 
     def clear(self) -> None:
-        """Clear all experiences from buffer."""
+        """Clear all experiences from the buffer."""
         self.buffer.clear()
         self.position = 0
         logger.info("Replay buffer cleared")
@@ -133,9 +128,7 @@ class ReplayBuffer:
                 "avg_reward": 0.0,
                 "reward_std": 0.0,
             }
-
         rewards = [exp.reward for exp in self.buffer]
-
         return {
             "size": len(self.buffer),
             "capacity": self.capacity,
@@ -156,14 +149,14 @@ class PrioritizedReplayBuffer:
     informative for learning.
     """
 
-    def __init__(self, capacity: int, alpha: float = 0.6, beta: float = 0.4):
+    def __init__(self, capacity: int, alpha: float = 0.6, beta: float = 0.4) -> None:
         """
         Initialize prioritized replay buffer.
 
         Args:
-            capacity: Maximum number of experiences to store
-            alpha: Prioritization exponent (0 = uniform, 1 = full prioritization)
-            beta: Importance sampling exponent (0 = no correction, 1 = full correction)
+            capacity: Maximum number of experiences to store.
+            alpha: Prioritization exponent (0 = uniform, 1 = full prioritization).
+            beta: Importance sampling exponent (0 = no correction, 1 = full correction).
         """
         if capacity <= 0:
             raise ExperienceBufferError(
@@ -172,29 +165,25 @@ class PrioritizedReplayBuffer:
                 buffer_size=capacity,
                 operation="initialize",
             )
-
         if not 0 <= alpha <= 1:
             raise ExperienceBufferError(
                 f"Alpha must be between 0 and 1, got {alpha}",
                 buffer_type="prioritized",
                 operation="initialize",
             )
-
         if not 0 <= beta <= 1:
             raise ExperienceBufferError(
                 f"Beta must be between 0 and 1, got {beta}",
                 buffer_type="prioritized",
                 operation="initialize",
             )
-
         self.capacity = capacity
         self.alpha = alpha
         self.beta = beta
-        self.buffer = []
+        self.buffer: List[Experience] = []
         self.priorities = np.zeros(capacity, dtype=np.float32)
         self.position = 0
         self.max_priority = 1.0
-
         logger.info(
             "Initialized prioritized replay buffer with capacity %d, alpha %.2f, beta %.2f",
             capacity,
@@ -204,31 +193,23 @@ class PrioritizedReplayBuffer:
 
     def add(self, experience: Experience, td_error: Optional[float] = None) -> None:
         """
-        Add experience to the buffer with priority.
+        Add an experience to the buffer with a given priority.
 
         Args:
-            experience: Experience tuple to add
-            td_error: Temporal difference error for prioritization (optional)
+            experience: The experience tuple to add.
+            td_error: The TD error for calculating priority.
         """
         try:
-            # Calculate priority from TD error or use max priority for new experiences
-            if td_error is not None:
-                priority = (abs(td_error) + 1e-6) ** self.alpha
-            else:
-                priority = self.max_priority
-
-            # Add experience
+            priority = (
+                (abs(td_error) + 1e-6) ** self.alpha if td_error is not None else self.max_priority
+            )
             if len(self.buffer) < self.capacity:
                 self.buffer.append(experience)
             else:
                 self.buffer[self.position] = experience
-
-            # Set priority
             self.priorities[self.position] = priority
             self.max_priority = max(self.max_priority, priority)
-
             self.position = (self.position + 1) % self.capacity
-
             if len(self.buffer) % 10000 == 0:
                 logger.debug(
                     "Prioritized replay buffer size: %d/%d, max priority: %.4f",
@@ -236,10 +217,9 @@ class PrioritizedReplayBuffer:
                     self.capacity,
                     self.max_priority,
                 )
-
         except Exception as e:
             error_msg = "Failed to add experience to prioritized replay buffer"
-            logger.error("%s: %s", error_msg, str(e))
+            logger.error("%s: %s", error_msg, e, exc_info=True)
             raise ExperienceBufferError(
                 error_msg,
                 buffer_type="prioritized",
@@ -247,20 +227,15 @@ class PrioritizedReplayBuffer:
                 operation="add",
             ) from e
 
-    def sample(
-        self, batch_size: int
-    ) -> Tuple[List[Experience], np.ndarray, np.ndarray]:
+    def sample(self, batch_size: int) -> Tuple[List[Experience], np.ndarray, np.ndarray]:
         """
-        Sample a batch of experiences based on priorities.
+        Sample a batch of experiences based on their priorities.
 
         Args:
-            batch_size: Number of experiences to sample
+            batch_size: The number of experiences to sample.
 
         Returns:
-            Tuple of (experiences, indices, importance_weights)
-
-        Raises:
-            ExperienceBufferError: If not enough experiences or sampling fails
+            A tuple of (experiences, indices, importance_weights).
         """
         if len(self.buffer) < batch_size:
             raise ExperienceBufferError(
@@ -269,7 +244,6 @@ class PrioritizedReplayBuffer:
                 buffer_size=len(self.buffer),
                 operation="sample",
             )
-
         try:
             # Get valid priorities
             valid_priorities = self.priorities[: len(self.buffer)]
@@ -284,16 +258,12 @@ class PrioritizedReplayBuffer:
             experiences = [self.buffer[idx] for idx in indices]
 
             # Calculate importance sampling weights
-            weights = (len(self.buffer) * probabilities[indices]) ** (-self.beta)
-            weights = weights / weights.max()  # Normalize weights
-
+            weights = (len(self.buffer) * probabilities[indices]) ** -self.beta
+            weights /= weights.max()
             return experiences, indices, weights
-
         except Exception as e:
-            error_msg = (
-                f"Failed to sample {batch_size} experiences from prioritized buffer"
-            )
-            logger.error("%s: %s", error_msg, str(e))
+            error_msg = f"Failed to sample {batch_size} experiences from prioritized buffer"
+            logger.error("%s: %s", error_msg, e, exc_info=True)
             raise ExperienceBufferError(
                 error_msg,
                 buffer_type="prioritized",
@@ -303,20 +273,19 @@ class PrioritizedReplayBuffer:
 
     def update_priorities(self, indices: np.ndarray, td_errors: np.ndarray) -> None:
         """
-        Update priorities for sampled experiences.
+        Update the priorities for a batch of sampled experiences.
 
         Args:
-            indices: Indices of experiences to update
-            td_errors: New TD errors for priority calculation
+            indices: The indices of the experiences to update.
+            td_errors: The new TD errors for priority calculation.
         """
         try:
             priorities = (np.abs(td_errors) + 1e-6) ** self.alpha
             self.priorities[indices] = priorities
             self.max_priority = max(self.max_priority, priorities.max())
-
         except Exception as e:
             error_msg = "Failed to update priorities in prioritized buffer"
-            logger.error("%s: %s", error_msg, str(e))
+            logger.error("%s: %s", error_msg, e, exc_info=True)
             raise ExperienceBufferError(
                 error_msg,
                 buffer_type="prioritized",
@@ -325,15 +294,15 @@ class PrioritizedReplayBuffer:
             ) from e
 
     def __len__(self) -> int:
-        """Return current buffer size."""
+        """Return the current size of the buffer."""
         return len(self.buffer)
 
     def is_full(self) -> bool:
-        """Check if buffer is at capacity."""
+        """Check if the buffer is at full capacity."""
         return len(self.buffer) == self.capacity
 
     def clear(self) -> None:
-        """Clear all experiences from buffer."""
+        """Clear all experiences from the buffer."""
         self.buffer.clear()
         self.priorities.fill(0)
         self.position = 0
@@ -352,10 +321,8 @@ class PrioritizedReplayBuffer:
                 "avg_priority": 0.0,
                 "max_priority": 0.0,
             }
-
         rewards = [exp.reward for exp in self.buffer]
         valid_priorities = self.priorities[: len(self.buffer)]
-
         return {
             "size": len(self.buffer),
             "capacity": self.capacity,

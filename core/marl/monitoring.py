@@ -1,21 +1,23 @@
 """
-MARL Performance Monitoring Infrastructure
+MARL Performance Monitoring Infrastructure.
 
 This module provides comprehensive monitoring and metrics collection for
 multi-agent reinforcement learning components, following the development
 standards for performance tracking and analysis.
 """
 
+# Standard Library
 import json
 import logging
 import threading
 import time
-from collections import defaultdict, deque
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Deque, Dict, List, Optional
 
+# SynThesisAI Modules
 from .config import MARLConfig
 from .exceptions import MARLError
 
@@ -106,12 +108,12 @@ class AgentMetrics:
         x2_sum = sum(i * i for i in range(n))
 
         # Calculate slope (learning progress)
-        denominator = n * x2_sum - x_sum * x_sum
+        denominator = n * x2_sum - x_sum**2
         if denominator == 0:
             return 0.0
 
         slope = (n * xy_sum - x_sum * y_sum) / denominator
-        return max(0.0, min(1.0, slope + 0.5))  # Normalize to [0, 1]
+        return max(0.0, min(1.0, slope + 0.5))
 
     def update(
         self,
@@ -212,16 +214,16 @@ class SystemMetrics:
 class MARLPerformanceMonitor:
     """Comprehensive performance monitoring for MARL system."""
 
-    def __init__(self, config: Optional[MARLConfig] = None):
+    def __init__(self, config: Optional[MARLConfig] = None) -> None:
         """
         Initialize MARL performance monitor.
 
         Args:
-            config: MARL configuration for monitoring settings
+            config: MARL configuration for monitoring settings.
         """
         self.config = config
         self.coordination_metrics = CoordinationMetrics()
-        self.agent_metrics = {
+        self.agent_metrics: Dict[str, AgentMetrics] = {
             "generator": AgentMetrics(agent_id="generator"),
             "validator": AgentMetrics(agent_id="validator"),
             "curriculum": AgentMetrics(agent_id="curriculum"),
@@ -231,11 +233,10 @@ class MARLPerformanceMonitor:
         # Performance tracking
         self.episode_count = 0
         self.last_report_time = time.time()
-        self.performance_history = []
+        self.performance_history: List[Dict[str, Any]] = []
 
         # Thread safety
         self._lock = threading.Lock()
-
         logger.info("MARL performance monitor initialized")
 
     def record_coordination_episode(self, episode_data: Dict[str, Any]) -> None:
@@ -282,7 +283,7 @@ class MARLPerformanceMonitor:
     def get_performance_report(self) -> Dict[str, Any]:
         """Generate comprehensive performance report."""
         with self._lock:
-            report = {
+            return {
                 "timestamp": datetime.now().isoformat(),
                 "episode_count": self.episode_count,
                 "coordination_metrics": {
@@ -298,8 +299,6 @@ class MARLPerformanceMonitor:
                 "improvement_recommendations": self.generate_recommendations(),
             }
 
-            return report
-
     def generate_recommendations(self) -> List[str]:
         """Generate performance improvement recommendations."""
         recommendations = []
@@ -308,39 +307,35 @@ class MARLPerformanceMonitor:
         if self.coordination_metrics.success_rate < 0.85:
             recommendations.append(
                 f"Coordination success rate ({self.coordination_metrics.success_rate:.2f}) "
-                f"below target (0.85). Consider adjusting consensus mechanisms or "
-                f"agent communication protocols."
+                "is below target (0.85). Consider adjusting consensus mechanisms."
             )
 
         # Check agent learning progress
         for agent_id, metrics in self.agent_metrics.items():
             if metrics.learning_progress < 0.1:
                 recommendations.append(
-                    f"{agent_id} agent showing slow learning progress "
-                    f"({metrics.learning_progress:.2f}). Consider adjusting learning "
-                    f"rate or reward function."
+                    f"{agent_id} agent has slow learning progress "
+                    f"({metrics.learning_progress:.2f}). Adjust learning rate or rewards."
                 )
-
             if metrics.success_rate < 0.7:
                 recommendations.append(
                     f"{agent_id} agent success rate ({metrics.success_rate:.2f}) "
-                    f"below expected threshold. Review action selection strategy."
+                    "is below threshold. Review action selection strategy."
                 )
 
-        # Check system performance
+        # Check system preference
         if self.system_metrics.success_rate < 0.9:
             recommendations.append(
                 f"System success rate ({self.system_metrics.success_rate:.2f}) "
-                f"below target. Investigate system-level issues."
+                "is below target. Investigate system-level issues."
             )
 
         # Check coordination time
         if self.coordination_metrics.average_time > 10.0:
             recommendations.append(
                 f"Average coordination time ({self.coordination_metrics.average_time:.2f}s) "
-                f"exceeds target. Consider optimizing coordination algorithms."
+                "exceeds target. Optimize coordination algorithms."
             )
-
         return recommendations
 
     def _generate_performance_report(self) -> None:
@@ -358,11 +353,11 @@ class MARLPerformanceMonitor:
                 report["system_performance"]["success_rate"],
             )
 
-            # Log recommendations if any
-            recommendations = report["improvement_recommendations"]
-            if recommendations:
+            # Log recommendations if available
+            if report["improvement_recommendations"]:
                 logger.warning(
-                    "Performance recommendations: %s", "; ".join(recommendations)
+                    "Performance recommendations: %s",
+                    "; ".join(report["improvement_recommendations"]),
                 )
 
             # Store in history
@@ -371,34 +366,27 @@ class MARLPerformanceMonitor:
             # Keep only recent history
             if len(self.performance_history) > 100:
                 self.performance_history = self.performance_history[-100:]
-
         except Exception as e:
-            logger.error("Failed to generate performance report: %s", str(e))
+            logger.error("Failed to generate performance report: %s", e, exc_info=True)
 
     def export_metrics(self, export_path: Path) -> None:
-        """Export metrics to file for external analysis."""
+        """Export metrics to a file for external analysis."""
         try:
             export_path.parent.mkdir(parents=True, exist_ok=True)
-
             export_data = {
                 "export_timestamp": datetime.now().isoformat(),
                 "performance_report": self.get_performance_report(),
-                "performance_history": self.performance_history[
-                    -50:
-                ],  # Last 50 reports
+                "performance_history": self.performance_history[-50:],
             }
-
             with open(export_path, "w", encoding="utf-8") as f:
                 json.dump(export_data, f, indent=2, default=str)
-
             logger.info("Metrics exported to %s", export_path)
-
         except Exception as e:
-            logger.error("Failed to export metrics to %s: %s", export_path, str(e))
-            raise MARLError(f"Metrics export failed: {str(e)}") from e
+            logger.error("Failed to export metrics to %s: %s", export_path, e)
+            raise MARLError(f"Metrics export failed: {e}") from e
 
     def reset_metrics(self) -> None:
-        """Reset all metrics (useful for testing or retraining)."""
+        """Reset all metrics."""
         with self._lock:
             self.coordination_metrics = CoordinationMetrics()
             self.agent_metrics = {
@@ -409,7 +397,6 @@ class MARLPerformanceMonitor:
             self.system_metrics = SystemMetrics()
             self.episode_count = 0
             self.performance_history.clear()
-
             logger.info("All MARL metrics reset")
 
     def get_real_time_status(self) -> Dict[str, Any]:
@@ -417,9 +404,9 @@ class MARLPerformanceMonitor:
         with self._lock:
             return {
                 "timestamp": datetime.now().isoformat(),
-                "system_status": "healthy"
-                if self.system_metrics.success_rate > 0.9
-                else "degraded",
+                "system_status": (
+                    "healthy" if self.system_metrics.success_rate > 0.9 else "degraded"
+                ),
                 "coordination_success_rate": self.coordination_metrics.success_rate,
                 "active_episodes": self.episode_count,
                 "average_coordination_time": self.coordination_metrics.average_time,
@@ -427,9 +414,9 @@ class MARLPerformanceMonitor:
                     agent_id: {
                         "success_rate": metrics.success_rate,
                         "learning_progress": metrics.learning_progress,
-                        "recent_reward": metrics.episode_rewards[-1]
-                        if metrics.episode_rewards
-                        else 0.0,
+                        "recent_reward": (
+                            metrics.episode_rewards[-1] if metrics.episode_rewards else 0.0
+                        ),
                     }
                     for agent_id, metrics in self.agent_metrics.items()
                 },

@@ -1,18 +1,21 @@
 """
-MARL Configuration Management
+MARL Configuration Management (Legacy).
 
 This module provides configuration classes for multi-agent reinforcement learning
 components, following the development standards for comprehensive configuration
 management with validation and compatibility checking.
 """
 
+# Standard Library
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
+# Third-Party Library
 import yaml
 
+# SynThesisAI Modules
 from utils.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
@@ -47,18 +50,13 @@ class AgentConfig:
 
     def validate(self) -> None:
         """Validate agent configuration parameters."""
-        if self.learning_rate <= 0 or self.learning_rate > 1:
-            raise ValidationError(
-                "Learning rate must be between 0 and 1", field="learning_rate"
-            )
-
-        if self.gamma <= 0 or self.gamma > 1:
+        if not 0 < self.learning_rate <= 1:
+            raise ValidationError("Learning rate must be between 0 and 1", field="learning_rate")
+        if not 0 < self.gamma <= 1:
             raise ValidationError("Gamma must be between 0 and 1", field="gamma")
-
         if self.buffer_size <= 0:
             raise ValidationError("Buffer size must be positive", field="buffer_size")
-
-        if self.batch_size <= 0 or self.batch_size > self.buffer_size:
+        if not 0 < self.batch_size <= self.buffer_size:
             raise ValidationError(
                 "Batch size must be positive and <= buffer size", field="batch_size"
             )
@@ -160,9 +158,7 @@ class MARLConfig:
     # Agent configurations
     generator_config: GeneratorAgentConfig = field(default_factory=GeneratorAgentConfig)
     validator_config: ValidatorAgentConfig = field(default_factory=ValidatorAgentConfig)
-    curriculum_config: CurriculumAgentConfig = field(
-        default_factory=CurriculumAgentConfig
-    )
+    curriculum_config: CurriculumAgentConfig = field(default_factory=CurriculumAgentConfig)
 
     # System configurations
     coordination_config: CoordinationConfig = field(default_factory=CoordinationConfig)
@@ -185,96 +181,78 @@ class MARLConfig:
 
     @classmethod
     def from_file(cls, config_path: Path) -> "MARLConfig":
-        """Load MARL configuration from YAML file."""
+        """
+        Load MARL configuration from a YAML file.
+
+        Args:
+            config_path: The path to the YAML configuration file.
+
+        Returns:
+            An instance of MARLConfig.
+
+        Raises:
+            ValidationError: If the configuration file is invalid.
+        """
         try:
             with open(config_path, "r", encoding="utf-8") as f:
                 config_data = yaml.safe_load(f)
 
-            # Create configuration with validation
             config = cls()
 
-            # Update with loaded data
             if "generator" in config_data:
-                config.generator_config = GeneratorAgentConfig(
-                    **config_data["generator"]
-                )
-
+                config.generator_config = GeneratorAgentConfig(**config_data["generator"])
             if "validator" in config_data:
-                config.validator_config = ValidatorAgentConfig(
-                    **config_data["validator"]
-                )
-
+                config.validator_config = ValidatorAgentConfig(**config_data["validator"])
             if "curriculum" in config_data:
-                config.curriculum_config = CurriculumAgentConfig(
-                    **config_data["curriculum"]
-                )
-
+                config.curriculum_config = CurriculumAgentConfig(**config_data["curriculum"])
             if "coordination" in config_data:
-                config.coordination_config = CoordinationConfig(
-                    **config_data["coordination"]
-                )
-
+                config.coordination_config = CoordinationConfig(**config_data["coordination"])
             if "experience" in config_data:
                 config.experience_config = ExperienceConfig(**config_data["experience"])
 
-            # Update system settings
             for key, value in config_data.get("system", {}).items():
                 if hasattr(config, key):
                     setattr(config, key, value)
 
-            # Validate configuration
             config.validate()
-
             logger.info("MARL configuration loaded successfully from %s", config_path)
             return config
 
         except Exception as e:
-            logger.error(
-                "Failed to load MARL configuration from %s: %s", config_path, str(e)
-            )
-            raise ValidationError(f"Invalid MARL configuration: {str(e)}") from e
+            logger.error("Failed to load MARL configuration from %s: %s", config_path, e)
+            raise ValidationError(f"Invalid MARL configuration: {e}") from e
 
     def validate(self) -> None:
         """Validate the complete MARL configuration."""
-        # Validate individual agent configurations
         self.generator_config.validate()
         self.validator_config.validate()
         self.curriculum_config.validate()
 
-        # Validate coordination parameters
-        if (
-            self.coordination_config.min_consensus_quality <= 0
-            or self.coordination_config.min_consensus_quality > 1
-        ):
+        if not 0 < self.coordination_config.min_consensus_quality <= 1:
             raise ValidationError(
                 "Min consensus quality must be between 0 and 1",
                 field="min_consensus_quality",
             )
-
-        if (
-            self.coordination_config.coordination_success_threshold <= 0
-            or self.coordination_config.coordination_success_threshold > 1
-        ):
+        if not 0 < self.coordination_config.coordination_success_threshold <= 1:
             raise ValidationError(
                 "Coordination success threshold must be between 0 and 1",
                 field="coordination_success_threshold",
             )
-
-        # Validate system parameters
         if self.num_workers <= 0:
-            raise ValidationError(
-                "Number of workers must be positive", field="num_workers"
-            )
-
+            raise ValidationError("Number of workers must be positive", field="num_workers")
         if self.checkpoint_interval <= 0:
             raise ValidationError(
                 "Checkpoint interval must be positive", field="checkpoint_interval"
             )
-
         logger.info("MARL configuration validation completed successfully")
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert configuration to dictionary for serialization."""
+        """
+        Convert the configuration to a dictionary for serialization.
+
+        Returns:
+            A dictionary representation of the configuration.
+        """
         return {
             "generator": self.generator_config.__dict__,
             "validator": self.validator_config.__dict__,
@@ -295,33 +273,37 @@ class MARLConfig:
         }
 
     def save_to_file(self, config_path: Path) -> None:
-        """Save configuration to YAML file."""
+        """
+        Save the configuration to a YAML file.
+
+        Args:
+            config_path: The path to save the YAML file to.
+
+        Raises:
+            ValidationError: If saving the configuration fails.
+        """
         try:
             config_path.parent.mkdir(parents=True, exist_ok=True)
-
             with open(config_path, "w", encoding="utf-8") as f:
                 yaml.dump(self.to_dict(), f, default_flow_style=False, indent=2)
-
             logger.info("MARL configuration saved to %s", config_path)
-
         except Exception as e:
-            logger.error(
-                "Failed to save MARL configuration to %s: %s", config_path, str(e)
-            )
-            raise ValidationError(f"Failed to save MARL configuration: {str(e)}") from e
+            logger.error("Failed to save MARL configuration to %s: %s", config_path, e)
+            raise ValidationError(f"Failed to save MARL configuration: {e}") from e
 
 
 def get_default_marl_config() -> MARLConfig:
-    """Get default MARL configuration for development and testing."""
-    config = MARLConfig()
+    """
+    Get the default MARL configuration for development and testing.
 
-    # Set development-friendly defaults
+    Returns:
+        A MARLConfig instance with development-friendly defaults.
+    """
+    config = MARLConfig()
     config.generator_config.max_episodes = 1000
     config.validator_config.max_episodes = 1000
     config.curriculum_config.max_episodes = 1000
-
     config.debug_mode = True
     config.log_level = "DEBUG"
     config.checkpoint_interval = 100
-
     return config
