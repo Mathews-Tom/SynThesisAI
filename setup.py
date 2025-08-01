@@ -3,19 +3,24 @@
 Setup script for SynThesisAI - The Next-Gen Platform for Generative Intelligence Across STREAM
 """
 
-import os
+# Standard Library
 from pathlib import Path
 
+# Third-Party Library
 from setuptools import find_packages, setup
 
 # Read the long description from README.md
-with open("README.md", "r", encoding="utf-8") as fh:
-    long_description = fh.read()
+long_description = Path("README.md").read_text(encoding="utf-8")
 
 
 # Create necessary directories
-def create_directories():
-    """Create necessary directories for the project"""
+def create_directories() -> None:
+    """
+    Create necessary directories for the project.
+
+    Returns:
+        None
+    """
     directories = ["database", ".cache/dspy", "data/training", "data/validation"]
 
     for directory in directories:
@@ -24,8 +29,13 @@ def create_directories():
 
 
 # Create .env file if it doesn't exist
-def create_env_file():
-    """Create .env file if it doesn't exist"""
+def create_env_file() -> None:
+    """
+    Create .env file if it doesn't exist.
+
+    Returns:
+        None
+    """
     env_path = Path(".env")
     if not env_path.exists():
         env_content = """# API Keys
@@ -40,8 +50,7 @@ DATABASE_URL=sqlite:///./database/math_agent.db
 SIMILARITY_THRESHOLD=0.82
 EMBEDDING_MODEL=text-embedding-3-small
 """
-        with open(env_path, "w") as f:
-            f.write(env_content)
+        env_path.write_text(env_content, encoding="utf-8")
         print("✅ Created .env file - please update with your API keys")
     else:
         print("✅ .env file already exists")
