@@ -1,4 +1,6 @@
-# __init__.py
+"""
+Utilities package: expose key utility functions and classes.
+"""
 
 # Import key utilities for easy access
 from .config_loader import load_config

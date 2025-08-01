@@ -7,7 +7,7 @@ enhanced taxonomy structure as part of Phase 3 improvements.
 
 import logging
 import random
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from utils.taxonomy import (
     VALID_DIFFICULTY_LEVELS,
@@ -49,14 +49,13 @@ class CurriculumStrategy:
     def _initialize_topic_coverage(self):
         """Initialize topic coverage tracking."""
         for subject, topics in self.taxonomy_data.items():
-            if isinstance(topics, dict):  # New nested format
-                for topic in topics.keys():
-                    key = f"{subject}::{topic}"
-                    self.topic_coverage[key] = 0
-            elif isinstance(topics, list):  # Legacy format
-                for topic in topics:
-                    key = f"{subject}::{topic}"
-                    self.topic_coverage[key] = 0
+            topic_list = (
+                topics.keys()
+                if isinstance(topics, dict)
+                else (topics if isinstance(topics, list) else [])
+            )
+            for topic in topic_list:
+                self.topic_coverage[f"{subject}::{topic}"] = 0
 
     def select_topic_and_difficulty(
         self,
@@ -165,9 +164,7 @@ class CurriculumStrategy:
         # Find topics with lowest coverage
         min_coverage = min(self.topic_coverage.values()) if self.topic_coverage else 0
         under_covered_topics = [
-            key
-            for key, count in self.topic_coverage.items()
-            if count <= min_coverage + 1
+            key for key, count in self.topic_coverage.items() if count <= min_coverage + 1
         ]
 
         # Filter by difficulty level if specified
@@ -201,31 +198,27 @@ class CurriculumStrategy:
             return self._select_random_topic(difficulty_level)
 
         subject_topics = self.taxonomy_data[subject]
+        # Determine list of (topic, info) tuples
+        if isinstance(subject_topics, dict):
+            items = subject_topics.items()
+        elif isinstance(subject_topics, list):
+            items = [(topic, {}) for topic in subject_topics]
+        else:
+            items = []
 
-        if isinstance(subject_topics, dict):  # New nested format
-            # Filter by difficulty if specified
-            if difficulty_level:
-                matching_topics = [
-                    topic
-                    for topic, info in subject_topics.items()
-                    if info.get("level") == difficulty_level
-                ]
-            else:
-                matching_topics = list(subject_topics.keys())
+        # Filter by difficulty if specified
+        if difficulty_level:
+            items = [
+                (topic, info) for topic, info in items if info.get("level") == difficulty_level
+            ]
+        if not items:
+            logger.warning(
+                f"No topics found for {subject}"
+                + (f" at {difficulty_level} level" if difficulty_level else "")
+            )
+            return self._select_random_topic(difficulty_level)
 
-            if not matching_topics:
-                logger.warning(
-                    f"No topics found for {subject} at {difficulty_level} level"
-                )
-                return self._select_random_topic(difficulty_level)
-
-            topic = random.choice(matching_topics)
-            topic_info = subject_topics[topic]
-
-        else:  # Legacy format
-            topic = random.choice(subject_topics)
-            topic_info = {}
-
+        topic, topic_info = random.choice(items)
         return subject, topic, topic_info
 
     def _select_random_topic(
@@ -270,9 +263,7 @@ class CurriculumStrategy:
         # Coverage statistics
         total_topics = len(self.topic_coverage)
         covered_topics = sum(1 for count in self.topic_coverage.values() if count > 0)
-        coverage_percentage = (
-            (covered_topics / total_topics * 100) if total_topics > 0 else 0
-        )
+        coverage_percentage = (covered_topics / total_topics * 100) if total_topics > 0 else 0
 
         return {
             "total_generated": len(self.generation_history),
@@ -284,8 +275,7 @@ class CurriculumStrategy:
                 "coverage_percentage": coverage_percentage,
             },
             "recent_topics": [
-                f"{entry['subject']} - {entry['topic']}"
-                for entry in self.generation_history[-5:]
+                f"{entry['subject']} - {entry['topic']}" for entry in self.generation_history[-5:]
             ],
         }
 
@@ -312,8 +302,7 @@ class CurriculumStrategy:
             total_weight = sum(valid_weights.values())
             if total_weight > 0:
                 self.difficulty_weights = {
-                    level: weight / total_weight
-                    for level, weight in valid_weights.items()
+                    level: weight / total_weight for level, weight in valid_weights.items()
                 }
                 logger.info(f"Updated difficulty weights: {self.difficulty_weights}")
             else:
