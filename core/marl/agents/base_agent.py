@@ -1,25 +1,26 @@
 """
-Base RL Agent Framework
+Base RL Agent Framework.
 
 This module provides the abstract base class for reinforcement learning agents
 with common RL functionality including deep Q-learning, experience replay,
 and epsilon-greedy exploration strategies.
 """
 
+# Standard Library
 import logging
-import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional
 
+# Third-Party Library
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 
+# SynThesisAI Modules
 from ..config_legacy import AgentConfig
-from ..exceptions import (AgentFailureError, ExperienceBufferError,
-                          PolicyNetworkError)
+from ..exceptions import AgentFailureError, PolicyNetworkError
 from ..logging_config import get_marl_logger
 from .experience import Experience
 from .learning_metrics import LearningMetrics
@@ -46,7 +47,7 @@ class ActionSpace:
         raise IndexError(f"Action index {index} out of range [0, {len(self.actions)})")
 
     def get_action_index(self, action: str) -> int:
-        """Get index of action by name."""
+        """Get index of an action by its name."""
         try:
             return self.actions.index(action)
         except ValueError as e:
@@ -61,33 +62,31 @@ class BaseRLAgent(ABC):
     """
     Abstract base class for reinforcement learning agents.
 
-    Provides common RL functionality including deep Q-learning with experience replay,
-    epsilon-greedy exploration, and policy optimization mechanisms.
+    Provides common RL functionality including deep Q-learning with experience
+    replay, epsilon-greedy exploration, and policy optimization mechanisms.
     """
 
-    def __init__(self, agent_id: str, config: AgentConfig):
+    def __init__(self, agent_id: str, config: AgentConfig) -> None:
         """
         Initialize the base RL agent.
 
         Args:
-            agent_id: Unique identifier for this agent
-            config: Agent configuration parameters
+            agent_id: A unique identifier for this agent.
+            config: The configuration parameters for the agent.
         """
         self.agent_id = agent_id
         self.config = config
         self.logger = get_marl_logger(f"agent.{agent_id}", None)
-
-        # Initialize device (GPU if available)
         self.device = torch.device(
             "cuda" if torch.cuda.is_available() and config.gpu_enabled else "cpu"
         )
 
         # Neural network components
-        self.state_size = None  # Will be set when first state is observed
+        self.state_size: Optional[int] = None
         self.action_size = len(self.get_action_space())
-        self.q_network = None
-        self.target_network = None
-        self.optimizer = None
+        self.q_network: Optional[nn.Module] = None
+        self.target_network: Optional[nn.Module] = None
+        self.optimizer: Optional[optim.Optimizer] = None
 
         # Learning components
         self.replay_buffer = ReplayBuffer(config.buffer_size)
@@ -101,9 +100,9 @@ class BaseRLAgent(ABC):
         self.episode_count = 0
 
         # State tracking
-        self.current_state = None
-        self.last_action = None
-        self.last_reward = None
+        self.current_state: Optional[np.ndarray] = None
+        self.last_action: Optional[int] = None
+        self.last_reward: Optional[float] = None
 
         self.logger.log_agent_action(
             self.agent_id,
@@ -115,7 +114,7 @@ class BaseRLAgent(ABC):
     def _initialize_networks(self, state_size: int) -> None:
         """Initialize neural networks with the given state size."""
         if self.q_network is not None:
-            return  # Already initialized
+            return
 
         try:
             self.state_size = state_size
@@ -130,19 +129,15 @@ class BaseRLAgent(ABC):
 
             # Build target network
             self.target_network = build_target_network(self.q_network).to(self.device)
-
-            # Initialize optimizer
             self.optimizer = optim.Adam(
                 self.q_network.parameters(), lr=self.config.learning_rate
             )
-
             self.logger.log_agent_action(
                 self.agent_id,
                 "networks_initialized",
                 1.0,
                 f"State size: {state_size}, Hidden layers: {self.config.hidden_layers}",
             )
-
         except Exception as e:
             error_msg = f"Failed to initialize networks for agent {self.agent_id}"
             self.logger.log_error_with_context(
@@ -163,53 +158,50 @@ class BaseRLAgent(ABC):
     @abstractmethod
     def get_state_representation(self, environment_state: Dict[str, Any]) -> np.ndarray:
         """
-        Convert environment state to agent-specific representation.
+        Convert environment state to an agent-specific representation.
 
         Args:
-            environment_state: Raw environment state
+            environment_state: The raw state from the environment.
 
         Returns:
-            Numpy array representing the state for this agent
+            A NumPy array representing the state for this agent.
         """
-        pass
 
     @abstractmethod
     def get_action_space(self) -> ActionSpace:
         """
-        Define agent-specific action space.
+        Define the agent-specific action space.
 
         Returns:
-            ActionSpace defining available actions for this agent
+            An ActionSpace object defining available actions for this agent.
         """
-        pass
 
     @abstractmethod
     def calculate_reward(
         self, state: np.ndarray, action: int, result: Dict[str, Any]
     ) -> float:
         """
-        Calculate agent-specific reward for the given state-action-result.
+        Calculate an agent-specific reward for the given state-action-result.
 
         Args:
-            state: State representation
-            action: Action taken
-            result: Result of the action
+            state: The state representation.
+            action: The action taken.
+            result: The result of the action.
 
         Returns:
-            Reward value for this agent
+            The reward value for this agent.
         """
-        pass
 
     def select_action(self, state: np.ndarray, training: bool = True) -> int:
         """
-        Select action using epsilon-greedy strategy.
+        Select an action using an epsilon-greedy strategy.
 
         Args:
-            state: Current state representation
-            training: Whether in training mode (affects exploration)
+            state: The current state representation.
+            training: Whether the agent is in training mode.
 
         Returns:
-            Selected action index
+            The selected action index.
         """
         try:
             # Initialize networks if needed
@@ -222,7 +214,7 @@ class BaseRLAgent(ABC):
                 action = self.get_action_space().sample()
                 confidence = 0.0
             else:
-                # Exploit: best action according to Q-network
+                # Exploit: best action according to Q-notebook
                 with torch.no_grad():
                     state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
                     q_values = self.q_network(state_tensor)
@@ -235,7 +227,6 @@ class BaseRLAgent(ABC):
             self.logger.log_agent_action(
                 self.agent_id, action_name, confidence, state_summary
             )
-
             return action
 
         except Exception as e:
@@ -268,17 +259,16 @@ class BaseRLAgent(ABC):
         done: bool,
     ) -> None:
         """
-        Update agent policy using Q-learning.
+        Update the agent's policy using Q-learning.
 
         Args:
-            state: Current state
-            action: Action taken
-            reward: Reward received
-            next_state: Next state
-            done: Whether episode is done
+            state: The current state.
+            action: The action taken.
+            reward: The reward received.
+            next_state: The next state.
+            done: Whether the episode has finished.
         """
         try:
-            # Store experience in replay buffer
             experience = Experience(
                 state=state,
                 action=action,
@@ -340,10 +330,10 @@ class BaseRLAgent(ABC):
 
     def train_on_batch(self) -> float:
         """
-        Train Q-network on a batch of experiences.
+        Train the Q-network on a batch of experiences.
 
         Returns:
-            Training loss value
+            The training loss value.
         """
         try:
             # Sample batch from replay buffer
@@ -383,9 +373,7 @@ class BaseRLAgent(ABC):
 
             # Gradient clipping for stability
             torch.nn.utils.clip_grad_norm_(self.q_network.parameters(), max_norm=1.0)
-
             self.optimizer.step()
-
             return loss.item()
 
         except Exception as e:
@@ -406,7 +394,7 @@ class BaseRLAgent(ABC):
             ) from e
 
     def update_target_network(self) -> None:
-        """Update target network with current Q-network weights."""
+        """Update the target network with the current Q-network weights."""
         try:
             self.target_network.load_state_dict(self.q_network.state_dict())
             self.logger.log_agent_action(
@@ -426,25 +414,23 @@ class BaseRLAgent(ABC):
 
     def get_action_confidence(self, state: np.ndarray, action: int) -> float:
         """
-        Get confidence score for a specific action in the given state.
+        Get the confidence score for a specific action in the given state.
 
         Args:
-            state: State representation
-            action: Action index
+            state: The state representation.
+            action: The action index.
 
         Returns:
-            Confidence score between 0 and 1
+            A confidence score between 0 and 1.
         """
         try:
             if self.q_network is None:
                 return 0.0
-
             with torch.no_grad():
                 state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
                 q_values = self.q_network(state_tensor)
                 probabilities = torch.softmax(q_values, dim=1)
                 return probabilities[0, action].item()
-
         except Exception as e:
             self.logger.log_error_with_context(
                 e,
@@ -457,25 +443,23 @@ class BaseRLAgent(ABC):
             return 0.0
 
     def _get_mean_q_values(self, state: np.ndarray) -> float:
-        """Get mean Q-values for the given state."""
+        """Get the mean Q-values for the given state."""
         try:
             if self.q_network is None:
                 return 0.0
-
             with torch.no_grad():
                 state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
                 q_values = self.q_network(state_tensor)
                 return q_values.mean().item()
-
         except Exception:
             return 0.0
 
     def save_checkpoint(self, checkpoint_path: str) -> None:
         """
-        Save agent checkpoint including networks and training state.
+        Save the agent's checkpoint.
 
         Args:
-            checkpoint_path: Path to save checkpoint
+            checkpoint_path: The path to save the checkpoint to.
         """
         try:
             checkpoint = {
@@ -483,24 +467,22 @@ class BaseRLAgent(ABC):
                 "episode_count": self.episode_count,
                 "training_step": self.training_step,
                 "epsilon": self.epsilon,
-                "q_network_state_dict": self.q_network.state_dict()
-                if self.q_network
-                else None,
-                "target_network_state_dict": self.target_network.state_dict()
-                if self.target_network
-                else None,
-                "optimizer_state_dict": self.optimizer.state_dict()
-                if self.optimizer
-                else None,
+                "q_network_state_dict": (
+                    self.q_network.state_dict() if self.q_network else None
+                ),
+                "target_network_state_dict": (
+                    self.target_network.state_dict() if self.target_network else None
+                ),
+                "optimizer_state_dict": (
+                    self.optimizer.state_dict() if self.optimizer else None
+                ),
                 "learning_metrics": self.learning_metrics.to_dict(),
                 "config": self.config.__dict__,
             }
-
             torch.save(checkpoint, checkpoint_path)
             self.logger.log_checkpoint_save(
                 checkpoint_path, self.episode_count, [self.agent_id]
             )
-
         except Exception as e:
             error_msg = f"Checkpoint save failed for agent {self.agent_id}"
             self.logger.log_error_with_context(
@@ -512,10 +494,10 @@ class BaseRLAgent(ABC):
 
     def load_checkpoint(self, checkpoint_path: str) -> None:
         """
-        Load agent checkpoint including networks and training state.
+        Load an agent's checkpoint.
 
         Args:
-            checkpoint_path: Path to load checkpoint from
+            checkpoint_path: The path to load the checkpoint from.
         """
         try:
             checkpoint = torch.load(checkpoint_path, map_location=self.device)
@@ -528,12 +510,10 @@ class BaseRLAgent(ABC):
             # Restore networks if they exist
             if checkpoint.get("q_network_state_dict") and self.q_network:
                 self.q_network.load_state_dict(checkpoint["q_network_state_dict"])
-
             if checkpoint.get("target_network_state_dict") and self.target_network:
                 self.target_network.load_state_dict(
                     checkpoint["target_network_state_dict"]
                 )
-
             if checkpoint.get("optimizer_state_dict") and self.optimizer:
                 self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
@@ -547,7 +527,6 @@ class BaseRLAgent(ABC):
                 1.0,
                 f"Episode: {self.episode_count}, Step: {self.training_step}",
             )
-
         except Exception as e:
             error_msg = f"Checkpoint load failed for agent {self.agent_id}"
             self.logger.log_error_with_context(
@@ -558,14 +537,14 @@ class BaseRLAgent(ABC):
             ) from e
 
     def reset_episode(self) -> None:
-        """Reset agent state for new episode."""
+        """Reset the agent's state for a new episode."""
         self.current_state = None
         self.last_action = None
         self.last_reward = None
         self.episode_count += 1
 
     def get_agent_summary(self) -> Dict[str, Any]:
-        """Get summary of agent state and performance."""
+        """Get a summary of the agent's state and performance."""
         return {
             "agent_id": self.agent_id,
             "episode_count": self.episode_count,

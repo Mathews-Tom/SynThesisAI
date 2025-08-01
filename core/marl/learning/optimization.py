@@ -6,17 +6,19 @@ for multi-agent reinforcement learning, following the development standards for
 comprehensive optimization with proper error handling and logging.
 """
 
+# Standard Library
 import logging
 import math
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
+# Third-Party Library
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 
+# SynThesisAI Modules
 from ..config import AgentConfig
 from ..exceptions import LearningDivergenceError, OptimizationFailureError
 from ..logging_config import get_marl_logger
@@ -501,17 +503,17 @@ class LearningStabilizer:
 
         return {
             "status": "stable" if len(self.loss_history) > 0 else "insufficient_data",
-            "loss_trend": np.corrcoef(range(len(self.loss_history)), self.loss_history)[
-                0, 1
-            ]
-            if len(self.loss_history) > 1
-            else 0.0,
+            "loss_trend": (
+                np.corrcoef(range(len(self.loss_history)), self.loss_history)[0, 1]
+                if len(self.loss_history) > 1
+                else 0.0
+            ),
             "loss_variance": np.var(self.loss_history),
-            "gradient_variance": np.var(self.gradient_history)
-            if self.gradient_history
-            else 0.0,
+            "gradient_variance": (
+                np.var(self.gradient_history) if self.gradient_history else 0.0
+            ),
             "recent_loss": self.loss_history[-1] if self.loss_history else 0.0,
-            "recent_gradient": self.gradient_history[-1]
-            if self.gradient_history
-            else 0.0,
+            "recent_gradient": (
+                self.gradient_history[-1] if self.gradient_history else 0.0
+            ),
         }

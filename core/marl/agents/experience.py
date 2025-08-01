@@ -1,14 +1,16 @@
 """
-Experience Data Structures
+Experience Data Structures.
 
 This module provides data structures for storing and managing experiences
 in reinforcement learning, including the Experience class and related utilities.
 """
 
+# Standard Library
 import time
 from dataclasses import dataclass, field
 from typing import Any, Dict
 
+# Third-Party Library
 import numpy as np
 
 
@@ -25,7 +27,12 @@ class Experience:
     timestamp: float = field(default_factory=time.time)
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert experience to dictionary for serialization."""
+        """
+        Convert the experience to a dictionary for serialization.
+
+        Returns:
+            A dictionary representation of the experience.
+        """
         return {
             "state": self.state.tolist(),
             "action": self.action,
@@ -38,7 +45,15 @@ class Experience:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Experience":
-        """Create experience from dictionary."""
+        """
+        Create an Experience object from a dictionary.
+
+        Args:
+            data: The dictionary to create the object from.
+
+        Returns:
+            An Experience object.
+        """
         return cls(
             state=np.array(data["state"]),
             action=data["action"],

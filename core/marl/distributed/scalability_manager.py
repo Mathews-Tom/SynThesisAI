@@ -4,22 +4,22 @@ This module provides auto-scaling and resource optimization capabilities
 for distributed MARL deployment across multiple nodes and environments.
 """
 
+# Standard Library
 import asyncio
-import json
 import threading
 import time
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
+# Third-Party Library
 import psutil
 
+# SynThesisAI Modules
 from utils.logging_config import get_logger
-
-from .network_coordinator import NetworkConfig, NetworkCoordinator
-from .resource_manager import ResourceConfig, ResourceManager, ResourceType
+from .network_coordinator import NetworkCoordinator
+from .resource_manager import ResourceManager
 
 
 class ScalingDirection(Enum):
@@ -399,10 +399,7 @@ class ScalabilityManager:
                         self.metrics_history.append(metrics)
 
                         # Limit history size
-                        if (
-                            len(self.metrics_history)
-                            > self.config.metric_window_size * 10
-                        ):
+                        if len(self.metrics_history) > self.config.metric_window_size * 10:
                             self.metrics_history = self.metrics_history[
                                 -self.config.metric_window_size * 5 :
                             ]
@@ -475,9 +472,7 @@ class ScalabilityManager:
                 if resource_metrics:
                     latest_metrics = resource_metrics[-1]
                     cpu_utilization = latest_metrics.get("cpu_percent", 0.0) / 100.0
-                    memory_utilization = (
-                        latest_metrics.get("memory_percent", 0.0) / 100.0
-                    )
+                    memory_utilization = latest_metrics.get("memory_percent", 0.0) / 100.0
                     gpu_utilization = latest_metrics.get("gpu_percent", 0.0) / 100.0
             else:
                 # Fallback to direct system metrics
@@ -496,9 +491,7 @@ class ScalabilityManager:
             coordination_load = self._calculate_coordination_load()
 
             # Get node and agent counts
-            active_nodes = len(
-                [n for n in self.nodes.values() if n.status == NodeStatus.ACTIVE]
-            )
+            active_nodes = len([n for n in self.nodes.values() if n.status == NodeStatus.ACTIVE])
             total_agents = sum(n.agent_count for n in self.nodes.values())
 
             # Calculate coordination success rate
@@ -534,9 +527,7 @@ class ScalabilityManager:
     def _calculate_coordination_load(self) -> float:
         """Calculate current coordination load."""
         # Simple coordination load calculation
-        active_nodes = len(
-            [n for n in self.nodes.values() if n.status == NodeStatus.ACTIVE]
-        )
+        active_nodes = len([n for n in self.nodes.values() if n.status == NodeStatus.ACTIVE])
         total_agents = sum(n.agent_count for n in self.nodes.values())
 
         if active_nodes == 0:
@@ -544,9 +535,7 @@ class ScalabilityManager:
 
         # Load increases with more agents and coordination complexity
         agents_per_node = total_agents / active_nodes
-        coordination_complexity = (
-            active_nodes * (active_nodes - 1)
-        ) / 2  # Pairwise coordination
+        coordination_complexity = (active_nodes * (active_nodes - 1)) / 2  # Pairwise coordination
 
         # Normalize to [0, 1]
         load = min(
@@ -565,16 +554,12 @@ class ScalabilityManager:
             return 1.0
 
         recent_metrics = (
-            self.metrics_history[-5:]
-            if len(self.metrics_history) >= 5
-            else self.metrics_history
+            self.metrics_history[-5:] if len(self.metrics_history) >= 5 else self.metrics_history
         )
 
         # Success rate decreases with high resource utilization
         avg_cpu = sum(m.cpu_utilization for m in recent_metrics) / len(recent_metrics)
-        avg_memory = sum(m.memory_utilization for m in recent_metrics) / len(
-            recent_metrics
-        )
+        avg_memory = sum(m.memory_utilization for m in recent_metrics) / len(recent_metrics)
         avg_coordination_load = sum(m.coordination_load for m in recent_metrics) / len(
             recent_metrics
         )
@@ -599,9 +584,7 @@ class ScalabilityManager:
                     if node.status == NodeStatus.ACTIVE:
                         node.status = NodeStatus.FAILED
                         unhealthy_nodes.append(node_id)
-                        self.logger.warning(
-                            "Node %s marked as failed (heartbeat timeout)", node_id
-                        )
+                        self.logger.warning("Node %s marked as failed (heartbeat timeout)", node_id)
 
         # Handle unhealthy nodes
         for node_id in unhealthy_nodes:
@@ -616,12 +599,8 @@ class ScalabilityManager:
                     node.last_heartbeat = time.time()
 
                     # Update resource usage (simulate)
-                    node.cpu_usage = min(
-                        1.0, node.cpu_usage + (time.time() % 0.1 - 0.05)
-                    )
-                    node.memory_usage = min(
-                        1.0, node.memory_usage + (time.time() % 0.08 - 0.04)
-                    )
+                    node.cpu_usage = min(1.0, node.cpu_usage + (time.time() % 0.1 - 0.05))
+                    node.memory_usage = min(1.0, node.memory_usage + (time.time() % 0.08 - 0.04))
                     node.coordination_load = self._calculate_coordination_load()
 
     async def _handle_node_failure(self, node_id: str) -> None:
@@ -636,18 +615,12 @@ class ScalabilityManager:
 
                     # Redistribute agents from failed node
                     if failed_node.agent_count > 0:
-                        await self._redistribute_agents(
-                            node_id, failed_node.agent_count
-                        )
+                        await self._redistribute_agents(node_id, failed_node.agent_count)
 
                     # Remove failed node after cleanup
                     del self.nodes[node_id]
                     self.current_nodes = len(
-                        [
-                            n
-                            for n in self.nodes.values()
-                            if n.status == NodeStatus.ACTIVE
-                        ]
+                        [n for n in self.nodes.values() if n.status == NodeStatus.ACTIVE]
                     )
 
             # Trigger scaling if needed
@@ -669,8 +642,7 @@ class ScalabilityManager:
         available_nodes = [
             n
             for n in self.nodes.values()
-            if n.status == NodeStatus.ACTIVE
-            and n.agent_count < self.config.max_agents_per_node
+            if n.status == NodeStatus.ACTIVE and n.agent_count < self.config.max_agents_per_node
         ]
 
         if not available_nodes:
@@ -688,9 +660,7 @@ class ScalabilityManager:
             additional_agents = agents_per_node + (1 if i < remaining_agents else 0)
             node.agent_count += additional_agents
 
-            self.logger.debug(
-                "Redistributed %d agents to node %s", additional_agents, node.node_id
-            )
+            self.logger.debug("Redistributed %d agents to node %s", additional_agents, node.node_id)
 
     def _evaluate_scaling_need(self) -> Dict[str, Any]:
         """Evaluate if scaling is needed."""
@@ -703,10 +673,7 @@ class ScalabilityManager:
                     }
 
                 # Check cooldown period
-                if (
-                    time.time() - self.last_scaling_action
-                    < self.config.scaling_cooldown
-                ):
+                if time.time() - self.last_scaling_action < self.config.scaling_cooldown:
                     return {
                         "action": ScalingDirection.STABLE,
                         "reason": "Cooldown period",
@@ -735,17 +702,11 @@ class ScalabilityManager:
                     }
 
                 # Weighted decision
-                up_scores = [
-                    s for s in scaling_scores if s["action"] == ScalingDirection.UP
-                ]
-                down_scores = [
-                    s for s in scaling_scores if s["action"] == ScalingDirection.DOWN
-                ]
+                up_scores = [s for s in scaling_scores if s["action"] == ScalingDirection.UP]
+                down_scores = [s for s in scaling_scores if s["action"] == ScalingDirection.DOWN]
 
                 up_weight = sum(s["weight"] * s.get("urgency", 1.0) for s in up_scores)
-                down_weight = sum(
-                    s["weight"] * s.get("urgency", 1.0) for s in down_scores
-                )
+                down_weight = sum(s["weight"] * s.get("urgency", 1.0) for s in down_scores)
 
                 if up_weight > down_weight and up_weight > 1.0:
                     # Scale up
@@ -835,10 +796,7 @@ class ScalabilityManager:
         # Determine scaling action
         if trigger == ScalingTrigger.AGENT_COUNT:
             # Special handling for agent count (absolute values)
-            if (
-                avg_metric > scale_up_threshold
-                and self.current_nodes < self.config.max_nodes
-            ):
+            if avg_metric > scale_up_threshold and self.current_nodes < self.config.max_nodes:
                 urgency = min(2.0, avg_metric / scale_up_threshold)
                 return {
                     "action": ScalingDirection.UP,
@@ -848,10 +806,7 @@ class ScalabilityManager:
                     "urgency": urgency,
                     "reason": f"{trigger.value} ({avg_metric:.1f}) > threshold ({scale_up_threshold})",
                 }
-            elif (
-                avg_metric < scale_down_threshold
-                and self.current_nodes > self.config.min_nodes
-            ):
+            elif avg_metric < scale_down_threshold and self.current_nodes > self.config.min_nodes:
                 urgency = min(2.0, scale_down_threshold / max(avg_metric, 0.1))
                 return {
                     "action": ScalingDirection.DOWN,
@@ -863,10 +818,7 @@ class ScalabilityManager:
                 }
         else:
             # Percentage-based thresholds
-            if (
-                avg_metric > scale_up_threshold
-                and self.current_nodes < self.config.max_nodes
-            ):
+            if avg_metric > scale_up_threshold and self.current_nodes < self.config.max_nodes:
                 urgency = min(2.0, 1.0 + (avg_metric - scale_up_threshold) * 2.0)
                 if trend > 0.1:  # Increasing trend
                     urgency *= 1.2
@@ -879,10 +831,7 @@ class ScalabilityManager:
                     "urgency": urgency,
                     "reason": f"{trigger.value} ({avg_metric:.3f}) > threshold ({scale_up_threshold})",
                 }
-            elif (
-                avg_metric < scale_down_threshold
-                and self.current_nodes > self.config.min_nodes
-            ):
+            elif avg_metric < scale_down_threshold and self.current_nodes > self.config.min_nodes:
                 urgency = min(2.0, 1.0 + (scale_down_threshold - avg_metric) * 2.0)
                 if trend < -0.1:  # Decreasing trend
                     urgency *= 1.2
@@ -1002,10 +951,7 @@ class ScalabilityManager:
             elif action.action_type == ScalingDirection.DOWN:
                 # Downgrade nodes to lower performance template
                 for node in self.nodes.values():
-                    if (
-                        node.status == NodeStatus.ACTIVE
-                        and node.template == "high_performance"
-                    ):
+                    if node.status == NodeStatus.ACTIVE and node.template == "high_performance":
                         node.template = "default"
                         action.nodes_affected.append(node.node_id)
 
@@ -1020,9 +966,7 @@ class ScalabilityManager:
         """Execute hybrid scaling (combination of horizontal and vertical)."""
         try:
             # Decide between horizontal and vertical based on current state
-            active_nodes = len(
-                [n for n in self.nodes.values() if n.status == NodeStatus.ACTIVE]
-            )
+            active_nodes = len([n for n in self.nodes.values() if n.status == NodeStatus.ACTIVE])
 
             if active_nodes < self.config.max_nodes // 2:
                 # Prefer horizontal scaling when we have few nodes
@@ -1110,9 +1054,7 @@ class ScalabilityManager:
                 del self.nodes[node_id]
 
             # Notify node callbacks
-            await self._notify_node_callbacks(
-                "terminated", node_id, {"status": "terminated"}
-            )
+            await self._notify_node_callbacks("terminated", node_id, {"status": "terminated"})
 
             self.logger.info("Node terminated successfully: %s", node_id)
             return True
@@ -1155,9 +1097,7 @@ class ScalabilityManager:
             except Exception as e:
                 self.logger.error("Node callback error: %s", str(e))
 
-    async def manual_scale(
-        self, target_nodes: int, reason: str = "Manual scaling"
-    ) -> bool:
+    async def manual_scale(self, target_nodes: int, reason: str = "Manual scaling") -> bool:
         """Manually trigger scaling action.
 
         Args:
@@ -1168,10 +1108,7 @@ class ScalabilityManager:
             True if successful, False otherwise
         """
         try:
-            if (
-                target_nodes < self.config.min_nodes
-                or target_nodes > self.config.max_nodes
-            ):
+            if target_nodes < self.config.min_nodes or target_nodes > self.config.max_nodes:
                 self.logger.error(
                     "Target nodes %d outside allowed range [%d, %d]",
                     target_nodes,
@@ -1186,9 +1123,7 @@ class ScalabilityManager:
 
             # Create scaling decision
             action_type = (
-                ScalingDirection.UP
-                if target_nodes > self.current_nodes
-                else ScalingDirection.DOWN
+                ScalingDirection.UP if target_nodes > self.current_nodes else ScalingDirection.DOWN
             )
 
             decision = {
@@ -1220,9 +1155,7 @@ class ScalabilityManager:
                 "auto_scaling_enabled": self.config.enable_auto_scaling,
                 "last_scaling_action": self.last_scaling_action,
                 "active_nodes": [
-                    n.node_id
-                    for n in self.nodes.values()
-                    if n.status == NodeStatus.ACTIVE
+                    n.node_id for n in self.nodes.values() if n.status == NodeStatus.ACTIVE
                 ],
                 "pending_nodes": list(self.pending_nodes.keys()),
                 "recent_metrics": recent_metrics.to_dict() if recent_metrics else None,
@@ -1238,30 +1171,18 @@ class ScalabilityManager:
         # Calculate current efficiency
         if self.metrics_history:
             recent_metrics = self.metrics_history[-5:]  # Last 5 measurements
-            avg_cpu = sum(m.cpu_utilization for m in recent_metrics) / len(
-                recent_metrics
-            )
-            avg_memory = sum(m.memory_utilization for m in recent_metrics) / len(
-                recent_metrics
-            )
+            avg_cpu = sum(m.cpu_utilization for m in recent_metrics) / len(recent_metrics)
+            avg_memory = sum(m.memory_utilization for m in recent_metrics) / len(recent_metrics)
 
             # Efficiency is how close we are to target utilization
             cpu_efficiency = 1.0 - abs(avg_cpu - self.config.target_cpu_utilization)
-            memory_efficiency = 1.0 - abs(
-                avg_memory - self.config.target_memory_utilization
-            )
-            self.scaling_metrics["current_efficiency"] = (
-                cpu_efficiency + memory_efficiency
-            ) / 2.0
+            memory_efficiency = 1.0 - abs(avg_memory - self.config.target_memory_utilization)
+            self.scaling_metrics["current_efficiency"] = (cpu_efficiency + memory_efficiency) / 2.0
 
         # Calculate uptime percentage
         total_nodes = len(self.nodes) + len(self.pending_nodes)
-        active_nodes = len(
-            [n for n in self.nodes.values() if n.status == NodeStatus.ACTIVE]
-        )
-        self.scaling_metrics["uptime_percentage"] = (
-            active_nodes / max(1, total_nodes)
-        ) * 100.0
+        active_nodes = len([n for n in self.nodes.values() if n.status == NodeStatus.ACTIVE])
+        self.scaling_metrics["uptime_percentage"] = (active_nodes / max(1, total_nodes)) * 100.0
 
         return self.scaling_metrics.copy()
 
@@ -1275,8 +1196,7 @@ class ScalabilityManager:
                     if node.status == NodeStatus.ACTIVE
                 },
                 "pending_nodes": {
-                    node_id: node.to_dict()
-                    for node_id, node in self.pending_nodes.items()
+                    node_id: node.to_dict() for node_id, node in self.pending_nodes.items()
                 },
                 "failed_nodes": {
                     node_id: node.to_dict()
@@ -1286,19 +1206,11 @@ class ScalabilityManager:
                 "summary": {
                     "total_nodes": len(self.nodes) + len(self.pending_nodes),
                     "active_count": len(
-                        [
-                            n
-                            for n in self.nodes.values()
-                            if n.status == NodeStatus.ACTIVE
-                        ]
+                        [n for n in self.nodes.values() if n.status == NodeStatus.ACTIVE]
                     ),
                     "pending_count": len(self.pending_nodes),
                     "failed_count": len(
-                        [
-                            n
-                            for n in self.nodes.values()
-                            if n.status == NodeStatus.FAILED
-                        ]
+                        [n for n in self.nodes.values() if n.status == NodeStatus.FAILED]
                     ),
                     "total_agents": sum(n.agent_count for n in self.nodes.values()),
                 },

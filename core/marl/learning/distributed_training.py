@@ -6,19 +6,19 @@ reinforcement learning, enabling scalable training across multiple nodes
 and GPUs while maintaining coordination effectiveness.
 """
 
+# Standard Library
 import logging
 import threading
 import time
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, Optional
 
-import numpy as np
+# Third-Party Library
 import torch
 import torch.distributed as dist
-import torch.multiprocessing as mp
 
+# SynThesisAI Modules
 from ..config import MARLConfig
 from ..exceptions import AgentFailureError, MARLError
 from ..logging_config import get_marl_logger
@@ -103,9 +103,7 @@ class DistributedTrainingManager:
             "throughput": 0.0,
         }
 
-        self.logger.log_distributed_training(
-            node_config.rank, config.num_workers, "initialized"
-        )
+        self.logger.log_distributed_training(node_config.rank, config.num_workers, "initialized")
 
     def initialize_distributed_training(self) -> None:
         """Initialize distributed training environment."""
@@ -161,9 +159,7 @@ class DistributedTrainingManager:
             self.node.status = "training"
 
             # Start heartbeat thread
-            heartbeat_thread = threading.Thread(
-                target=self._heartbeat_loop, daemon=True
-            )
+            heartbeat_thread = threading.Thread(target=self._heartbeat_loop, daemon=True)
             heartbeat_thread.start()
 
             # Execute training
@@ -174,17 +170,13 @@ class DistributedTrainingManager:
             # Update metrics
             self.training_metrics["training_time"] += training_time
             self.training_metrics["throughput"] = (
-                self.training_metrics["total_steps"] / training_time
-                if training_time > 0
-                else 0.0
+                self.training_metrics["total_steps"] / training_time if training_time > 0 else 0.0
             )
 
             self.node.status = "completed"
             self.training_active = False
 
-            self.logger.log_distributed_training(
-                self.node.rank, self.node.world_size, "completed"
-            )
+            self.logger.log_distributed_training(self.node.rank, self.node.world_size, "completed")
 
             return result
 
@@ -280,14 +272,13 @@ class DistributedTrainingManager:
             )
 
         except Exception as e:
-            error_msg = (
-                f"Coordination state broadcast failed for node {self.node.node_id}"
-            )
+            error_msg = f"Coordination state broadcast failed for node {self.node.node_id}"
             self.logger.log_error_with_context(
                 e,
                 {
                     "node_id": self.node.node_id,
                     "state_keys": list(coordination_state.keys()),
+                    "error_msg": error_msg,
                 },
             )
             # Don't raise exception for coordination broadcast failures
@@ -397,9 +388,7 @@ class DistributedTrainingManager:
 
             self.node.status = "cleanup"
 
-            self.logger.log_distributed_training(
-                self.node.rank, self.node.world_size, "cleanup"
-            )
+            self.logger.log_distributed_training(self.node.rank, self.node.world_size, "cleanup")
 
         except Exception as e:
             self.logger.log_error_with_context(
@@ -463,9 +452,7 @@ class DistributedCoordinationManager:
         self.consensus_proposals = {}
         self.consensus_votes = {}
 
-    def propose_coordination_action(
-        self, agent_id: str, action_proposal: Dict[str, Any]
-    ) -> str:
+    def propose_coordination_action(self, agent_id: str, action_proposal: Dict[str, Any]) -> str:
         """
         Propose a coordination action across distributed nodes.
 
@@ -565,9 +552,7 @@ class DistributedCoordinationManager:
             time.sleep(0.1)  # Check every 100ms
 
         # Timeout
-        self.logger.log_coordination_failure(
-            proposal_id, "timeout", "Consensus timeout"
-        )
+        self.logger.log_coordination_failure(proposal_id, "timeout", "Consensus timeout")
         return None
 
     def update_global_coordination_state(self, state_update: Dict[str, Any]) -> None:

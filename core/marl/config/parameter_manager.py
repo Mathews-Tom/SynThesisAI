@@ -1,26 +1,27 @@
-"""
-MARL Parameter Manager.
+"""MARL Parameter Manager.
 
 This module provides comprehensive parameter management for MARL systems,
 including parameter validation, optimization, and runtime adjustment.
 """
 
+# Standard Library
 import json
-import math
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-import numpy as np
+# Third-Party Library
+import yaml
 
+# SynThesisAI Modules
+from core.marl.config.config_schema import MARLConfig
 from utils.logging_config import get_logger
-
-from .config_schema import MARLConfig
 
 
 class ParameterType(Enum):
-    """Types of parameters that can be managed."""
+    """Defines the types of parameters that can be managed."""
 
     LEARNING_RATE = "learning_rate"
     EPSILON = "epsilon"
@@ -37,7 +38,7 @@ class ParameterType(Enum):
 
 
 class ParameterConstraint(Enum):
-    """Types of parameter constraints."""
+    """Defines the types of parameter constraints."""
 
     RANGE = "range"
     DISCRETE = "discrete"
@@ -49,11 +50,24 @@ class ParameterConstraint(Enum):
 
 @dataclass
 class ParameterSpec:
-    """
-    Specification for a configurable parameter.
+    """Specification for a configurable parameter.
 
     Defines the parameter's type, constraints, default value,
     and optimization properties.
+
+    Attributes:
+        name: The name of the parameter.
+        param_type: The type of the parameter.
+        default_value: The default value for the parameter.
+        min_value: The minimum allowed value.
+        max_value: The maximum allowed value.
+        constraints: A list of constraints the parameter must adhere to.
+        discrete_values: A list of allowed discrete values.
+        description: A description of the parameter.
+        optimization_priority: The priority for optimization (1=low, 5=high).
+        affects_performance: Whether the parameter affects system performance.
+        requires_restart: Whether changing the parameter requires a system restart.
+        validation_function: An optional custom validation function.
     """
 
     name: str
@@ -64,36 +78,29 @@ class ParameterSpec:
     constraints: List[ParameterConstraint] = field(default_factory=list)
     discrete_values: Optional[List[Any]] = None
     description: str = ""
-    optimization_priority: int = 1  # 1=low, 5=high
+    optimization_priority: int = 1
     affects_performance: bool = True
     requires_restart: bool = False
-    validation_function: Optional[callable] = None
+    validation_function: Optional[Callable[[Any], Tuple[bool, Optional[str]]]] = None
 
     def __post_init__(self):
-        """Validate parameter specification."""
+        """Validates the parameter specification after initialization."""
         if self.min_value is not None and self.max_value is not None:
             if self.min_value >= self.max_value:
-                raise ValueError(
-                    f"min_value must be less than max_value for {self.name}"
-                )
+                raise ValueError(f"min_value must be less than max_value for {self.name}")
 
-        if (
-            ParameterConstraint.DISCRETE in self.constraints
-            and not self.discrete_values
-        ):
-            raise ValueError(
-                f"discrete_values required for discrete parameter {self.name}"
-            )
+        if ParameterConstraint.DISCRETE in self.constraints and not self.discrete_values:
+            raise ValueError(f"discrete_values required for discrete parameter {self.name}")
 
     def validate_value(self, value: Any) -> Tuple[bool, Optional[str]]:
-        """
-        Validate a parameter value against constraints.
+        """Validates a parameter value against its constraints.
 
         Args:
-            value: Value to validate
+            value: The value to validate.
 
         Returns:
-            Tuple of (is_valid, error_message)
+            A tuple containing a boolean indicating validity and an optional
+            error message.
         """
         try:
             # Type-specific validation
@@ -104,7 +111,7 @@ class ParameterSpec:
                 ParameterType.TAU,
             ]:
                 if not isinstance(value, (int, float)):
-                    return False, f"Parameter {self.name} must be numeric"
+                    return False, f"Parameter {self.name} must be numeric."
 
             # Constraint validation
             for constraint in self.constraints:
@@ -112,40 +119,36 @@ class ParameterSpec:
                     if self.min_value is not None and value < self.min_value:
                         return (
                             False,
-                            f"Parameter {self.name} below minimum {self.min_value}",
+                            f"Parameter {self.name} below minimum {self.min_value}.",
                         )
                     if self.max_value is not None and value > self.max_value:
                         return (
                             False,
-                            f"Parameter {self.name} above maximum {self.max_value}",
+                            f"Parameter {self.name} above maximum {self.max_value}.",
                         )
 
                 elif constraint == ParameterConstraint.DISCRETE:
-                    if value not in self.discrete_values:
+                    if self.discrete_values and value not in self.discrete_values:
                         return (
                             False,
-                            f"Parameter {self.name} must be one of {self.discrete_values}",
+                            f"Parameter {self.name} must be one of {self.discrete_values}.",
                         )
 
                 elif constraint == ParameterConstraint.POWER_OF_TWO:
-                    if (
-                        not isinstance(value, int)
-                        or value <= 0
-                        or (value & (value - 1)) != 0
-                    ):
-                        return False, f"Parameter {self.name} must be a power of 2"
+                    if not isinstance(value, int) or value <= 0 or (value & (value - 1)) != 0:
+                        return False, f"Parameter {self.name} must be a power of 2."
 
                 elif constraint == ParameterConstraint.POSITIVE:
                     if value <= 0:
-                        return False, f"Parameter {self.name} must be positive"
+                        return False, f"Parameter {self.name} must be positive."
 
                 elif constraint == ParameterConstraint.PROBABILITY:
                     if not (0.0 <= value <= 1.0):
-                        return False, f"Parameter {self.name} must be between 0 and 1"
+                        return False, f"Parameter {self.name} must be between 0 and 1."
 
                 elif constraint == ParameterConstraint.INTEGER:
                     if not isinstance(value, int):
-                        return False, f"Parameter {self.name} must be an integer"
+                        return False, f"Parameter {self.name} must be an integer."
 
             # Custom validation function
             if self.validation_function:
@@ -156,20 +159,17 @@ class ParameterSpec:
             return True, None
 
         except Exception as e:
-            return False, f"Validation error for {self.name}: {str(e)}"
+            return False, f"Validation error for {self.name}: {e}"
 
-    def suggest_value(
-        self, current_performance: float, target_performance: float
-    ) -> Any:
-        """
-        Suggest a parameter value based on performance metrics.
+    def suggest_value(self, current_performance: float, target_performance: float) -> Any:
+        """Suggests a parameter value based on performance metrics.
 
         Args:
-            current_performance: Current system performance (0-1)
-            target_performance: Target performance (0-1)
+            current_performance: The current system performance (0-1).
+            target_performance: The target performance (0-1).
 
         Returns:
-            Suggested parameter value
+            A suggested parameter value.
         """
         if not self.affects_performance:
             return self.default_value
@@ -201,29 +201,24 @@ class ParameterSpec:
 
 
 class ParameterRegistry:
-    """
-    Registry of all configurable MARL parameters.
+    """Registry of all configurable MARL parameters.
 
     Maintains specifications for all parameters that can be
     configured and optimized in the MARL system.
     """
 
     def __init__(self):
-        """Initialize the parameter registry."""
+        """Initializes the parameter registry."""
         self.logger = get_logger(__name__)
         self._parameters: Dict[str, ParameterSpec] = {}
         self._parameter_groups: Dict[str, List[str]] = {}
 
-        # Register default parameters
         self._register_default_parameters()
 
-        self.logger.info(
-            "Parameter registry initialized with %d parameters", len(self._parameters)
-        )
+        self.logger.info("Parameter registry initialized with %d parameters", len(self._parameters))
 
     def _register_default_parameters(self):
-        """Register default MARL parameters."""
-
+        """Registers default MARL parameters."""
         # Learning parameters
         self.register_parameter(
             ParameterSpec(
@@ -233,12 +228,10 @@ class ParameterRegistry:
                 min_value=1e-6,
                 max_value=0.1,
                 constraints=[ParameterConstraint.RANGE, ParameterConstraint.POSITIVE],
-                description="Learning rate for neural network optimization",
+                description="Learning rate for neural network optimization.",
                 optimization_priority=5,
-                affects_performance=True,
             )
         )
-
         self.register_parameter(
             ParameterSpec(
                 name="gamma",
@@ -250,12 +243,10 @@ class ParameterRegistry:
                     ParameterConstraint.RANGE,
                     ParameterConstraint.PROBABILITY,
                 ],
-                description="Discount factor for future rewards",
+                description="Discount factor for future rewards.",
                 optimization_priority=4,
-                affects_performance=True,
             )
         )
-
         self.register_parameter(
             ParameterSpec(
                 name="tau",
@@ -264,9 +255,8 @@ class ParameterRegistry:
                 min_value=0.001,
                 max_value=0.1,
                 constraints=[ParameterConstraint.RANGE, ParameterConstraint.POSITIVE],
-                description="Soft update rate for target networks",
+                description="Soft update rate for target networks.",
                 optimization_priority=3,
-                affects_performance=True,
             )
         )
 
@@ -282,12 +272,10 @@ class ParameterRegistry:
                     ParameterConstraint.RANGE,
                     ParameterConstraint.PROBABILITY,
                 ],
-                description="Initial exploration rate",
+                description="Initial exploration rate.",
                 optimization_priority=4,
-                affects_performance=True,
             )
         )
-
         self.register_parameter(
             ParameterSpec(
                 name="final_epsilon",
@@ -299,12 +287,10 @@ class ParameterRegistry:
                     ParameterConstraint.RANGE,
                     ParameterConstraint.PROBABILITY,
                 ],
-                description="Final exploration rate",
+                description="Final exploration rate.",
                 optimization_priority=3,
-                affects_performance=True,
             )
         )
-
         self.register_parameter(
             ParameterSpec(
                 name="epsilon_decay",
@@ -313,9 +299,8 @@ class ParameterRegistry:
                 min_value=0.9,
                 max_value=0.9999,
                 constraints=[ParameterConstraint.RANGE],
-                description="Exploration decay rate",
+                description="Exploration decay rate.",
                 optimization_priority=3,
-                affects_performance=True,
             )
         )
 
@@ -332,12 +317,10 @@ class ParameterRegistry:
                     ParameterConstraint.INTEGER,
                     ParameterConstraint.POWER_OF_TWO,
                 ],
-                description="Training batch size",
+                description="Training batch size.",
                 optimization_priority=4,
-                affects_performance=True,
             )
         )
-
         self.register_parameter(
             ParameterSpec(
                 name="replay_buffer_capacity",
@@ -350,13 +333,11 @@ class ParameterRegistry:
                     ParameterConstraint.INTEGER,
                     ParameterConstraint.POSITIVE,
                 ],
-                description="Replay buffer capacity",
+                description="Replay buffer capacity.",
                 optimization_priority=2,
-                affects_performance=True,
                 requires_restart=True,
             )
         )
-
         self.register_parameter(
             ParameterSpec(
                 name="hidden_layer_size",
@@ -367,13 +348,11 @@ class ParameterRegistry:
                     ParameterConstraint.DISCRETE,
                     ParameterConstraint.POSITIVE,
                 ],
-                description="Hidden layer size for neural networks",
+                description="Hidden layer size for neural networks.",
                 optimization_priority=3,
-                affects_performance=True,
                 requires_restart=True,
             )
         )
-
         self.register_parameter(
             ParameterSpec(
                 name="update_frequency",
@@ -386,9 +365,8 @@ class ParameterRegistry:
                     ParameterConstraint.INTEGER,
                     ParameterConstraint.POSITIVE,
                 ],
-                description="Frequency of network updates",
+                description="Frequency of network updates.",
                 optimization_priority=3,
-                affects_performance=True,
             )
         )
 
@@ -401,12 +379,11 @@ class ParameterRegistry:
                 min_value=5.0,
                 max_value=300.0,
                 constraints=[ParameterConstraint.RANGE, ParameterConstraint.POSITIVE],
-                description="Timeout for coordination attempts",
+                description="Timeout for coordination attempts.",
                 optimization_priority=2,
                 affects_performance=False,
             )
         )
-
         self.register_parameter(
             ParameterSpec(
                 name="consensus_threshold",
@@ -418,9 +395,8 @@ class ParameterRegistry:
                     ParameterConstraint.RANGE,
                     ParameterConstraint.PROBABILITY,
                 ],
-                description="Threshold for consensus agreement",
+                description="Threshold for consensus agreement.",
                 optimization_priority=3,
-                affects_performance=True,
             )
         )
 
@@ -433,9 +409,8 @@ class ParameterRegistry:
                 min_value=0.1,
                 max_value=10.0,
                 constraints=[ParameterConstraint.RANGE, ParameterConstraint.POSITIVE],
-                description="Scaling factor for rewards",
+                description="Scaling factor for rewards.",
                 optimization_priority=3,
-                affects_performance=True,
             )
         )
 
@@ -461,36 +436,33 @@ class ParameterRegistry:
         }
 
     def register_parameter(self, param_spec: ParameterSpec):
-        """
-        Register a parameter specification.
+        """Registers a parameter specification.
 
         Args:
-            param_spec: Parameter specification to register
+            param_spec: The parameter specification to register.
         """
         self._parameters[param_spec.name] = param_spec
         self.logger.debug("Registered parameter: %s", param_spec.name)
 
     def get_parameter(self, name: str) -> Optional[ParameterSpec]:
-        """
-        Get parameter specification by name.
+        """Gets a parameter specification by name.
 
         Args:
-            name: Parameter name
+            name: The name of the parameter.
 
         Returns:
-            Parameter specification or None if not found
+            The parameter specification or None if not found.
         """
         return self._parameters.get(name)
 
     def get_parameters_by_group(self, group: str) -> List[ParameterSpec]:
-        """
-        Get parameters by group name.
+        """Gets parameters by group name.
 
         Args:
-            group: Group name
+            group: The name of the group.
 
         Returns:
-            List of parameter specifications in the group
+            A list of parameter specifications in the group.
         """
         if group not in self._parameter_groups:
             return []
@@ -502,27 +474,32 @@ class ParameterRegistry:
         ]
 
     def get_all_parameters(self) -> Dict[str, ParameterSpec]:
-        """Get all registered parameters."""
+        """Gets all registered parameters.
+
+        Returns:
+            A dictionary of all registered parameters.
+        """
         return self._parameters.copy()
 
     def get_parameter_groups(self) -> Dict[str, List[str]]:
-        """Get all parameter groups."""
-        return self._parameter_groups.copy()
-
-    def validate_parameter_set(
-        self, parameters: Dict[str, Any]
-    ) -> Tuple[bool, List[str]]:
-        """
-        Validate a set of parameters.
-
-        Args:
-            parameters: Dictionary of parameter values
+        """Gets all parameter groups.
 
         Returns:
-            Tuple of (all_valid, error_messages)
+            A dictionary of all parameter groups.
+        """
+        return self._parameter_groups.copy()
+
+    def validate_parameter_set(self, parameters: Dict[str, Any]) -> Tuple[bool, List[str]]:
+        """Validates a set of parameters.
+
+        Args:
+            parameters: A dictionary of parameter values.
+
+        Returns:
+            A tuple containing a boolean indicating validity and a list of
+            error messages.
         """
         errors = []
-
         for name, value in parameters.items():
             param_spec = self.get_parameter(name)
             if not param_spec:
@@ -530,10 +507,10 @@ class ParameterRegistry:
                 continue
 
             is_valid, error = param_spec.validate_value(value)
-            if not is_valid:
+            if not is_valid and error:
                 errors.append(error)
 
-        return len(errors) == 0, errors
+        return not errors, errors
 
     def suggest_parameter_values(
         self,
@@ -541,20 +518,19 @@ class ParameterRegistry:
         target_performance: float,
         focus_groups: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
-        """
-        Suggest parameter values based on performance metrics.
+        """Suggests parameter values based on performance metrics.
 
         Args:
-            current_performance: Current system performance (0-1)
-            target_performance: Target performance (0-1)
-            focus_groups: Parameter groups to focus on (None for all)
+            current_performance: The current system performance (0-1).
+            target_performance: The target performance (0-1).
+            focus_groups: A list of parameter groups to focus on.
 
         Returns:
-            Dictionary of suggested parameter values
+            A dictionary of suggested parameter values.
         """
         suggestions = {}
+        parameters_to_consider: List[ParameterSpec] = []
 
-        parameters_to_consider = []
         if focus_groups:
             for group in focus_groups:
                 parameters_to_consider.extend(self.get_parameters_by_group(group))
@@ -566,119 +542,99 @@ class ParameterRegistry:
 
         for param_spec in parameters_to_consider:
             if param_spec.affects_performance:
-                suggested_value = param_spec.suggest_value(
-                    current_performance, target_performance
-                )
+                suggested_value = param_spec.suggest_value(current_performance, target_performance)
                 suggestions[param_spec.name] = suggested_value
 
         return suggestions
 
 
 class MARLParameterManager:
-    """
-    Comprehensive parameter manager for MARL systems.
+    """Comprehensive parameter manager for MARL systems.
 
     Provides parameter validation, optimization, runtime adjustment,
     and configuration management capabilities.
     """
 
     def __init__(self, config: Optional[MARLConfig] = None):
-        """
-        Initialize the parameter manager.
+        """Initializes the parameter manager.
 
         Args:
-            config: Optional MARL configuration to initialize with
+            config: An optional MARL configuration to initialize with.
         """
         self.logger = get_logger(__name__)
         self.registry = ParameterRegistry()
-
-        # Current parameter values
         self._current_parameters: Dict[str, Any] = {}
-
-        # Parameter history for tracking changes
         self._parameter_history: List[Dict[str, Any]] = []
-
-        # Performance tracking
         self._performance_history: List[float] = []
 
-        # Load parameters from config if provided
         if config:
             self.load_from_config(config)
         else:
             self._load_default_parameters()
 
         self.logger.info(
-            "MARL parameter manager initialized with %d parameters",
+            "MARL parameter manager initialized with %d parameters.",
             len(self._current_parameters),
         )
 
     def _load_default_parameters(self):
-        """Load default parameter values."""
+        """Loads default parameter values from the registry."""
         for param_spec in self.registry.get_all_parameters().values():
             self._current_parameters[param_spec.name] = param_spec.default_value
 
     def load_from_config(self, config: MARLConfig):
-        """
-        Load parameters from MARL configuration.
+        """Loads parameters from a MARL configuration object.
 
         Args:
-            config: MARL configuration to load from
+            config: The MARL configuration to load from.
         """
         self.logger.info("Loading parameters from configuration: %s", config.name)
-
-        # Extract parameters from config structure
         extracted_params = self._extract_parameters_from_config(config)
-
-        # Validate and set parameters
         is_valid, errors = self.set_parameters(extracted_params, validate=True)
 
         if not is_valid:
-            self.logger.warning(
-                "Configuration parameter validation errors: %s", "; ".join(errors)
-            )
-            # Load defaults for invalid parameters
+            self.logger.warning("Configuration parameter validation errors: %s", "; ".join(errors))
             self._load_default_parameters()
 
-        self.logger.info(
-            "Loaded %d parameters from configuration", len(self._current_parameters)
-        )
+        self.logger.info("Loaded %d parameters from configuration.", len(self._current_parameters))
 
     def _extract_parameters_from_config(self, config: MARLConfig) -> Dict[str, Any]:
-        """Extract parameter values from configuration structure."""
+        """Extracts parameter values from a configuration structure.
+
+        Args:
+            config: The MARL configuration object.
+
+        Returns:
+            A dictionary of extracted parameter values.
+        """
         params = {}
+        if not config.agents:
+            return params
 
-        # Extract from agents (use first agent as template)
-        if config.agents:
-            first_agent = next(iter(config.agents.values()))
+        first_agent = next(iter(config.agents.values()))
 
-            # Learning parameters
-            if hasattr(first_agent, "optimization"):
-                params["learning_rate"] = first_agent.optimization.learning_rate
+        if hasattr(first_agent, "optimization"):
+            params["learning_rate"] = first_agent.optimization.learning_rate
+        params["gamma"] = getattr(first_agent, "gamma", 0.99)
+        params["tau"] = getattr(first_agent, "tau", 0.005)
 
-            params["gamma"] = getattr(first_agent, "gamma", 0.99)
-            params["tau"] = getattr(first_agent, "tau", 0.005)
+        if hasattr(first_agent, "exploration"):
+            params["initial_epsilon"] = first_agent.exploration.initial_epsilon
+            params["final_epsilon"] = first_agent.exploration.final_epsilon
+            params["epsilon_decay"] = first_agent.exploration.epsilon_decay
 
-            # Exploration parameters
-            if hasattr(first_agent, "exploration"):
-                params["initial_epsilon"] = first_agent.exploration.initial_epsilon
-                params["final_epsilon"] = first_agent.exploration.final_epsilon
-                params["epsilon_decay"] = first_agent.exploration.epsilon_decay
+        if hasattr(first_agent, "replay_buffer"):
+            params["batch_size"] = first_agent.replay_buffer.batch_size
+            params["replay_buffer_capacity"] = first_agent.replay_buffer.capacity
 
-            # Network parameters
-            if hasattr(first_agent, "replay_buffer"):
-                params["batch_size"] = first_agent.replay_buffer.batch_size
-                params["replay_buffer_capacity"] = first_agent.replay_buffer.capacity
+        if hasattr(first_agent, "network") and first_agent.network.hidden_layers:
+            params["hidden_layer_size"] = first_agent.network.hidden_layers[0]
 
-            if hasattr(first_agent, "network") and first_agent.network.hidden_layers:
-                params["hidden_layer_size"] = first_agent.network.hidden_layers[0]
+        params["update_frequency"] = getattr(first_agent, "update_frequency", 4)
+        params["reward_scaling"] = getattr(first_agent, "reward_scaling", 1.0)
 
-            params["update_frequency"] = getattr(first_agent, "update_frequency", 4)
-            params["reward_scaling"] = getattr(first_agent, "reward_scaling", 1.0)
-
-        # Extract coordination parameters
         if hasattr(config, "coordination"):
             params["coordination_timeout"] = config.coordination.coordination_timeout
-
             if hasattr(config.coordination, "consensus"):
                 params["consensus_threshold"] = getattr(
                     config.coordination.consensus, "threshold", 0.6
@@ -687,36 +643,33 @@ class MARLParameterManager:
         return params
 
     def get_parameter(self, name: str) -> Any:
-        """
-        Get current parameter value.
+        """Gets the current value of a parameter.
 
         Args:
-            name: Parameter name
+            name: The name of the parameter.
 
         Returns:
-            Parameter value
+            The value of the parameter.
 
         Raises:
-            KeyError: If parameter not found
+            KeyError: If the parameter is not found.
         """
         if name not in self._current_parameters:
             raise KeyError(f"Parameter not found: {name}")
-
         return self._current_parameters[name]
 
     def set_parameter(
         self, name: str, value: Any, validate: bool = True
     ) -> Tuple[bool, Optional[str]]:
-        """
-        Set a parameter value.
+        """Sets the value of a parameter.
 
         Args:
-            name: Parameter name
-            value: Parameter value
-            validate: Whether to validate the value
+            name: The name of the parameter.
+            value: The new value for the parameter.
+            validate: Whether to validate the value before setting.
 
         Returns:
-            Tuple of (success, error_message)
+            A tuple indicating success and an optional error message.
         """
         if validate:
             param_spec = self.registry.get_parameter(name)
@@ -730,7 +683,6 @@ class MARLParameterManager:
         old_value = self._current_parameters.get(name)
         self._current_parameters[name] = value
 
-        # Record change in history
         self._parameter_history.append(
             {
                 "parameter": name,
@@ -739,61 +691,57 @@ class MARLParameterManager:
                 "timestamp": self._get_timestamp(),
             }
         )
-
         self.logger.debug("Set parameter %s: %s -> %s", name, old_value, value)
         return True, None
 
     def set_parameters(
         self, parameters: Dict[str, Any], validate: bool = True
     ) -> Tuple[bool, List[str]]:
-        """
-        Set multiple parameters.
+        """Sets multiple parameters.
 
         Args:
-            parameters: Dictionary of parameter values
-            validate: Whether to validate values
+            parameters: A dictionary of parameter values.
+            validate: Whether to validate values before setting.
 
         Returns:
-            Tuple of (all_successful, error_messages)
+            A tuple indicating success and a list of error messages.
         """
         errors = []
-
         for name, value in parameters.items():
             success, error = self.set_parameter(name, value, validate)
-            if not success:
+            if not success and error:
                 errors.append(error)
-
-        return len(errors) == 0, errors
+        return not errors, errors
 
     def get_all_parameters(self) -> Dict[str, Any]:
-        """Get all current parameter values."""
+        """Gets all current parameter values.
+
+        Returns:
+            A dictionary of all current parameter values.
+        """
         return self._current_parameters.copy()
 
     def get_parameters_by_group(self, group: str) -> Dict[str, Any]:
-        """
-        Get parameters by group.
+        """Gets parameters by group.
 
         Args:
-            group: Parameter group name
+            group: The name of the parameter group.
 
         Returns:
-            Dictionary of parameter values in the group
+            A dictionary of parameter values in the group.
         """
         group_params = {}
         param_names = self.registry.get_parameter_groups().get(group, [])
-
         for name in param_names:
             if name in self._current_parameters:
                 group_params[name] = self._current_parameters[name]
-
         return group_params
 
     def validate_current_parameters(self) -> Tuple[bool, List[str]]:
-        """
-        Validate all current parameters.
+        """Validates all current parameters.
 
         Returns:
-            Tuple of (all_valid, error_messages)
+            A tuple indicating validity and a list of error messages.
         """
         return self.registry.validate_parameter_set(self._current_parameters)
 
@@ -804,28 +752,23 @@ class MARLParameterManager:
         focus_groups: Optional[List[str]] = None,
         apply_suggestions: bool = False,
     ) -> Dict[str, Any]:
-        """
-        Optimize parameters based on performance metrics.
+        """Optimizes parameters based on performance metrics.
 
         Args:
-            current_performance: Current system performance (0-1)
-            target_performance: Target performance (0-1)
-            focus_groups: Parameter groups to focus on
-            apply_suggestions: Whether to apply suggestions automatically
+            current_performance: The current system performance (0-1).
+            target_performance: The target performance (0-1).
+            focus_groups: A list of parameter groups to focus on.
+            apply_suggestions: Whether to apply suggestions automatically.
 
         Returns:
-            Dictionary of suggested parameter values
+            A dictionary of suggested parameter values.
         """
         self.logger.info(
             "Optimizing parameters: current=%.3f, target=%.3f",
             current_performance,
             target_performance,
         )
-
-        # Record current performance
         self._performance_history.append(current_performance)
-
-        # Get suggestions from registry
         suggestions = self.registry.suggest_parameter_values(
             current_performance, target_performance, focus_groups
         )
@@ -837,46 +780,40 @@ class MARLParameterManager:
                     "Failed to apply some parameter suggestions: %s", "; ".join(errors)
                 )
 
-        self.logger.info("Generated %d parameter suggestions", len(suggestions))
+        self.logger.info("Generated %d parameter suggestions.", len(suggestions))
         return suggestions
 
     def reset_to_defaults(self, parameter_names: Optional[List[str]] = None):
-        """
-        Reset parameters to default values.
+        """Resets parameters to their default values.
 
         Args:
-            parameter_names: Specific parameters to reset (None for all)
+            parameter_names: A list of specific parameters to reset. If None,
+                all parameters are reset.
         """
-        if parameter_names is None:
-            parameter_names = list(self._current_parameters.keys())
-
-        for name in parameter_names:
+        names_to_reset = parameter_names or list(self._current_parameters.keys())
+        for name in names_to_reset:
             param_spec = self.registry.get_parameter(name)
             if param_spec:
                 self.set_parameter(name, param_spec.default_value, validate=False)
-
-        self.logger.info("Reset %d parameters to defaults", len(parameter_names))
+        self.logger.info("Reset %d parameters to defaults.", len(names_to_reset))
 
     def get_parameter_info(self, name: str) -> Optional[Dict[str, Any]]:
-        """
-        Get comprehensive information about a parameter.
+        """Gets comprehensive information about a parameter.
 
         Args:
-            name: Parameter name
+            name: The name of the parameter.
 
         Returns:
-            Parameter information dictionary or None if not found
+            A dictionary of parameter information or None if not found.
         """
         param_spec = self.registry.get_parameter(name)
         if not param_spec:
             return None
 
-        current_value = self._current_parameters.get(name)
-
         return {
             "name": param_spec.name,
             "type": param_spec.param_type.value,
-            "current_value": current_value,
+            "current_value": self._current_parameters.get(name),
             "default_value": param_spec.default_value,
             "min_value": param_spec.min_value,
             "max_value": param_spec.max_value,
@@ -889,42 +826,39 @@ class MARLParameterManager:
         }
 
     def get_parameter_history(self, name: Optional[str] = None) -> List[Dict[str, Any]]:
-        """
-        Get parameter change history.
+        """Gets the parameter change history.
 
         Args:
-            name: Specific parameter name (None for all)
+            name: A specific parameter name to filter by. If None, returns
+                history for all parameters.
 
         Returns:
-            List of parameter change records
+            A list of parameter change records.
         """
         if name is None:
             return self._parameter_history.copy()
-
-        return [
-            record for record in self._parameter_history if record["parameter"] == name
-        ]
+        return [record for record in self._parameter_history if record["parameter"] == name]
 
     def get_performance_history(self) -> List[float]:
-        """Get performance history."""
-        return self._performance_history.copy()
-
-    def export_parameters(
-        self, file_path: Union[str, Path], format: str = "json"
-    ) -> bool:
-        """
-        Export current parameters to file.
-
-        Args:
-            file_path: Path to export file
-            format: Export format ('json' or 'yaml')
+        """Gets the performance history.
 
         Returns:
-            True if export successful
+            A list of recorded performance values.
+        """
+        return self._performance_history.copy()
+
+    def export_parameters(self, file_path: Union[str, Path], file_format: str = "json") -> bool:
+        """Exports the current parameters to a file.
+
+        Args:
+            file_path: The path to the export file.
+            file_format: The export format ('json' or 'yaml').
+
+        Returns:
+            True if the export was successful, False otherwise.
         """
         try:
-            file_path = Path(file_path)
-
+            path = Path(file_path)
             export_data = {
                 "parameters": self._current_parameters,
                 "metadata": {
@@ -934,84 +868,66 @@ class MARLParameterManager:
                 },
             }
 
-            if format.lower() == "json":
-                with file_path.open("w", encoding="utf-8") as f:
+            with path.open("w", encoding="utf-8") as f:
+                if file_format.lower() == "json":
                     json.dump(export_data, f, indent=2, default=str)
-            else:  # YAML
-                import yaml
-
-                with file_path.open("w", encoding="utf-8") as f:
+                elif file_format.lower() == "yaml":
                     yaml.dump(export_data, f, default_flow_style=False, indent=2)
+                else:
+                    self.logger.error("Unsupported export format: %s", file_format)
+                    return False
 
-            self.logger.info("Exported parameters to: %s", file_path)
+            self.logger.info("Exported parameters to: %s", path)
             return True
-
-        except Exception as e:
-            self.logger.error("Failed to export parameters: %s", str(e))
+        except (IOError, ImportError) as e:
+            self.logger.error("Failed to export parameters to %s: %s", file_path, e)
             return False
 
-    def import_parameters(
-        self, file_path: Union[str, Path], validate: bool = True
-    ) -> bool:
-        """
-        Import parameters from file.
+    def import_parameters(self, file_path: Union[str, Path], validate: bool = True) -> bool:
+        """Imports parameters from a file.
 
         Args:
-            file_path: Path to import file
-            validate: Whether to validate imported parameters
+            file_path: The path to the import file.
+            validate: Whether to validate the imported parameters.
 
         Returns:
-            True if import successful
+            True if the import was successful, False otherwise.
         """
         try:
-            file_path = Path(file_path)
-
-            if not file_path.exists():
-                self.logger.error("Import file not found: %s", file_path)
+            path = Path(file_path)
+            if not path.exists():
+                self.logger.error("Import file not found: %s", path)
                 return False
 
-            # Load data
-            if file_path.suffix.lower() == ".json":
-                with file_path.open("r", encoding="utf-8") as f:
+            with path.open("r", encoding="utf-8") as f:
+                if path.suffix.lower() == ".json":
                     import_data = json.load(f)
-            else:  # YAML
-                import yaml
-
-                with file_path.open("r", encoding="utf-8") as f:
+                elif path.suffix.lower() in [".yaml", ".yml"]:
                     import_data = yaml.safe_load(f)
+                else:
+                    self.logger.error("Unsupported import format: %s", path.suffix)
+                    return False
 
-            # Extract parameters
             parameters = import_data.get("parameters", {})
-
-            # Set parameters
             success, errors = self.set_parameters(parameters, validate)
 
             if not success:
-                self.logger.warning(
-                    "Parameter import validation errors: %s", "; ".join(errors)
-                )
+                self.logger.warning("Parameter import validation errors: %s", "; ".join(errors))
                 return False
 
-            self.logger.info(
-                "Imported %d parameters from: %s", len(parameters), file_path
-            )
+            self.logger.info("Imported %d parameters from: %s", len(parameters), path)
             return True
-
-        except Exception as e:
-            self.logger.error("Failed to import parameters: %s", str(e))
+        except (IOError, ImportError, yaml.YAMLError) as e:
+            self.logger.error("Failed to import parameters from %s: %s", file_path, e)
             return False
 
     def create_parameter_report(self) -> Dict[str, Any]:
-        """
-        Create comprehensive parameter report.
+        """Creates a comprehensive parameter report.
 
         Returns:
-            Parameter report dictionary
+            A dictionary containing the parameter report.
         """
-        # Get validation results
         is_valid, validation_errors = self.validate_current_parameters()
-
-        # Calculate parameter statistics
         param_stats = {
             "total_parameters": len(self._current_parameters),
             "parameters_by_group": {},
@@ -1024,7 +940,6 @@ class MARLParameterManager:
                 [name for name in param_names if name in self._current_parameters]
             )
 
-        # Count special parameter types
         for param_spec in self.registry.get_all_parameters().values():
             if param_spec.requires_restart:
                 param_stats["requires_restart_count"] += 1
@@ -1044,25 +959,26 @@ class MARLParameterManager:
         }
 
     def _get_timestamp(self) -> str:
-        """Get current timestamp string."""
-        from datetime import datetime
+        """Gets the current timestamp as an ISO 8601 formatted string.
 
+        Returns:
+            The timestamp string.
+        """
         return datetime.now().isoformat()
 
 
 class MARLParameterManagerFactory:
-    """Factory for creating MARL parameter managers."""
+    """Factory for creating MARLParameterManager instances."""
 
     @staticmethod
     def create(config: Optional[MARLConfig] = None) -> MARLParameterManager:
-        """
-        Create a MARL parameter manager.
+        """Creates a MARLParameterManager instance.
 
         Args:
-            config: Optional MARL configuration
+            config: An optional MARL configuration to initialize with.
 
         Returns:
-            MARL parameter manager
+            A new MARLParameterManager instance.
         """
         return MARLParameterManager(config)
 
@@ -1070,14 +986,13 @@ class MARLParameterManagerFactory:
     def create_with_custom_registry(
         registry: ParameterRegistry,
     ) -> MARLParameterManager:
-        """
-        Create parameter manager with custom registry.
+        """Creates a manager with a custom parameter registry.
 
         Args:
-            registry: Custom parameter registry
+            registry: A custom ParameterRegistry instance.
 
         Returns:
-            MARL parameter manager with custom registry
+            A new MARLParameterManager instance with the custom registry.
         """
         manager = MARLParameterManager()
         manager.registry = registry

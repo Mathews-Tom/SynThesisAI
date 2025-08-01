@@ -5,17 +5,21 @@ This module provides memory management capabilities for preventing
 memory overflow and managing resource usage in the MARL system.
 """
 
+# Standard Library
 import asyncio
 import gc
 import threading
-import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
+import numpy as np
+
+# Third-Party Library
 import psutil
 
+# SynThesisAI Modules
 from utils.logging_config import get_logger
 
 
@@ -233,9 +237,7 @@ class MemoryManager:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                self.logger.error(
-                    "Error in memory monitoring loop: %s", str(e), exc_info=True
-                )
+                self.logger.error("Error in memory monitoring loop: %s", str(e), exc_info=True)
                 await asyncio.sleep(5.0)  # Wait before retrying
 
     async def _check_memory_usage(self) -> None:
@@ -303,9 +305,7 @@ class MemoryManager:
                     total_buffer_memory += buffer_size
 
             except Exception as e:
-                self.logger.warning(
-                    "Failed to get buffer size for %s: %s", buffer_name, str(e)
-                )
+                self.logger.warning("Failed to get buffer size for %s: %s", buffer_name, str(e))
 
         self.current_metrics.total_buffer_memory = total_buffer_memory
 
@@ -357,9 +357,7 @@ class MemoryManager:
         if len(self.memory_events) > 1000:
             self.memory_events = self.memory_events[-1000:]
 
-    async def _perform_cleanup(
-        self, memory_status: MemoryStatus
-    ) -> Optional[Dict[str, Any]]:
+    async def _perform_cleanup(self, memory_status: MemoryStatus) -> Optional[Dict[str, Any]]:
         """Perform memory cleanup based on status."""
         try:
             cleanup_func = self.cleanup_strategies.get(memory_status)
@@ -380,9 +378,7 @@ class MemoryManager:
                 )
 
         except Exception as e:
-            self.logger.error(
-                "Error performing memory cleanup: %s", str(e), exc_info=True
-            )
+            self.logger.error("Error performing memory cleanup: %s", str(e), exc_info=True)
 
         return None
 
@@ -406,9 +402,7 @@ class MemoryManager:
                     affected_components.append(buffer_name)
 
             except Exception as e:
-                self.logger.warning(
-                    "Failed to reduce buffer size for %s: %s", buffer_name, str(e)
-                )
+                self.logger.warning("Failed to reduce buffer size for %s: %s", buffer_name, str(e))
 
         return {
             "strategy": "warning_cleanup",
@@ -437,9 +431,7 @@ class MemoryManager:
                     affected_components.append(buffer_name)
 
             except Exception as e:
-                self.logger.warning(
-                    "Failed to reduce buffer size for %s: %s", buffer_name, str(e)
-                )
+                self.logger.warning("Failed to reduce buffer size for %s: %s", buffer_name, str(e))
 
         # Clear component caches
         for component_name, component in self.managed_components.items():
@@ -575,11 +567,7 @@ class MemoryManager:
         """Get memory metrics history."""
         cutoff_time = datetime.now() - timedelta(hours=hours)
 
-        return [
-            metrics
-            for metrics in self.metrics_history
-            if metrics.timestamp >= cutoff_time
-        ]
+        return [metrics for metrics in self.metrics_history if metrics.timestamp >= cutoff_time]
 
     def get_memory_events(self, hours: int = 24) -> List[MemoryEvent]:
         """Get memory events."""

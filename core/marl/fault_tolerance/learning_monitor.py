@@ -5,16 +5,18 @@ This module provides monitoring capabilities for detecting learning
 divergence and other learning-related issues in the MARL system.
 """
 
+# Standard Library
 import asyncio
-import time
 from collections import deque
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
+# Third-Party Library
 import numpy as np
 
+# SynThesisAI Modules
 from utils.logging_config import get_logger
 
 
@@ -112,9 +114,7 @@ class LearningMetrics:
         sum_x2 = np.sum(x * x)
 
         if n * sum_x2 - sum_x * sum_x != 0:
-            self.reward_trend = (n * sum_xy - sum_x * sum_y) / (
-                n * sum_x2 - sum_x * sum_x
-            )
+            self.reward_trend = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x * sum_x)
         else:
             self.reward_trend = 0.0
 
@@ -125,9 +125,7 @@ class LearningMetrics:
             return
 
         # Check stability (low variance)
-        stability_score = max(
-            0, 1.0 - self.reward_variance / max(abs(self.average_reward), 1.0)
-        )
+        stability_score = max(0, 1.0 - self.reward_variance / max(abs(self.average_reward), 1.0))
 
         # Check positive trend
         trend_score = max(0, min(1.0, self.reward_trend * 10))  # Scale trend
@@ -140,9 +138,7 @@ class LearningMetrics:
         performance_score = max(0, min(1.0, recent_avg / max(overall_avg, 0.1)))
 
         # Combine scores
-        self.convergence_score = (
-            stability_score + trend_score + performance_score
-        ) / 3.0
+        self.convergence_score = (stability_score + trend_score + performance_score) / 3.0
 
     def get_learning_duration(self) -> float:
         """Get learning duration in seconds."""
@@ -153,9 +149,7 @@ class LearningMetrics:
 
     def is_diverging(self, divergence_threshold: float = -0.01) -> bool:
         """Check if learning is diverging."""
-        return (
-            self.reward_trend < divergence_threshold and len(self.reward_history) >= 20
-        )
+        return self.reward_trend < divergence_threshold and len(self.reward_history) >= 20
 
     def is_oscillating(self, oscillation_threshold: float = 2.0) -> bool:
         """Check if learning is oscillating."""
@@ -166,16 +160,11 @@ class LearningMetrics:
         if abs(self.average_reward) < 0.1:
             return self.reward_variance > oscillation_threshold
         else:
-            return (
-                self.reward_variance / abs(self.average_reward) > oscillation_threshold
-            )
+            return self.reward_variance / abs(self.average_reward) > oscillation_threshold
 
     def is_stagnant(self, stagnation_threshold: float = 0.001) -> bool:
         """Check if learning is stagnant."""
-        return (
-            abs(self.reward_trend) < stagnation_threshold
-            and len(self.reward_history) >= 30
-        )
+        return abs(self.reward_trend) < stagnation_threshold and len(self.reward_history) >= 30
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert metrics to dictionary."""
@@ -226,9 +215,7 @@ class LearningDivergenceEvent:
             "agent_id": self.agent_id,
             "divergence_type": self.divergence_type.value,
             "detection_time": self.detection_time.isoformat(),
-            "resolution_time": self.resolution_time.isoformat()
-            if self.resolution_time
-            else None,
+            "resolution_time": self.resolution_time.isoformat() if self.resolution_time else None,
             "resolved": self.resolved,
             "reward_trend": self.reward_trend,
             "reward_variance": self.reward_variance,
@@ -256,7 +243,7 @@ class LearningDivergenceDetector:
         oscillation_threshold: float = 2.0,
         stagnation_threshold: float = 0.001,
         min_episodes_for_detection: int = 20,
-    ):
+    ) -> None:
         """
         Initialize divergence detector.
 
@@ -285,9 +272,7 @@ class LearningDivergenceDetector:
 
         self.logger.info("Learning divergence detector initialized")
 
-    def detect_divergence(
-        self, metrics: LearningMetrics
-    ) -> Optional[LearningDivergenceEvent]:
+    def detect_divergence(self, metrics: LearningMetrics) -> Optional[LearningDivergenceEvent]:
         """Detect learning divergence from metrics."""
         if metrics.episode < self.min_episodes_for_detection:
             return None
@@ -426,9 +411,7 @@ class LearningDivergenceDetector:
             "total_divergence_events": total_events,
             "active_divergences": len(self.divergence_events),
             "resolved_divergences": resolved_events,
-            "resolution_rate": resolved_events / total_events
-            if total_events > 0
-            else 0.0,
+            "resolution_rate": resolved_events / total_events if total_events > 0 else 0.0,
             "average_resolution_time": avg_resolution_time,
             "divergences_by_type": type_counts,
         }
@@ -460,9 +443,7 @@ class LearningMonitor:
     insights for improving learning performance.
     """
 
-    def __init__(
-        self, monitoring_interval: float = 10.0, enable_auto_correction: bool = True
-    ):
+    def __init__(self, monitoring_interval: float = 10.0, enable_auto_correction: bool = True) -> None:
         """
         Initialize learning monitor.
 
@@ -551,9 +532,7 @@ class LearningMonitor:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                self.logger.error(
-                    "Error in learning monitoring loop: %s", str(e), exc_info=True
-                )
+                self.logger.error("Error in learning monitoring loop: %s", str(e), exc_info=True)
                 await asyncio.sleep(5.0)  # Wait before retrying
 
     async def _check_all_agents(self) -> None:
@@ -562,9 +541,7 @@ class LearningMonitor:
             try:
                 await self._check_agent_learning(agent_id)
             except Exception as e:
-                self.logger.error(
-                    "Error checking learning for agent %s: %s", agent_id, str(e)
-                )
+                self.logger.error("Error checking learning for agent %s: %s", agent_id, str(e))
 
     async def _check_agent_learning(self, agent_id: str) -> None:
         """Check learning status of a specific agent."""
@@ -601,9 +578,7 @@ class LearningMonitor:
         if self.enable_auto_correction:
             await self._attempt_learning_correction(event)
 
-    async def _attempt_learning_correction(
-        self, event: LearningDivergenceEvent
-    ) -> None:
+    async def _attempt_learning_correction(self, event: LearningDivergenceEvent) -> None:
         """Attempt to correct learning issues."""
         try:
             correction_strategy = None
@@ -625,9 +600,7 @@ class LearningMonitor:
                 )
 
                 # Apply correction (this would typically involve calling agent methods)
-                success = await self._apply_correction_strategy(
-                    event.agent_id, correction_strategy
-                )
+                success = await self._apply_correction_strategy(event.agent_id, correction_strategy)
 
                 if success:
                     # Mark as resolved
@@ -643,9 +616,7 @@ class LearningMonitor:
                             else:
                                 callback(event, correction_strategy)
                         except Exception as e:
-                            self.logger.error(
-                                "Error in correction callback: %s", str(e)
-                            )
+                            self.logger.error("Error in correction callback: %s", str(e))
 
         except Exception as e:
             self.logger.error(
@@ -688,9 +659,7 @@ class LearningMonitor:
             # Simulate correction delay
             await asyncio.sleep(0.5)
 
-            self.logger.info(
-                "Applied correction strategy %s to agent %s", strategy, agent_id
-            )
+            self.logger.info("Applied correction strategy %s to agent %s", strategy, agent_id)
 
             return True
 
@@ -781,9 +750,7 @@ class LearningMonitor:
             if metrics:
                 total_convergence += metrics.convergence_score
 
-        avg_convergence = (
-            total_convergence / len(self.agent_metrics) if self.agent_metrics else 0.0
-        )
+        avg_convergence = total_convergence / len(self.agent_metrics) if self.agent_metrics else 0.0
 
         # Determine system health
         normal_count = status_counts.get(LearningStatus.NORMAL.value, 0)

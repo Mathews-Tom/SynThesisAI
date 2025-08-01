@@ -1,23 +1,24 @@
 """
-Generator RL Agent
+Generator RL Agent.
 
 This module implements the Generator RL Agent for multi-agent reinforcement learning
 coordination. The Generator Agent is responsible for selecting optimal content
 generation strategies based on environmental state and learning from feedback.
 """
 
+# Standard Library
 import logging
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
+# Third-Party Library
 import numpy as np
-import torch
 
+# SynThesisAI Modules
 from ...config import GeneratorAgentConfig
 from ...exceptions import AgentFailureError
 from ...logging_config import get_marl_logger
 from ..base_agent import ActionSpace, BaseRLAgent
-from ..experience import Experience
 
 logger = logging.getLogger(__name__)
 
@@ -25,14 +26,14 @@ logger = logging.getLogger(__name__)
 class GenerationStrategy:
     """Represents a content generation strategy with parameters."""
 
-    def __init__(self, name: str, description: str, parameters: Dict[str, Any]):
+    def __init__(self, name: str, description: str, parameters: Dict[str, Any]) -> None:
         """
         Initialize generation strategy.
 
         Args:
-            name: Strategy name
-            description: Strategy description
-            parameters: Strategy-specific parameters
+            name: Strategy name.
+            description: Strategy description.
+            parameters: Strategy-specific parameters.
         """
         self.name = name
         self.description = description
@@ -48,7 +49,6 @@ class GenerationStrategy:
     ) -> None:
         """Update strategy performance metrics."""
         self.usage_count += 1
-
         # Update running averages
         alpha = 0.1  # Learning rate for running average
         self.average_quality = (1 - alpha) * self.average_quality + alpha * quality
@@ -87,21 +87,20 @@ class GeneratorRLAgent(BaseRLAgent):
     efficiency through reinforcement learning.
     """
 
-    def __init__(self, config: GeneratorAgentConfig):
+    def __init__(self, config: GeneratorAgentConfig) -> None:
         """
         Initialize Generator RL Agent.
 
         Args:
-            config: Generator agent configuration
+            config: Generator agent configuration.
         """
-        self.config = config
+        self.config: GeneratorAgentConfig = config
         self.logger = get_marl_logger("generator_agent")
 
         # Generation strategies - initialize before calling super()
         self.strategies = self._initialize_strategies()
-
         super().__init__("generator", config)
-        self.strategy_history = []
+        self.strategy_history: List[Dict[str, Any]] = []
 
         # Performance tracking
         self.generation_metrics = {
@@ -115,7 +114,6 @@ class GeneratorRLAgent(BaseRLAgent):
 
         # Context encoding
         self.context_encoder = GenerationContextEncoder()
-
         self.logger.log_agent_action(
             self.agent_id,
             "generator_initialized",
@@ -125,7 +123,7 @@ class GeneratorRLAgent(BaseRLAgent):
 
     def _initialize_strategies(self) -> List[GenerationStrategy]:
         """Initialize available generation strategies."""
-        strategies = [
+        return [
             GenerationStrategy(
                 "step_by_step_approach",
                 "Generate content with clear step-by-step progression",
@@ -200,23 +198,21 @@ class GeneratorRLAgent(BaseRLAgent):
             ),
         ]
 
-        return strategies
-
     def get_state_representation(self, environment_state: Dict[str, Any]) -> np.ndarray:
         """
         Convert environment state to generator-specific representation.
 
         Args:
-            environment_state: Raw environment state
+            environment_state: Raw environment state.
 
         Returns:
-            Numpy array representing the state for the generator agent
+            A NumPy array representing the state for the generator agent.
         """
         try:
             # Extract key features from environment state
             features = []
 
-            # Content request features
+            # Context request features
             domain = environment_state.get("domain", "")
             features.extend(self.context_encoder.encode_domain(domain))
 
@@ -247,11 +243,8 @@ class GeneratorRLAgent(BaseRLAgent):
             features.extend(
                 self.context_encoder.encode_coordination_context(coordination_context)
             )
-
             return np.array(features, dtype=np.float32)
-
         except Exception as e:
-            error_msg = f"Failed to encode state for generator agent"
             self.logger.log_error_with_context(
                 e,
                 {
@@ -267,24 +260,23 @@ class GeneratorRLAgent(BaseRLAgent):
         Define generation strategy action space.
 
         Returns:
-            ActionSpace defining available generation strategies
+            An ActionSpace defining available generation strategies.
         """
-        strategy_names = [strategy.name for strategy in self.strategies]
-        return ActionSpace(strategy_names)
+        return ActionSpace([strategy.name for strategy in self.strategies])
 
     def calculate_reward(
         self, state: np.ndarray, action: int, result: Dict[str, Any]
     ) -> float:
         """
-        Calculate generator-specific reward for the given state-action-result.
+        Calculate generator-specific reward.
 
         Args:
-            state: State representation
-            action: Action taken (strategy index)
-            result: Result of the generation
+            state: The state representation.
+            action: The action taken (strategy index).
+            result: The result of the generation.
 
         Returns:
-            Reward value for the generator agent
+            The reward value for the generator agent.
         """
         try:
             # Extract performance metrics from result
@@ -305,8 +297,7 @@ class GeneratorRLAgent(BaseRLAgent):
             )
 
             # Bonus for successful coordination
-            coordination_success = result.get("coordination_success", False)
-            if coordination_success:
+            if result.get("coordination_success", False):
                 base_reward += self.config.coordination_bonus
 
             # Penalty for validation failures
@@ -335,13 +326,9 @@ class GeneratorRLAgent(BaseRLAgent):
                 validation_passed,
                 strategy.name,
             )
-
-            return float(
-                np.clip(base_reward, -1.0, 2.0)
-            )  # Clip reward to reasonable range
-
+            # Clip reward to reasonable range
+            return float(np.clip(base_reward, -1.0, 2.0))
         except Exception as e:
-            error_msg = f"Failed to calculate reward for generator agent"
             self.logger.log_error_with_context(
                 e,
                 {
@@ -359,10 +346,10 @@ class GeneratorRLAgent(BaseRLAgent):
         Select generation strategy based on current environment state.
 
         Args:
-            environment_state: Current environment state
+            environment_state: Current environment state.
 
         Returns:
-            Dictionary with selected strategy information
+            A dictionary with selected strategy information.
         """
         try:
             # Get state representation
@@ -390,12 +377,14 @@ class GeneratorRLAgent(BaseRLAgent):
             # Keep history manageable
             if len(self.strategy_history) > 1000:
                 self.strategy_history = self.strategy_history[-1000:]
-
             self.logger.log_agent_action(
                 self.agent_id,
                 selected_strategy.name,
                 confidence,
-                f"Usage: {selected_strategy.usage_count}, Success: {selected_strategy.success_rate:.2f}",
+                (
+                    f"Usage: {selected_strategy.usage_count}, "
+                    f"Success: {selected_strategy.success_rate:.2f}"
+                ),
             )
 
             return {
@@ -405,9 +394,8 @@ class GeneratorRLAgent(BaseRLAgent):
                 "confidence": confidence,
                 "performance_history": selected_strategy.get_performance_summary(),
             }
-
         except Exception as e:
-            error_msg = f"Failed to select generation strategy"
+            error_msg = "Failed to select generation strategy"
             self.logger.log_error_with_context(
                 e,
                 {
@@ -421,22 +409,18 @@ class GeneratorRLAgent(BaseRLAgent):
 
     def _encode_performance_history(self) -> List[float]:
         """Encode historical performance into features."""
-        features = []
-
-        # Overall performance metrics
-        features.append(self.generation_metrics["average_quality"])
-        features.append(self.generation_metrics["average_novelty"])
-        features.append(self.generation_metrics["average_efficiency"])
-
-        success_rate = self.generation_metrics["successful_generations"] / max(
-            self.generation_metrics["total_generations"], 1
-        )
-        features.append(success_rate)
+        features = [
+            # Overall performance metrics
+            self.generation_metrics["average_quality"],
+            self.generation_metrics["average_novelty"],
+            self.generation_metrics["average_efficiency"],
+            self.generation_metrics["successful_generations"]
+            / max(self.generation_metrics["total_generations"], 1),
+        ]
 
         # Recent strategy performance (last 10 strategies)
-        recent_strategies = self.strategy_history[-10:] if self.strategy_history else []
+        recent_strategies = self.strategy_history[-10:]
         strategy_performance = np.zeros(len(self.strategies))
-
         for record in recent_strategies:
             strategy_name = record["strategy"]
             for i, strategy in enumerate(self.strategies):
@@ -462,7 +446,6 @@ class GeneratorRLAgent(BaseRLAgent):
     ) -> None:
         """Update generation performance metrics."""
         self.generation_metrics["total_generations"] += 1
-
         if success:
             self.generation_metrics["successful_generations"] += 1
 
@@ -502,9 +485,7 @@ class GeneratorRLAgent(BaseRLAgent):
             "agent_id": self.agent_id,
             "generation_metrics": self.generation_metrics.copy(),
             "strategy_performance": strategy_summaries,
-            "recent_strategy_history": self.strategy_history[-20:]
-            if self.strategy_history
-            else [],
+            "recent_strategy_history": self.strategy_history[-20:],
             "learning_progress": {
                 "total_episodes": self.episode_count,
                 "training_steps": self.training_step,
@@ -517,7 +498,7 @@ class GeneratorRLAgent(BaseRLAgent):
 class GenerationContextEncoder:
     """Encodes generation context into numerical features for the RL agent."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize context encoder with domain mappings."""
         self.domain_mapping = {
             "mathematics": [1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -527,7 +508,6 @@ class GenerationContextEncoder:
             "engineering": [0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
             "arts": [0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
         }
-
         self.difficulty_mapping = {
             "elementary": [1.0, 0.0, 0.0, 0.0],
             "high_school": [0.0, 1.0, 0.0, 0.0],
@@ -537,48 +517,44 @@ class GenerationContextEncoder:
 
     def encode_domain(self, domain: str) -> List[float]:
         """Encode domain into numerical features."""
-        domain_lower = domain.lower()
-        return self.domain_mapping.get(domain_lower, [0.0] * 6)
+        return self.domain_mapping.get(domain.lower(), [0.0] * 6)
 
     def encode_difficulty(self, difficulty: str) -> List[float]:
         """Encode difficulty level into numerical features."""
-        difficulty_lower = difficulty.lower().replace(" ", "_")
-        return self.difficulty_mapping.get(difficulty_lower, [0.0] * 4)
+        return self.difficulty_mapping.get(
+            difficulty.lower().replace(" ", "_"), [0.0] * 4
+        )
 
     def encode_topic(self, topic: str) -> List[float]:
         """Encode topic into numerical features."""
         # Simple topic encoding based on length and complexity
-        topic_features = [
+        return [
             len(topic) / 100.0,  # Topic length (normalized)
             topic.count(" ") / 10.0,  # Word count (normalized)
-            sum(1 for c in topic if c.isupper())
-            / max(len(topic), 1),  # Capitalization ratio
+            sum(1 for c in topic if c.isupper()) / max(len(topic), 1),  # Capitalization ratio
             sum(1 for c in topic if c.isdigit()) / max(len(topic), 1),  # Digit ratio
         ]
-        return topic_features
 
     def encode_quality_requirements(self, requirements: Dict[str, Any]) -> List[float]:
         """Encode quality requirements into numerical features."""
-        features = [
+        return [
             requirements.get("accuracy_threshold", 0.8),
             requirements.get("clarity_threshold", 0.7),
             requirements.get("completeness_threshold", 0.8),
             requirements.get("engagement_threshold", 0.6),
         ]
-        return features
 
     def encode_audience(self, audience: str) -> List[float]:
         """Encode target audience into numerical features."""
         audience_lower = audience.lower()
 
         # Audience characteristics
-        features = [
+        return [
             1.0 if "student" in audience_lower else 0.0,
             1.0 if "teacher" in audience_lower else 0.0,
             1.0 if "beginner" in audience_lower else 0.0,
             1.0 if "advanced" in audience_lower else 0.0,
         ]
-        return features
 
     def encode_objectives(self, objectives: List[str]) -> List[float]:
         """Encode learning objectives into numerical features."""
@@ -588,22 +564,19 @@ class GenerationContextEncoder:
         # Objective characteristics
         total_length = sum(len(obj) for obj in objectives)
         avg_length = total_length / len(objectives)
-
-        features = [
-            len(objectives) / 10.0,  # Number of objectives (normalized)
-            avg_length / 100.0,  # Average objective length (normalized)
+        return [
+            len(objectives) / 10.0,     # Number of objectives (normalized)
+            avg_length / 100.0,         # Average objective length (normalized)
             sum(1 for obj in objectives if "understand" in obj.lower())
             / len(objectives),
             sum(1 for obj in objectives if "apply" in obj.lower()) / len(objectives),
         ]
-        return features
 
     def encode_coordination_context(self, context: Dict[str, Any]) -> List[float]:
         """Encode coordination context into numerical features."""
-        features = [
+        return [
             context.get("coordination_quality", 0.5),
             context.get("consensus_level", 0.5),
-            1.0 if context.get("coordination_success", False) else 0.0,
+            1.0 if context.get("coordination_success") else 0.0,
             context.get("agent_agreement", 0.5),
         ]
-        return features

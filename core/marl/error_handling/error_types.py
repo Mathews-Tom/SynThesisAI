@@ -1,18 +1,17 @@
-"""
-MARL Error Types.
+"""MARL Error Types.
 
 This module defines specialized error types for the multi-agent
 reinforcement learning coordination system.
 """
 
+# Standard Library
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 
 class MARLError(Exception):
-    """
-    Base exception class for MARL-related errors.
+    """Base exception class for MARL-related errors.
 
     Provides common functionality for error tracking, context preservation,
     and recovery strategy hints.
@@ -26,15 +25,14 @@ class MARLError(Exception):
         recovery_hint: Optional[str] = None,
         severity: str = "ERROR",
     ):
-        """
-        Initialize MARL error.
+        """Initializes a MARLError instance.
 
         Args:
-            message: Human-readable error description
-            error_code: Unique error code for classification
-            context: Additional context information
-            recovery_hint: Suggested recovery strategy
-            severity: Error severity level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+            message: Human-readable error description.
+            error_code: Unique error code for classification.
+            context: Additional context information.
+            recovery_hint: Suggested recovery strategy.
+            severity: Error severity level (e.g., DEBUG, INFO, WARNING, ERROR, CRITICAL).
         """
         super().__init__(message)
         self.message = message
@@ -46,11 +44,15 @@ class MARLError(Exception):
         self.error_id = self._generate_error_id()
 
     def _generate_error_id(self) -> str:
-        """Generate unique error ID for tracking."""
+        """Generates a unique error ID for tracking."""
         return f"{self.error_code}_{self.timestamp.strftime('%Y%m%d_%H%M%S_%f')}"
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert error to dictionary for logging and analysis."""
+        """Converts the error to a dictionary for logging and analysis.
+
+        Returns:
+            A dictionary representation of the error.
+        """
         return {
             "error_id": self.error_id,
             "error_code": self.error_code,
@@ -63,11 +65,24 @@ class MARLError(Exception):
         }
 
     def add_context(self, key: str, value: Any) -> None:
-        """Add additional context information."""
+        """Adds additional context information to the error.
+
+        Args:
+            key: The context key.
+            value: The context value.
+        """
         self.context[key] = value
 
     def get_context(self, key: str, default: Any = None) -> Any:
-        """Get context value by key."""
+        """Gets a context value by its key.
+
+        Args:
+            key: The context key.
+            default: The default value to return if the key is not found.
+
+        Returns:
+            The context value.
+        """
         return self.context.get(key, default)
 
 
@@ -82,6 +97,15 @@ class AgentError(MARLError):
         error_code: str = "AGENT_ERROR",
         **kwargs,
     ):
+        """Initializes an AgentError instance.
+
+        Args:
+            message: Human-readable error description.
+            agent_id: The ID of the agent that caused the error.
+            agent_type: The type of the agent.
+            error_code: The specific error code.
+            **kwargs: Additional arguments for the base MARLError.
+        """
         super().__init__(message, error_code, **kwargs)
         self.agent_id = agent_id
         self.agent_type = agent_type
@@ -94,6 +118,13 @@ class AgentInitializationError(AgentError):
     """Error during agent initialization."""
 
     def __init__(self, message: str, agent_id: str, **kwargs):
+        """Initializes an AgentInitializationError instance.
+
+        Args:
+            message: Human-readable error description.
+            agent_id: The ID of the agent that failed to initialize.
+            **kwargs: Additional arguments for the base AgentError.
+        """
         super().__init__(
             message,
             agent_id,
@@ -106,9 +137,15 @@ class AgentInitializationError(AgentError):
 class AgentTrainingError(AgentError):
     """Error during agent training/learning."""
 
-    def __init__(
-        self, message: str, agent_id: str, training_step: Optional[int] = None, **kwargs
-    ):
+    def __init__(self, message: str, agent_id: str, training_step: Optional[int] = None, **kwargs):
+        """Initializes an AgentTrainingError instance.
+
+        Args:
+            message: Human-readable error description.
+            agent_id: The ID of the agent that failed during training.
+            training_step: The training step at which the error occurred.
+            **kwargs: Additional arguments for the base AgentError.
+        """
         super().__init__(
             message,
             agent_id,
@@ -131,6 +168,15 @@ class AgentActionError(AgentError):
         state: Optional[Any] = None,
         **kwargs,
     ):
+        """Initializes an AgentActionError instance.
+
+        Args:
+            message: Human-readable error description.
+            agent_id: The ID of the agent that failed to act.
+            action: The action that caused the error.
+            state: The state at which the error occurred.
+            **kwargs: Additional arguments for the base AgentError.
+        """
         super().__init__(
             message,
             agent_id,
@@ -155,6 +201,15 @@ class CoordinationError(MARLError):
         error_code: str = "COORDINATION_ERROR",
         **kwargs,
     ):
+        """Initializes a CoordinationError instance.
+
+        Args:
+            message: Human-readable error description.
+            coordination_id: The ID of the coordination process.
+            participating_agents: A list of agent IDs involved in the coordination.
+            error_code: The specific error code.
+            **kwargs: Additional arguments for the base MARLError.
+        """
         super().__init__(message, error_code, **kwargs)
         self.coordination_id = coordination_id
         self.participating_agents = participating_agents or []
@@ -169,6 +224,13 @@ class CoordinationTimeoutError(CoordinationError):
     """Coordination process timed out."""
 
     def __init__(self, message: str, timeout_duration: float, **kwargs):
+        """Initializes a CoordinationTimeoutError instance.
+
+        Args:
+            message: Human-readable error description.
+            timeout_duration: The timeout duration in seconds.
+            **kwargs: Additional arguments for the base CoordinationError.
+        """
         super().__init__(
             message,
             error_code="COORDINATION_TIMEOUT",
@@ -182,6 +244,13 @@ class CoordinationDeadlockError(CoordinationError):
     """Coordination deadlock detected."""
 
     def __init__(self, message: str, deadlock_type: str = "unknown", **kwargs):
+        """Initializes a CoordinationDeadlockError instance.
+
+        Args:
+            message: Human-readable error description.
+            deadlock_type: The type of deadlock detected.
+            **kwargs: Additional arguments for the base CoordinationError.
+        """
         super().__init__(
             message,
             error_code="COORDINATION_DEADLOCK",
@@ -202,6 +271,15 @@ class ConsensusError(MARLError):
         error_code: str = "CONSENSUS_ERROR",
         **kwargs,
     ):
+        """Initializes a ConsensusError instance.
+
+        Args:
+            message: Human-readable error description.
+            consensus_type: The type of consensus mechanism used.
+            proposal_id: The ID of the proposal that failed consensus.
+            error_code: The specific error code.
+            **kwargs: Additional arguments for the base MARLError.
+        """
         super().__init__(message, error_code, **kwargs)
         self.consensus_type = consensus_type
         self.proposal_id = proposal_id
@@ -215,9 +293,15 @@ class ConsensusError(MARLError):
 class ConsensusFailureError(ConsensusError):
     """Failed to reach consensus."""
 
-    def __init__(
-        self, message: str, votes_received: int = 0, votes_required: int = 0, **kwargs
-    ):
+    def __init__(self, message: str, votes_received: int = 0, votes_required: int = 0, **kwargs):
+        """Initializes a ConsensusFailureError instance.
+
+        Args:
+            message: Human-readable error description.
+            votes_received: The number of votes received.
+            votes_required: The number of votes required for consensus.
+            **kwargs: Additional arguments for the base ConsensusError.
+        """
         super().__init__(
             message,
             error_code="CONSENSUS_FAILURE",
@@ -240,6 +324,16 @@ class CommunicationError(MARLError):
         error_code: str = "COMMUNICATION_ERROR",
         **kwargs,
     ):
+        """Initializes a CommunicationError instance.
+
+        Args:
+            message: Human-readable error description.
+            sender: The ID of the sending agent.
+            receiver: The ID of the receiving agent.
+            message_type: The type of the message.
+            error_code: The specific error code.
+            **kwargs: Additional arguments for the base MARLError.
+        """
         super().__init__(message, error_code, **kwargs)
         self.sender = sender
         self.receiver = receiver
@@ -254,9 +348,16 @@ class CommunicationError(MARLError):
 
 
 class MessageDeliveryError(CommunicationError):
-    """Failed to deliver message between agents."""
+    """Failed to deliver a message between agents."""
 
     def __init__(self, message: str, retry_count: int = 0, **kwargs):
+        """Initializes a MessageDeliveryError instance.
+
+        Args:
+            message: Human-readable error description.
+            retry_count: The number of times delivery was retried.
+            **kwargs: Additional arguments for the base CommunicationError.
+        """
         super().__init__(
             message,
             error_code="MESSAGE_DELIVERY_ERROR",
@@ -276,6 +377,14 @@ class LearningError(MARLError):
         error_code: str = "LEARNING_ERROR",
         **kwargs,
     ):
+        """Initializes a LearningError instance.
+
+        Args:
+            message: Human-readable error description.
+            learning_component: The learning component where the error occurred.
+            error_code: The specific error code.
+            **kwargs: Additional arguments for the base MARLError.
+        """
         super().__init__(message, error_code, **kwargs)
         self.learning_component = learning_component
 
@@ -293,6 +402,14 @@ class LearningDivergenceError(LearningError):
         divergence_value: Optional[float] = None,
         **kwargs,
     ):
+        """Initializes a LearningDivergenceError instance.
+
+        Args:
+            message: Human-readable error description.
+            divergence_metric: The metric used to measure divergence.
+            divergence_value: The value of the divergence metric.
+            **kwargs: Additional arguments for the base LearningError.
+        """
         super().__init__(
             message,
             error_code="LEARNING_DIVERGENCE",
@@ -315,6 +432,14 @@ class ExperienceBufferError(LearningError):
         buffer_size: Optional[int] = None,
         **kwargs,
     ):
+        """Initializes an ExperienceBufferError instance.
+
+        Args:
+            message: Human-readable error description.
+            buffer_type: The type of the experience buffer.
+            buffer_size: The size of the experience buffer.
+            **kwargs: Additional arguments for the base LearningError.
+        """
         super().__init__(
             message,
             learning_component="experience_buffer",
@@ -340,6 +465,16 @@ class PerformanceError(MARLError):
         error_code: str = "PERFORMANCE_ERROR",
         **kwargs,
     ):
+        """Initializes a PerformanceError instance.
+
+        Args:
+            message: Human-readable error description.
+            performance_metric: The performance metric that triggered the error.
+            threshold_value: The threshold value for the metric.
+            actual_value: The actual value of the metric.
+            error_code: The specific error code.
+            **kwargs: Additional arguments for the base MARLError.
+        """
         super().__init__(message, error_code, **kwargs)
         self.performance_metric = performance_metric
         self.threshold_value = threshold_value
@@ -356,9 +491,14 @@ class PerformanceError(MARLError):
 class PerformanceDegradationError(PerformanceError):
     """System performance has degraded below acceptable levels."""
 
-    def __init__(
-        self, message: str, degradation_percentage: Optional[float] = None, **kwargs
-    ):
+    def __init__(self, message: str, degradation_percentage: Optional[float] = None, **kwargs):
+        """Initializes a PerformanceDegradationError instance.
+
+        Args:
+            message: Human-readable error description.
+            degradation_percentage: The percentage of performance degradation.
+            **kwargs: Additional arguments for the base PerformanceError.
+        """
         super().__init__(
             message,
             error_code="PERFORMANCE_DEGRADATION",
@@ -379,6 +519,14 @@ class ResourceExhaustionError(PerformanceError):
         usage_percentage: Optional[float] = None,
         **kwargs,
     ):
+        """Initializes a ResourceExhaustionError instance.
+
+        Args:
+            message: Human-readable error description.
+            resource_type: The type of resource that was exhausted.
+            usage_percentage: The usage percentage of the resource.
+            **kwargs: Additional arguments for the base PerformanceError.
+        """
         super().__init__(
             message,
             error_code="RESOURCE_EXHAUSTION",
@@ -401,6 +549,15 @@ class ConfigurationError(MARLError):
         error_code: str = "CONFIGURATION_ERROR",
         **kwargs,
     ):
+        """Initializes a ConfigurationError instance.
+
+        Args:
+            message: Human-readable error description.
+            config_section: The configuration section where the error occurred.
+            config_parameter: The configuration parameter that caused the error.
+            error_code: The specific error code.
+            **kwargs: Additional arguments for the base MARLError.
+        """
         super().__init__(message, error_code, **kwargs)
         self.config_section = config_section
         self.config_parameter = config_parameter
@@ -421,6 +578,14 @@ class InvalidConfigurationError(ConfigurationError):
         actual_value: Optional[Any] = None,
         **kwargs,
     ):
+        """Initializes an InvalidConfigurationError instance.
+
+        Args:
+            message: Human-readable error description.
+            expected_type: The expected type of the configuration value.
+            actual_value: The actual value that was provided.
+            **kwargs: Additional arguments for the base ConfigurationError.
+        """
         super().__init__(
             message,
             error_code="INVALID_CONFIGURATION",
@@ -435,11 +600,18 @@ class InvalidConfigurationError(ConfigurationError):
 
 @dataclass
 class ErrorPattern:
-    """
-    Represents a pattern of errors for analysis and prediction.
+    """Represents a pattern of errors for analysis and prediction.
 
     Used by the error analyzer to identify recurring error patterns
     and suggest preventive measures.
+
+    Attributes:
+        pattern_id: A unique identifier for the pattern.
+        error_codes: A list of error codes that define the pattern.
+        frequency: The number of times this pattern has occurred.
+        last_occurrence: The timestamp of the last occurrence.
+        context_patterns: A dictionary of context patterns to match against.
+        recovery_success_rate: The success rate of recovery actions for this pattern.
     """
 
     pattern_id: str
@@ -450,16 +622,27 @@ class ErrorPattern:
     recovery_success_rate: float = 0.0
 
     def matches(self, error: MARLError) -> bool:
-        """Check if error matches this pattern."""
+        """Checks if the given error matches this pattern.
+
+        Args:
+            error: The MARLError instance to check.
+
+        Returns:
+            True if the error matches the pattern, False otherwise.
+        """
         return error.error_code in self.error_codes
 
     def update_frequency(self) -> None:
-        """Update pattern frequency and last occurrence."""
+        """Updates the pattern frequency and last occurrence timestamp."""
         self.frequency += 1
         self.last_occurrence = datetime.now()
 
     def update_recovery_success(self, success: bool) -> None:
-        """Update recovery success rate."""
+        """Updates the recovery success rate for this pattern.
+
+        Args:
+            success: A boolean indicating whether the recovery was successful.
+        """
         current_total = self.recovery_success_rate * (self.frequency - 1)
         new_success = 1.0 if success else 0.0
         self.recovery_success_rate = (current_total + new_success) / self.frequency
@@ -467,11 +650,18 @@ class ErrorPattern:
 
 @dataclass
 class ErrorStatistics:
-    """
-    Statistics about error occurrences and recovery.
+    """Statistics about error occurrences and recovery.
 
-    Used for monitoring system health and identifying
-    areas for improvement.
+    Used for monitoring system health and identifying areas for improvement.
+
+    Attributes:
+        total_errors: The total number of errors recorded.
+        errors_by_type: A dictionary mapping error types to their counts.
+        errors_by_severity: A dictionary mapping severity levels to their counts.
+        recovery_attempts: The total number of recovery attempts.
+        successful_recoveries: The number of successful recovery attempts.
+        average_recovery_time: The average time taken for recovery.
+        most_common_errors: A list of the most common error types.
     """
 
     total_errors: int = 0
@@ -483,49 +673,56 @@ class ErrorStatistics:
     most_common_errors: List[str] = field(default_factory=list)
 
     def record_error(self, error: MARLError) -> None:
-        """Record error occurrence."""
+        """Records the occurrence of an error.
+
+        Args:
+            error: The MARLError instance to record.
+        """
         self.total_errors += 1
 
-        # Update error type count
         error_type = error.__class__.__name__
         self.errors_by_type[error_type] = self.errors_by_type.get(error_type, 0) + 1
 
-        # Update severity count
-        self.errors_by_severity[error.severity] = (
-            self.errors_by_severity.get(error.severity, 0) + 1
-        )
+        self.errors_by_severity[error.severity] = self.errors_by_severity.get(error.severity, 0) + 1
 
-        # Update most common errors
         self._update_most_common_errors()
 
     def record_recovery_attempt(self, success: bool, recovery_time: float) -> None:
-        """Record recovery attempt."""
+        """Records a recovery attempt.
+
+        Args:
+            success: A boolean indicating whether the recovery was successful.
+            recovery_time: The time taken for the recovery attempt.
+        """
         self.recovery_attempts += 1
 
         if success:
             self.successful_recoveries += 1
 
-        # Update average recovery time
         current_total = self.average_recovery_time * (self.recovery_attempts - 1)
-        self.average_recovery_time = (
-            current_total + recovery_time
-        ) / self.recovery_attempts
+        self.average_recovery_time = (current_total + recovery_time) / self.recovery_attempts
 
     def get_recovery_success_rate(self) -> float:
-        """Get overall recovery success rate."""
+        """Calculates the overall recovery success rate.
+
+        Returns:
+            The recovery success rate as a float.
+        """
         if self.recovery_attempts == 0:
             return 0.0
         return self.successful_recoveries / self.recovery_attempts
 
     def _update_most_common_errors(self) -> None:
-        """Update list of most common errors."""
-        sorted_errors = sorted(
-            self.errors_by_type.items(), key=lambda x: x[1], reverse=True
-        )
+        """Updates the list of the most common errors."""
+        sorted_errors = sorted(self.errors_by_type.items(), key=lambda x: x[1], reverse=True)
         self.most_common_errors = [error_type for error_type, _ in sorted_errors[:5]]
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert statistics to dictionary."""
+        """Converts the statistics to a dictionary.
+
+        Returns:
+            A dictionary representation of the error statistics.
+        """
         return {
             "total_errors": self.total_errors,
             "errors_by_type": self.errors_by_type,

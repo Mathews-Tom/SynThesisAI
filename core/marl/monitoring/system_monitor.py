@@ -10,7 +10,6 @@ import time
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from enum import Enum
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import psutil
@@ -146,9 +145,7 @@ class SystemMonitor:
 
         self.logger.info("System monitoring stopped")
 
-    def set_resource_thresholds(
-        self, resource_type: ResourceType, thresholds: ResourceThresholds
-    ):
+    def set_resource_thresholds(self, resource_type: ResourceType, thresholds: ResourceThresholds):
         """
         Set custom thresholds for a resource type.
 
@@ -190,9 +187,7 @@ class SystemMonitor:
                     memory_allocated = torch.cuda.memory_allocated()
                     memory_cached = torch.cuda.memory_reserved()
                     total_memory = torch.cuda.get_device_properties(0).total_memory
-                    gpu_percent = (
-                        (memory_allocated + memory_cached) / total_memory
-                    ) * 100
+                    gpu_percent = ((memory_allocated + memory_cached) / total_memory) * 100
                 except Exception as e:
                     self.logger.debug("Could not get GPU usage: %s", str(e))
 
@@ -329,9 +324,7 @@ class SystemMonitor:
             },
         )
 
-    def _check_load_average(
-        self, load_average: Tuple[float, float, float]
-    ) -> HealthCheck:
+    def _check_load_average(self, load_average: Tuple[float, float, float]) -> HealthCheck:
         """Check system load average health."""
         cpu_count = psutil.cpu_count()
         load_1min = load_average[0]
@@ -341,7 +334,9 @@ class SystemMonitor:
 
         if normalized_load > 2.0:
             status = HealthStatus.CRITICAL
-            message = f"System load is very high: {load_1min:.2f} (normalized: {normalized_load:.2f})"
+            message = (
+                f"System load is very high: {load_1min:.2f} (normalized: {normalized_load:.2f})"
+            )
         elif normalized_load > 1.0:
             status = HealthStatus.WARNING
             message = f"System load is high: {load_1min:.2f} (normalized: {normalized_load:.2f})"
@@ -398,9 +393,7 @@ class SystemMonitor:
 
         # Get recent health checks (last 5 minutes)
         recent_time = time.time() - 300
-        recent_checks = [
-            check for check in self._health_history if check.timestamp >= recent_time
-        ]
+        recent_checks = [check for check in self._health_history if check.timestamp >= recent_time]
 
         if not recent_checks:
             return HealthStatus.UNKNOWN
@@ -441,9 +434,7 @@ class SystemMonitor:
 
         # Get relevant snapshots
         relevant_snapshots = [
-            snapshot
-            for snapshot in self._system_snapshots
-            if snapshot.timestamp >= cutoff_time
+            snapshot for snapshot in self._system_snapshots if snapshot.timestamp >= cutoff_time
         ]
 
         if len(relevant_snapshots) < 2:
@@ -509,12 +500,8 @@ class SystemMonitor:
         # Identify sustained issues
         for check_name, checks in checks_by_name.items():
             if len(checks) >= 3:  # At least 3 data points
-                warning_count = sum(
-                    1 for c in checks if c.status == HealthStatus.WARNING
-                )
-                critical_count = sum(
-                    1 for c in checks if c.status == HealthStatus.CRITICAL
-                )
+                warning_count = sum(1 for c in checks if c.status == HealthStatus.WARNING)
+                critical_count = sum(1 for c in checks if c.status == HealthStatus.CRITICAL)
 
                 if critical_count >= 2:
                     bottlenecks.append(
@@ -540,9 +527,7 @@ class SystemMonitor:
         # Check for resource trends
         for resource_type in [ResourceType.CPU, ResourceType.MEMORY, ResourceType.GPU]:
             trend_data = self.get_resource_trends(resource_type)
-            if (
-                "trend_slope" in trend_data and trend_data["trend_slope"] > 0.1
-            ):  # Increasing trend
+            if "trend_slope" in trend_data and trend_data["trend_slope"] > 0.1:  # Increasing trend
                 if trend_data["current_value"] > 70:  # High current usage
                     bottlenecks.append(
                         {
@@ -569,9 +554,7 @@ class SystemMonitor:
                 # Log periodic summary
                 overall_status = self.get_overall_health_status()
                 if overall_status != HealthStatus.HEALTHY:
-                    self.logger.warning(
-                        "System health status: %s", overall_status.value
-                    )
+                    self.logger.warning("System health status: %s", overall_status.value)
 
                 await asyncio.sleep(self.check_interval)
 
@@ -594,9 +577,7 @@ class SystemMonitor:
             else:
                 # Clear resolved alerts for this resource (any status)
                 keys_to_remove = [
-                    key
-                    for key in self._active_alerts.keys()
-                    if key.startswith(f"{check.name}_")
+                    key for key in self._active_alerts.keys() if key.startswith(f"{check.name}_")
                 ]
                 for key in keys_to_remove:
                     del self._active_alerts[key]

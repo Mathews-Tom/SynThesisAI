@@ -5,13 +5,14 @@ This module provides adaptive ThreadPool management and enhanced concurrent
 processing capabilities for the problem generation pipeline.
 """
 
+# Standard Library
 import concurrent.futures
 import logging
 import threading
 import time
-from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from utils.config_manager import get_config_manager
+# Third-Party Library
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ class AdaptiveThreadPool:
         max_workers: int = 20,
         adaptation_interval: int = 10,
         target_success_rate: float = 0.05,
-    ):
+    ) -> None:
         """
         Initialize the adaptive thread pool.
 
@@ -56,8 +57,10 @@ class AdaptiveThreadPool:
         self._stop_event = threading.Event()
 
         logger.info(
-            f"Initialized adaptive thread pool: {initial_workers} workers "
-            f"(range: {min_workers}-{max_workers})"
+            "Initialized adaptive thread pool: %d workers (range: %d-%d)",
+            initial_workers,
+            min_workers,
+            max_workers,
         )
 
     def _calculate_success_rate(self) -> float:
@@ -88,29 +91,35 @@ class AdaptiveThreadPool:
         if success_rate < self.target_success_rate * 0.5:
             new_workers = max(self.min_workers, int(self.current_workers * 0.8))
             logger.info(
-                f"Low success rate ({success_rate:.2%}), reducing workers: "
-                f"{self.current_workers} → {new_workers}"
+                "Low success rate (%.2f%%), reducing workers: %d → %d",
+                success_rate * 100,
+                self.current_workers,
+                new_workers,
             )
 
         # If success rate is good, consider increasing workers
         elif success_rate > self.target_success_rate * 1.2:
             new_workers = min(self.max_workers, int(self.current_workers * 1.2))
             logger.info(
-                f"Good success rate ({success_rate:.2%}), increasing workers: "
-                f"{self.current_workers} → {new_workers}"
+                "Good success rate (%.2f%%), increasing workers: %d → %d",
+                success_rate * 100,
+                self.current_workers,
+                new_workers,
             )
 
         # Success rate is acceptable, maintain current level
         else:
             new_workers = self.current_workers
             logger.debug(
-                f"Success rate acceptable ({success_rate:.2%}), maintaining {new_workers} workers"
+                "Success rate acceptable (%.2f%%), maintaining %d workers",
+                success_rate * 100,
+                new_workers,
             )
 
         self.last_adaptation_time = time.time()
         return new_workers
 
-    def record_task_result(self, success: bool):
+    def record_task_result(self, success: bool) -> None:
         """
         Record the result of a completed task.
 
@@ -128,7 +137,7 @@ class AdaptiveThreadPool:
         """Check if processing should stop."""
         return self._stop_event.is_set()
 
-    def signal_stop(self):
+    def signal_stop(self) -> None:
         """Signal all workers to stop gracefully."""
         self._stop_event.set()
         logger.info("Stop signal sent to all workers")
@@ -160,7 +169,7 @@ class ConcurrentProcessor:
     and improved error handling.
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any]) -> None:
         """
         Initialize the concurrent processor.
 
@@ -195,7 +204,8 @@ class ConcurrentProcessor:
         self.attempt_counter = 0
 
         self.logger.info(
-            f"Initialized concurrent processor for {self.target_count} problems"
+            "Initialized concurrent processor for %d problems",
+            self.target_count,
         )
 
     def _process_single_task(
@@ -226,7 +236,9 @@ class ConcurrentProcessor:
 
         except Exception as e:
             self.logger.error(
-                f"Task execution error in attempt {attempt_num}: {str(e)}"
+                "Task execution error in attempt %d: %s",
+                attempt_num,
+                str(e),
             )
             self.thread_pool.record_task_result(False)
             return (
@@ -235,7 +247,9 @@ class ConcurrentProcessor:
                 attempt_num,
             )
 
-    def _update_results(self, result_type: str, data: Dict[str, Any], attempt_num: int):
+    def _update_results(
+        self, result_type: str, data: Dict[str, Any], attempt_num: int
+    ) -> None:
         """
         Update results in a thread-safe manner.
 
@@ -249,16 +263,28 @@ class ConcurrentProcessor:
                 self.accepted.append(data)
                 self.approved_count += 1
                 self.logger.info(
-                    f"✅ Attempt {attempt_num} — Approved: {self.approved_count}/{self.target_count}"
+                    "✅ Attempt %d — Approved: %d/%d",
+                    attempt_num,
+                    self.approved_count,
+                    self.target_count,
                 )
             elif result_type == "discarded":
                 self.discarded.append(data)
-                self.logger.debug(f"❌ Attempt {attempt_num} — Discarded")
+                self.logger.debug(
+                    "❌ Attempt %d — Discarded",
+                    attempt_num,
+                )
             elif result_type == "error":
                 self.errors.append(data)
-                self.logger.warning(f"🚨 Attempt {attempt_num} — Error")
+                self.logger.warning(
+                    "🚨 Attempt %d — Error",
+                    attempt_num,
+                )
             elif result_type == "stopped":
-                self.logger.info(f"⏹️ Attempt {attempt_num} — Stopped")
+                self.logger.info(
+                    "⏹️ Attempt %d — Stopped",
+                    attempt_num,
+                )
 
     def process_batch(
         self,
@@ -277,12 +303,12 @@ class ConcurrentProcessor:
         Returns:
             Tuple of (accepted_results, discarded_results, error_results)
         """
-        self.logger.info(
-            f"Starting concurrent batch processing with adaptive threading"
-        )
+        self.logger.info("Starting concurrent batch processing with adaptive threading")
 
         start_time = time.time()
-        max_attempts = self.config.get("max_attempts", self.target_count * 100)  # Safety limit
+        max_attempts = self.config.get(
+            "max_attempts", self.target_count * 100
+        )  # Safety limit
 
         # Use a context manager for proper cleanup
         with concurrent.futures.ThreadPoolExecutor(
@@ -327,7 +353,9 @@ class ConcurrentProcessor:
                 # If no futures are done, wait for at least one
                 if not completed_futures and futures:
                     try:
-                        done_futures = concurrent.futures.as_completed(futures, timeout=1.0)
+                        done_futures = concurrent.futures.as_completed(
+                            futures, timeout=1.0
+                        )
                         first_done = next(done_futures)
                         completed_futures.append(first_done)
                     except (StopIteration, concurrent.futures.TimeoutError):
@@ -351,7 +379,10 @@ class ConcurrentProcessor:
                             )
 
                     except Exception as e:
-                        self.logger.error(f"Future result error: {str(e)}")
+                        self.logger.error(
+                            "Future result error: %s",
+                            str(e),
+                        )
                         self.errors.append({"error": str(e), "future_error": True})
 
                     futures.remove(future)
@@ -364,8 +395,10 @@ class ConcurrentProcessor:
         # Check if we hit the max attempts limit
         if self.attempt_counter >= max_attempts:
             self.logger.warning(
-                f"Reached maximum attempts limit ({max_attempts}). "
-                f"Stopping with {self.approved_count}/{self.target_count} approved."
+                "Reached maximum attempts limit (%d). Stopping with %d/%d approved.",
+                max_attempts,
+                self.approved_count,
+                self.target_count,
             )
 
         # Log final statistics
@@ -373,9 +406,12 @@ class ConcurrentProcessor:
         stats = self.thread_pool.get_stats()
 
         self.logger.info(
-            f"Batch processing completed in {elapsed_time:.1f}s: "
-            f"{self.approved_count} accepted, {len(self.discarded)} discarded, "
-            f"{len(self.errors)} errors (Success rate: {stats['success_rate']:.2%})"
+            "Batch processing completed in %.1fs: %d accepted, %d discarded, %d errors (Success rate: %.2f%%)",
+            elapsed_time,
+            self.approved_count,
+            len(self.discarded),
+            len(self.errors),
+            stats["success_rate"] * 100,
         )
 
         return self.accepted, self.discarded, self.errors

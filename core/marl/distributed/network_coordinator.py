@@ -4,17 +4,18 @@ This module provides network-level coordination capabilities for distributed
 MARL deployment, including network topology management and communication optimization.
 """
 
+# Standard Library
 import asyncio
 import json
 import socket
 import threading
 import time
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+# SynThesisAI Modules
 from utils.logging_config import get_logger
 
 
@@ -274,9 +275,7 @@ class NetworkCoordinator:
         connection_id = str(uuid.uuid4())
 
         try:
-            self.logger.info(
-                "New connection from %s:%d", client_address[0], client_address[1]
-            )
+            self.logger.info("New connection from %s:%d", client_address[0], client_address[1])
 
             # Create connection record
             connection = NetworkConnection(
@@ -367,8 +366,8 @@ class NetworkCoordinator:
                     # Update connection heartbeat
                     connection.last_heartbeat = time.time()
 
-                    # Process message
-                    await self._process_received_message(message, connection)
+                    # Enqueue message for async processing
+                    self.message_queue.put_nowait(message)
 
                 except Exception as e:
                     self.logger.error("Message handling error: %s", str(e))
@@ -385,9 +384,7 @@ class NetworkCoordinator:
                 try:
                     # Process message queue
                     try:
-                        message = await asyncio.wait_for(
-                            self.message_queue.get(), timeout=1.0
-                        )
+                        message = await asyncio.wait_for(self.message_queue.get(), timeout=1.0)
                         await self._route_message(message)
                     except asyncio.TimeoutError:
                         continue
@@ -465,9 +462,7 @@ class NetworkCoordinator:
         """Clean up dead connections."""
         with self.network_lock:
             dead_connections = [
-                conn_id
-                for conn_id, conn in self.connections.items()
-                if not conn.is_alive
+                conn_id for conn_id, conn in self.connections.items() if not conn.is_alive
             ]
 
             for conn_id in dead_connections:
@@ -492,9 +487,7 @@ class NetworkCoordinator:
             discovery_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
             message_data = json.dumps(discovery_message).encode("utf-8")
-            discovery_socket.sendto(
-                message_data, ("<broadcast>", self.config.discovery_port)
-            )
+            discovery_socket.sendto(message_data, ("<broadcast>", self.config.discovery_port))
             discovery_socket.close()
 
         except Exception as e:
@@ -548,9 +541,7 @@ class NetworkCoordinator:
             self.logger.error("Message routing error: %s", str(e))
             self.network_metrics["failed_messages"] += 1
 
-    async def _send_message_to_node(
-        self, message: NetworkMessage, node_id: str
-    ) -> None:
+    async def _send_message_to_node(self, message: NetworkMessage, node_id: str) -> None:
         """Send message to specific node."""
         with self.network_lock:
             # Find connection for node
@@ -589,9 +580,7 @@ class NetworkCoordinator:
                 try:
                     self._send_message_to_connection(message, connection)
                 except Exception as e:
-                    self.logger.error(
-                        "Failed to broadcast to %s: %s", connection.node_id, str(e)
-                    )
+                    self.logger.error("Failed to broadcast to %s: %s", connection.node_id, str(e))
 
     def _update_average_latency(self, latency: float) -> None:
         """Update average latency metric."""
@@ -714,9 +703,7 @@ class NetworkCoordinator:
         """Add message handler for specific message type."""
         self.message_handlers[message_type].append(handler)
 
-    def remove_message_handler(
-        self, message_type: MessageType, handler: callable
-    ) -> None:
+    def remove_message_handler(self, message_type: MessageType, handler: callable) -> None:
         """Remove message handler."""
         if handler in self.message_handlers[message_type]:
             self.message_handlers[message_type].remove(handler)
@@ -740,9 +727,7 @@ class NetworkCoordinator:
             self.network_metrics["active_connections"] = len(self.connections)
 
             # Calculate bandwidth usage
-            total_bandwidth = sum(
-                conn.bandwidth_usage for conn in self.connections.values()
-            )
+            total_bandwidth = sum(conn.bandwidth_usage for conn in self.connections.values())
             self.network_metrics["bandwidth_usage"] = total_bandwidth
 
             return self.network_metrics.copy()

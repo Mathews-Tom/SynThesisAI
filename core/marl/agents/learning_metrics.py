@@ -1,17 +1,19 @@
 """
-Learning Metrics Tracking
+Learning Metrics Tracking.
 
 This module provides comprehensive metrics tracking for RL agent learning
 progress, including loss tracking, reward analysis, and performance monitoring
 following the development standards.
 """
 
+# Standard Library
 import logging
 import time
 from collections import deque
 from dataclasses import dataclass, field
 from typing import Any, Deque, Dict, List, Optional
 
+# Third-Party Library
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -189,7 +191,6 @@ class LearningMetrics:
         y = np.array(recent_rewards)
 
         # Simple linear regression
-        n = len(recent_rewards)
         x_mean = np.mean(x)
         y_mean = np.mean(y)
 
@@ -236,9 +237,7 @@ class LearningMetrics:
             return 0.0
 
         current_epsilon = self.epsilon_values[-1]
-        initial_epsilon = (
-            self.epsilon_values[0] if len(self.epsilon_values) > 1 else 1.0
-        )
+        initial_epsilon = self.epsilon_values[0] if len(self.epsilon_values) > 1 else 1.0
 
         if initial_epsilon == 0:
             return 1.0
@@ -261,12 +260,12 @@ class LearningMetrics:
             "recent_average_loss": self.get_average_loss(100),
             "average_episode_reward": self.get_average_episode_reward(),
             "recent_average_reward": self.get_average_episode_reward(100),
-            "best_episode_reward": self.best_episode_reward
-            if self.best_episode_reward != float("-inf")
-            else 0.0,
-            "worst_episode_reward": self.worst_episode_reward
-            if self.worst_episode_reward != float("inf")
-            else 0.0,
+            "best_episode_reward": (
+                self.best_episode_reward if self.best_episode_reward != float("-inf") else 0.0
+            ),
+            "worst_episode_reward": (
+                self.worst_episode_reward if self.worst_episode_reward != float("inf") else 0.0
+            ),
             "cumulative_reward": self.cumulative_reward,
             "reward_trend": self.get_reward_trend(),
             "learning_stability": self.get_learning_stability(),
@@ -281,9 +280,9 @@ class LearningMetrics:
             "steps": self.training_steps,
             "episodes": self.episodes_completed,
             "avg_reward": self.get_average_episode_reward(100),
-            "best_reward": self.best_episode_reward
-            if self.best_episode_reward != float("-inf")
-            else 0.0,
+            "best_reward": (
+                self.best_episode_reward if self.best_episode_reward != float("-inf") else 0.0
+            ),
             "trend": self.get_reward_trend(),
             "stability": self.get_learning_stability(),
             "epsilon": self.epsilon_values[-1] if self.epsilon_values else 0.0,

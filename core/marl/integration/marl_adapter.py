@@ -5,10 +5,12 @@ This module provides integration adapters to connect the MARL coordinator
 with the existing SynThesisAI architecture and orchestration system.
 """
 
+# Standard Library
 import asyncio
-import logging
-from typing import Any, Dict, List, Optional, Tuple
+import random
+from typing import Any, Callable, Dict, Optional, Tuple
 
+# SynThesisAI Modules
 from core.marl.coordination.marl_coordinator import MultiAgentRLCoordinator
 from utils.costs import CostTracker
 from utils.exceptions import CoordinationError, PipelineError
@@ -306,7 +308,11 @@ class MARLOrchestrationAdapter:
         )
 
     def _summarize_request(self, request: Dict[str, Any]) -> str:
-        """Create a summary of the request for logging."""
+        """Create a summary of the request for logging.
+
+        Returns:
+            str: Summary string.
+        """
         return (
             f"domain={request.get('domain', 'unknown')}, "
             f"subject={request.get('subject', 'unknown')}, "
@@ -340,7 +346,7 @@ class MARLOrchestrationAdapter:
             "marl_coordinator_performance": self.marl_coordinator.get_performance_summary(),
         }
 
-    async def shutdown(self):
+    async def shutdown(self) -> None:
         """Gracefully shutdown the adapter."""
         self.logger.info("Shutting down MARL orchestration adapter")
         await self.marl_coordinator.shutdown()
@@ -382,7 +388,9 @@ class MARLPipelineIntegration:
         self,
         request: Dict[str, Any],
         cost_tracker: CostTracker,
-        fallback_generator: Optional[callable] = None,
+        fallback_generator: Optional[
+            Callable[[Dict[str, Any], CostTracker], Any]
+        ] = None,
     ) -> Tuple[str, Dict[str, Any]]:
         """
         Generate content with MARL integration and fallback support.
@@ -408,7 +416,6 @@ class MARLPipelineIntegration:
                 )
 
         # Determine if this request should use MARL (for A/B testing)
-        import random
 
         use_marl_for_request = random.random() < self.marl_probability
 
@@ -447,7 +454,7 @@ class MARLPipelineIntegration:
         self,
         request: Dict[str, Any],
         cost_tracker: CostTracker,
-        fallback_generator: callable,
+        fallback_generator: Callable[[Dict[str, Any], CostTracker], Any],
     ) -> Tuple[str, Dict[str, Any]]:
         """
         Run fallback generation using legacy system.
@@ -492,7 +499,7 @@ class MARLPipelineIntegration:
             "adapter_metrics": self.marl_adapter.get_integration_metrics(),
         }
 
-    async def shutdown(self):
+    async def shutdown(self) -> None:
         """Gracefully shutdown the integration."""
         self.logger.info("Shutting down MARL pipeline integration")
         await self.marl_adapter.shutdown()

@@ -6,17 +6,20 @@ reinforcement learning, enabling agents to learn from each other's experiences
 and improve coordination through shared knowledge.
 """
 
+# Standard Library
 import logging
 import time
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Tuple
 
+# Third-Party Library
 import numpy as np
 
+# SynThesisAI Modules
 from ..agents.experience import Experience
-from ..config import ExperienceConfig
+from ..config_legacy import ExperienceConfig
 from ..exceptions import ExperienceBufferError
 from ..logging_config import get_marl_logger
 
@@ -113,45 +116,33 @@ class SharedExperienceManager:
 
             # High reward assessment
             if experience.reward > self.config.high_reward_threshold:
-                reward_score = min(
-                    experience.reward / self.config.high_reward_threshold, 2.0
-                )
+                reward_score = min(experience.reward / self.config.high_reward_threshold, 2.0)
                 value_assessments.append((ExperienceValue.HIGH_REWARD, reward_score))
 
             # State novelty assessment
-            novelty_score = self.state_novelty_tracker.assess_novelty(
-                experience.state, agent_id
-            )
+            novelty_score = self.state_novelty_tracker.assess_novelty(experience.state, agent_id)
             if novelty_score > self.config.novelty_threshold:
                 value_assessments.append((ExperienceValue.NOVEL_STATE, novelty_score))
 
             # Coordination success assessment
             if context.get("coordination_success", False):
                 coord_score = context.get("coordination_quality", 0.8)
-                value_assessments.append(
-                    (ExperienceValue.COORDINATION_SUCCESS, coord_score)
-                )
+                value_assessments.append((ExperienceValue.COORDINATION_SUCCESS, coord_score))
 
             # Rare action assessment
-            action_rarity = self.action_frequency_tracker.assess_rarity(
-                experience.action, agent_id
-            )
+            action_rarity = self.action_frequency_tracker.assess_rarity(experience.action, agent_id)
             if action_rarity > 0.7:  # Rare action threshold
                 value_assessments.append((ExperienceValue.RARE_ACTION, action_rarity))
 
             # Learning milestone assessment
             if context.get("learning_milestone", False):
                 milestone_score = context.get("milestone_importance", 0.9)
-                value_assessments.append(
-                    (ExperienceValue.LEARNING_MILESTONE, milestone_score)
-                )
+                value_assessments.append((ExperienceValue.LEARNING_MILESTONE, milestone_score))
 
             # Error correction assessment
             if context.get("error_correction", False):
                 correction_score = context.get("correction_importance", 0.8)
-                value_assessments.append(
-                    (ExperienceValue.ERROR_CORRECTION, correction_score)
-                )
+                value_assessments.append((ExperienceValue.ERROR_CORRECTION, correction_score))
 
             # Determine if should share
             if not value_assessments:
@@ -159,10 +150,7 @@ class SharedExperienceManager:
 
             # Select highest value assessment
             best_value_type, best_score = max(value_assessments, key=lambda x: x[1])
-            should_share = (
-                best_score > 0.6
-                and np.random.random() < self.config.sharing_probability
-            )
+            should_share = best_score > 0.6 and np.random.random() < self.config.sharing_probability
 
             return should_share, best_value_type, best_score
 
@@ -198,9 +186,7 @@ class SharedExperienceManager:
         """
         try:
             # Generate unique experience ID
-            experience_id = (
-                f"{agent_id}_{int(time.time() * 1000)}_{len(self.shared_experiences)}"
-            )
+            experience_id = f"{agent_id}_{int(time.time() * 1000)}_{len(self.shared_experiences)}"
 
             # Create metadata
             metadata = ExperienceMetadata(
@@ -208,9 +194,7 @@ class SharedExperienceManager:
                 experience_id=experience_id,
                 value_type=value_type,
                 value_score=value_score,
-                sharing_priority=self._calculate_sharing_priority(
-                    value_type, value_score
-                ),
+                sharing_priority=self._calculate_sharing_priority(value_type, value_score),
             )
 
             # Store experience and metadata
@@ -223,9 +207,7 @@ class SharedExperienceManager:
             self.sharing_stats["agent_stats"][agent_id]["shared"] += 1
 
             # Log sharing
-            self.logger.log_experience_sharing(
-                agent_id, value_type.value, value_score, True
-            )
+            self.logger.log_experience_sharing(agent_id, value_type.value, value_score, True)
 
             return experience_id
 
@@ -239,9 +221,7 @@ class SharedExperienceManager:
                     "value_score": value_score,
                 },
             )
-            raise ExperienceBufferError(
-                error_msg, buffer_type="shared", operation="share"
-            ) from e
+            raise ExperienceBufferError(error_msg, buffer_type="shared", operation="share") from e
 
     def get_experiences_for_agent(
         self, requesting_agent_id: str, max_experiences: int = 10
@@ -273,9 +253,7 @@ class SharedExperienceManager:
                 metadata = self.experience_metadata[exp_id]
                 return (metadata.sharing_priority, metadata.value_score)
 
-            sorted_experiences = sorted(
-                available_experiences, key=sort_key, reverse=True
-            )
+            sorted_experiences = sorted(available_experiences, key=sort_key, reverse=True)
 
             # Select top experiences
             selected = sorted_experiences[:max_experiences]
@@ -285,9 +263,7 @@ class SharedExperienceManager:
                 self.experience_metadata[exp_id].share_count += 1
 
             self.sharing_stats["total_consumed"] += len(selected)
-            self.sharing_stats["agent_stats"][requesting_agent_id]["consumed"] += len(
-                selected
-            )
+            self.sharing_stats["agent_stats"][requesting_agent_id]["consumed"] += len(selected)
 
             self.logger.log_experience_sharing(
                 requesting_agent_id, "experiences_retrieved", len(selected), True
@@ -309,9 +285,7 @@ class SharedExperienceManager:
                 error_msg, buffer_type="shared", operation="retrieve"
             ) from e
 
-    def provide_feedback(
-        self, experience_id: str, success: bool, feedback_agent_id: str
-    ) -> None:
+    def provide_feedback(self, experience_id: str, success: bool, feedback_agent_id: str) -> None:
         """
         Provide feedback on the usefulness of a shared experience.
 
@@ -334,9 +308,7 @@ class SharedExperienceManager:
                 feedback_agent_id, "feedback_provided", 1.0 if success else 0.0, success
             )
 
-    def _calculate_sharing_priority(
-        self, value_type: ExperienceValue, value_score: float
-    ) -> int:
+    def _calculate_sharing_priority(self, value_type: ExperienceValue, value_score: float) -> int:
         """Calculate sharing priority based on value type and score."""
         base_priorities = {
             ExperienceValue.COORDINATION_SUCCESS: 100,
@@ -389,13 +361,10 @@ class SharedExperienceManager:
 
         # Calculate effectiveness metrics
         total_feedback = (
-            self.sharing_stats["successful_shares"]
-            + self.sharing_stats["failed_shares"]
+            self.sharing_stats["successful_shares"] + self.sharing_stats["failed_shares"]
         )
         effectiveness = (
-            self.sharing_stats["successful_shares"] / total_feedback
-            if total_feedback > 0
-            else 0.0
+            self.sharing_stats["successful_shares"] / total_feedback if total_feedback > 0 else 0.0
         )
 
         # Value type distribution
@@ -461,9 +430,9 @@ class StateNoveltyTracker:
 
             # Maintain history size
             if len(self.agent_state_histories[agent_id]) > self.max_history_size:
-                self.agent_state_histories[agent_id] = self.agent_state_histories[
-                    agent_id
-                ][-self.max_history_size :]
+                self.agent_state_histories[agent_id] = self.agent_state_histories[agent_id][
+                    -self.max_history_size :
+                ]
 
         return novelty_score
 
@@ -473,9 +442,7 @@ class ActionFrequencyTracker:
 
     def __init__(self):
         """Initialize action frequency tracker."""
-        self.agent_action_counts: Dict[str, Dict[int, int]] = defaultdict(
-            lambda: defaultdict(int)
-        )
+        self.agent_action_counts: Dict[str, Dict[int, int]] = defaultdict(lambda: defaultdict(int))
         self.agent_total_actions: Dict[str, int] = defaultdict(int)
 
     def assess_rarity(self, action: int, agent_id: str) -> float:
