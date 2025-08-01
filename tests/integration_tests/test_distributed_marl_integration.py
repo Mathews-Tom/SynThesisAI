@@ -1,12 +1,16 @@
 """Integration tests for distributed MARL system (Task 10+)."""
 
+# Standard Library
 import asyncio
-import threading
+import logging
 import time
-from unittest.mock import Mock, patch
+from typing import Any, AsyncGenerator, Dict
+from unittest.mock import Mock
 
+# Third-Party
 import pytest
 
+# SynThesisAI Modules
 from core.marl.distributed.distributed_coordinator import (
     DistributedCoordinationConfig,
     DistributedCoordinationMode,
@@ -27,18 +31,16 @@ from core.marl.distributed.resource_manager import (
     ResourceManager,
     ResourceType,
 )
-from core.marl.distributed.scalability_manager import (
-    ScalabilityManager,
-    ScalingConfig,
-    ScalingDirection,
-)
+from core.marl.distributed.scalability_manager import ScalabilityManager, ScalingConfig
+
+logger = logging.getLogger(__name__)
 
 
 class TestDistributedMARLSystemIntegration:
     """Test complete distributed MARL system integration."""
 
     @pytest.fixture
-    async def distributed_system(self):
+    async def distributed_system(self) -> AsyncGenerator[Dict[str, Any], None]:
         """Create complete distributed MARL system."""
         # Create components
         resource_config = ResourceConfig(
@@ -47,9 +49,7 @@ class TestDistributedMARLSystemIntegration:
         resource_manager = ResourceManager(resource_config)
 
         network_config = NetworkConfig(port=8083, heartbeat_interval=1.0)
-        network_coordinator = NetworkCoordinator(
-            network_config, "integration_test_node"
-        )
+        network_coordinator = NetworkCoordinator(network_config, "integration_test_node")
 
         scaling_config = ScalingConfig(
             min_nodes=1, max_nodes=4, monitoring_interval=1.0, scaling_cooldown=5.0
@@ -94,7 +94,7 @@ class TestDistributedMARLSystemIntegration:
         await resource_manager.shutdown()
 
     @pytest.mark.asyncio
-    async def test_complete_system_initialization(self, distributed_system):
+    async def test_complete_system_initialization(self, distributed_system) -> None:
         """Test complete system initialization."""
         assert distributed_system["resource_manager"].is_active
         assert distributed_system["network_coordinator"].is_active
@@ -103,7 +103,7 @@ class TestDistributedMARLSystemIntegration:
         assert distributed_system["distributed_trainer"].is_initialized
 
     @pytest.mark.asyncio
-    async def test_resource_allocation_workflow(self, distributed_system):
+    async def test_resource_allocation_workflow(self, distributed_system) -> None:
         """Test complete resource allocation workflow."""
         resource_manager = distributed_system["resource_manager"]
         scalability_manager = distributed_system["scalability_manager"]
@@ -152,7 +152,7 @@ class TestDistributedMARLSystemIntegration:
         assert usage["total_allocations"] == 0
 
     @pytest.mark.asyncio
-    async def test_distributed_coordination_workflow(self, distributed_system):
+    async def test_distributed_coordination_workflow(self, distributed_system) -> None:
         """Test distributed coordination workflow."""
         coordinator = distributed_system["distributed_coordinator"]
         network_coordinator = distributed_system["network_coordinator"]
@@ -168,7 +168,7 @@ class TestDistributedMARLSystemIntegration:
         # Since we don't have actual other nodes, this will timeout
         # but we can test the coordination setup
         try:
-            result = await asyncio.wait_for(
+            await asyncio.wait_for(
                 coordinator.coordinate_distributed_action(
                     action_request, participating_nodes=["node1"]
                 ),
@@ -187,10 +187,9 @@ class TestDistributedMARLSystemIntegration:
         assert "total_messages_sent" in network_metrics
 
     @pytest.mark.asyncio
-    async def test_scaling_workflow(self, distributed_system):
+    async def test_scaling_workflow(self, distributed_system) -> None:
         """Test scaling workflow."""
         scalability_manager = distributed_system["scalability_manager"]
-        resource_manager = distributed_system["resource_manager"]
 
         # Get initial state
         initial_status = scalability_manager.get_scaling_status()
@@ -222,7 +221,7 @@ class TestDistributedMARLSystemIntegration:
         assert final_status["current_nodes"] == initial_nodes
 
     @pytest.mark.asyncio
-    async def test_training_integration(self, distributed_system):
+    async def test_training_integration(self, distributed_system) -> None:
         """Test distributed training integration."""
         trainer = distributed_system["distributed_trainer"]
         resource_manager = distributed_system["resource_manager"]
@@ -270,7 +269,7 @@ class TestDistributedMARLSystemIntegration:
         await resource_manager.deallocate_resource(memory_alloc)
 
     @pytest.mark.asyncio
-    async def test_fault_tolerance_workflow(self, distributed_system):
+    async def test_fault_tolerance_workflow(self, distributed_system) -> None:
         """Test fault tolerance across the system."""
         scalability_manager = distributed_system["scalability_manager"]
         coordinator = distributed_system["distributed_coordinator"]
@@ -302,7 +301,7 @@ class TestDistributedMARLSystemIntegration:
         assert scalability_manager.is_active
 
     @pytest.mark.asyncio
-    async def test_performance_monitoring_integration(self, distributed_system):
+    async def test_performance_monitoring_integration(self, distributed_system) -> None:
         """Test performance monitoring across all components."""
         resource_manager = distributed_system["resource_manager"]
         network_coordinator = distributed_system["network_coordinator"]
@@ -312,7 +311,6 @@ class TestDistributedMARLSystemIntegration:
         await asyncio.sleep(2.0)
 
         # Check resource metrics
-        resource_metrics = resource_manager.get_resource_metrics(limit=10)
         management_metrics = resource_manager.get_management_metrics()
 
         assert "total_allocations" in management_metrics
@@ -342,7 +340,7 @@ class TestDistributedMARLSystemIntegration:
             assert new_resource_metrics[0]["timestamp"] > initial_time
 
     @pytest.mark.asyncio
-    async def test_end_to_end_marl_workflow(self, distributed_system):
+    async def test_end_to_end_marl_workflow(self, distributed_system) -> None:
         """Test complete end-to-end MARL workflow."""
         resource_manager = distributed_system["resource_manager"]
         coordinator = distributed_system["distributed_coordinator"]
@@ -416,9 +414,7 @@ class TestDistributedMARLSystemIntegration:
             "resource_metrics": resource_manager.get_management_metrics(),
             "scaling_metrics": scalability_manager.get_scaling_metrics(),
             "coordination_metrics": coordinator.get_coordination_metrics(),
-            "network_status": distributed_system[
-                "network_coordinator"
-            ].get_network_status(),
+            "network_status": distributed_system["network_coordinator"].get_network_status(),
         }
 
         # Verify report completeness
@@ -438,7 +434,7 @@ class TestDistributedMARLFailureScenarios:
     """Test distributed MARL system under failure conditions."""
 
     @pytest.mark.asyncio
-    async def test_resource_exhaustion_handling(self):
+    async def test_resource_exhaustion_handling(self) -> None:
         """Test system behavior under resource exhaustion."""
         config = ResourceConfig(
             max_cpu_percent=30.0,  # Very low limit
@@ -457,9 +453,7 @@ class TestDistributedMARLFailureScenarios:
             allocations = []
 
             # This should succeed
-            alloc1 = await resource_manager.allocate_resource(
-                ResourceType.CPU, 0.5, "agent1"
-            )
+            alloc1 = await resource_manager.allocate_resource(ResourceType.CPU, 0.5, "agent1")
             allocations.append(alloc1)
             assert alloc1 is not None
 
@@ -488,9 +482,9 @@ class TestDistributedMARLFailureScenarios:
             await resource_manager.shutdown()
 
     @pytest.mark.asyncio
-    async def test_network_partition_handling(self):
+    async def test_network_partition_handling(self) -> None:
         """Test system behavior under network partitions."""
-        network_config = NetworkConfig(port=8084, connection_timeout=2.0)
+        network_config = NetworkConfig(port=8084, message_timeout=2.0)
         network_coordinator = NetworkCoordinator(network_config, "partition_test_node")
 
         coord_config = DistributedCoordinationConfig(coordination_timeout=3.0)
@@ -505,11 +499,11 @@ class TestDistributedMARLFailureScenarios:
 
             start_time = time.time()
             try:
-                result = await distributed_coordinator.coordinate_distributed_action(
+                await distributed_coordinator.coordinate_distributed_action(
                     action_request,
                     participating_nodes=["unreachable_node1", "unreachable_node2"],
                 )
-            except Exception as e:
+            except Exception:
                 # Should handle partition gracefully
                 coordination_time = time.time() - start_time
                 assert coordination_time <= 5.0  # Should timeout reasonably
@@ -523,7 +517,7 @@ class TestDistributedMARLFailureScenarios:
             await network_coordinator.shutdown()
 
     @pytest.mark.asyncio
-    async def test_scaling_limits_handling(self):
+    async def test_scaling_limits_handling(self) -> None:
         """Test system behavior at scaling limits."""
         scaling_config = ScalingConfig(
             min_nodes=1,
@@ -568,7 +562,7 @@ class TestDistributedMARLPerformance:
     """Test performance characteristics of distributed MARL system."""
 
     @pytest.mark.asyncio
-    async def test_concurrent_resource_operations(self):
+    async def test_concurrent_resource_operations(self) -> None:
         """Test concurrent resource operations performance."""
         config = ResourceConfig()
         resource_manager = ResourceManager(config)
@@ -604,7 +598,7 @@ class TestDistributedMARLPerformance:
             await resource_manager.shutdown()
 
     @pytest.mark.asyncio
-    async def test_scaling_decision_latency(self):
+    async def test_scaling_decision_latency(self) -> None:
         """Test scaling decision latency."""
         scaling_config = ScalingConfig(monitoring_interval=0.1)
         scalability_manager = ScalabilityManager(scaling_config)
@@ -624,7 +618,7 @@ class TestDistributedMARLPerformance:
         assert "action" in decision
 
     @pytest.mark.asyncio
-    async def test_message_processing_throughput(self):
+    async def test_message_processing_throughput(self) -> None:
         """Test message processing throughput."""
         network_config = NetworkConfig(port=8085)
         network_coordinator = NetworkCoordinator(network_config, "throughput_test")

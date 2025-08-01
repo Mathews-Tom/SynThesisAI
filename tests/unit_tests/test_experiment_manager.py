@@ -4,14 +4,14 @@ Unit tests for MARL Experiment Manager.
 Tests experiment creation, management, and analysis functionality.
 """
 
-import json
+# Standard Library
 import tempfile
-from datetime import datetime
 from pathlib import Path
-from unittest.mock import Mock, patch
 
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.marl.config.config_schema import AgentConfig, MARLConfig
 from core.marl.experimentation.experiment_manager import (
     Experiment,
@@ -75,15 +75,11 @@ class TestExperimentCondition:
 
         # Empty condition ID
         with pytest.raises(ValueError, match="Condition ID cannot be empty"):
-            ExperimentCondition(
-                condition_id="", name="Test", description="Test", config=config
-            )
+            ExperimentCondition(condition_id="", name="Test", description="Test", config=config)
 
         # Empty name
         with pytest.raises(ValueError, match="Condition name cannot be empty"):
-            ExperimentCondition(
-                condition_id="test", name="", description="Test", config=config
-            )
+            ExperimentCondition(condition_id="test", name="", description="Test", config=config)
 
 
 class TestExperimentResult:
@@ -91,9 +87,7 @@ class TestExperimentResult:
 
     def test_result_creation(self):
         """Test experiment result creation."""
-        result = ExperimentResult(
-            condition_id="test_condition", status=ExperimentStatus.CREATED
-        )
+        result = ExperimentResult(condition_id="test_condition", status=ExperimentStatus.CREATED)
 
         assert result.condition_id == "test_condition"
         assert result.status == ExperimentStatus.CREATED
@@ -104,9 +98,7 @@ class TestExperimentResult:
 
     def test_add_metric(self):
         """Test adding metrics to result."""
-        result = ExperimentResult(
-            condition_id="test_condition", status=ExperimentStatus.RUNNING
-        )
+        result = ExperimentResult(condition_id="test_condition", status=ExperimentStatus.RUNNING)
 
         # Add metric
         result.add_metric("reward", 0.5)
@@ -123,9 +115,7 @@ class TestExperimentResult:
 
     def test_add_performance_data(self):
         """Test adding performance data to result."""
-        result = ExperimentResult(
-            condition_id="test_condition", status=ExperimentStatus.RUNNING
-        )
+        result = ExperimentResult(condition_id="test_condition", status=ExperimentStatus.RUNNING)
 
         # Add performance data
         result.add_performance_data("episode_rewards", [0.1, 0.2, 0.3])
@@ -140,9 +130,7 @@ class TestExperimentResult:
 
     def test_get_final_metric(self):
         """Test getting final metric value."""
-        result = ExperimentResult(
-            condition_id="test_condition", status=ExperimentStatus.COMPLETED
-        )
+        result = ExperimentResult(condition_id="test_condition", status=ExperimentStatus.COMPLETED)
 
         # No metric
         assert result.get_final_metric("nonexistent") is None
@@ -157,9 +145,7 @@ class TestExperimentResult:
 
     def test_get_average_metric(self):
         """Test getting average metric value."""
-        result = ExperimentResult(
-            condition_id="test_condition", status=ExperimentStatus.COMPLETED
-        )
+        result = ExperimentResult(condition_id="test_condition", status=ExperimentStatus.COMPLETED)
 
         # No metric
         assert result.get_average_metric("nonexistent") is None
@@ -284,9 +270,7 @@ class TestExperiment:
             )
 
         # No conditions
-        with pytest.raises(
-            ValueError, match="Experiment must have at least one condition"
-        ):
+        with pytest.raises(ValueError, match="Experiment must have at least one condition"):
             Experiment(
                 experiment_id="test",
                 name="Test",
@@ -338,9 +322,7 @@ class TestExperiment:
 
         # One failed
         experiment.results["treatment"].status = ExperimentStatus.FAILED
-        assert (
-            experiment.get_completion_percentage() == 100.0
-        )  # Failed counts as completed
+        assert experiment.get_completion_percentage() == 100.0  # Failed counts as completed
 
 
 class TestExperimentManager:
@@ -624,21 +606,15 @@ class TestExperimentManager:
             assert len(ab_tests) == 1
             assert ab_tests[0].experiment_id == ab_test.experiment_id
 
-            param_sweeps = manager.list_experiments(
-                experiment_type=ExperimentType.PARAMETER_SWEEP
-            )
+            param_sweeps = manager.list_experiments(experiment_type=ExperimentType.PARAMETER_SWEEP)
             assert len(param_sweeps) == 1
             assert param_sweeps[0].experiment_id == param_sweep.experiment_id
 
             # Filter by status
-            created_experiments = manager.list_experiments(
-                status=ExperimentStatus.CREATED
-            )
+            created_experiments = manager.list_experiments(status=ExperimentStatus.CREATED)
             assert len(created_experiments) == 2
 
-            running_experiments = manager.list_experiments(
-                status=ExperimentStatus.RUNNING
-            )
+            running_experiments = manager.list_experiments(status=ExperimentStatus.RUNNING)
             assert len(running_experiments) == 0
 
     def test_delete_experiment(self):
@@ -804,9 +780,7 @@ class TestExperimentManagerFactory:
     def test_create_with_auto_save(self):
         """Test creating experiment manager with auto-save configuration."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            manager = ExperimentManagerFactory.create_with_auto_save(
-                temp_dir, auto_save=False
-            )
+            manager = ExperimentManagerFactory.create_with_auto_save(temp_dir, auto_save=False)
 
             assert isinstance(manager, ExperimentManager)
             assert manager.experiments_dir == Path(temp_dir)

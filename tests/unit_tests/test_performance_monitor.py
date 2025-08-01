@@ -7,7 +7,7 @@ coordination success tracking, agent performance metrics, and system monitoring.
 
 import asyncio
 import time
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -258,9 +258,7 @@ class TestMARLPerformanceMonitor:
         confidence = 0.90
         metadata = {"episode": 100}
 
-        performance_monitor.record_agent_performance(
-            agent_id, reward, loss, confidence, metadata
-        )
+        performance_monitor.record_agent_performance(agent_id, reward, loss, confidence, metadata)
 
         # Check that all metrics were recorded
         perf_metrics = performance_monitor._metrics[MetricType.AGENT_PERFORMANCE]
@@ -389,9 +387,7 @@ class TestMARLPerformanceMonitor:
         """Test learning progress with no learning data."""
         agent_id = "test_agent"
         # Record non-learning metric
-        performance_monitor.record_metric(
-            MetricType.AGENT_PERFORMANCE, 0.5, agent_id=agent_id
-        )
+        performance_monitor.record_metric(MetricType.AGENT_PERFORMANCE, 0.5, agent_id=agent_id)
 
         progress = performance_monitor.get_learning_progress(agent_id)
         assert "error" in progress
@@ -404,9 +400,7 @@ class TestMARLPerformanceMonitor:
         # Record learning metrics with decreasing loss (improving)
         for i in range(10):
             loss = 1.0 - i * 0.05  # Decreasing loss
-            performance_monitor.record_metric(
-                MetricType.LEARNING_PROGRESS, loss, agent_id=agent_id
-            )
+            performance_monitor.record_metric(MetricType.LEARNING_PROGRESS, loss, agent_id=agent_id)
 
         progress = performance_monitor.get_learning_progress(agent_id)
 
@@ -416,7 +410,7 @@ class TestMARLPerformanceMonitor:
         assert "time_span_seconds" in progress
 
         assert progress["total_updates"] == 10
-        assert progress["recent_performance"]["improving"] == True  # Decreasing trend
+        assert progress["recent_performance"]["improving"]  # Decreasing trend
         assert progress["latest_value"] == 0.55  # Last loss value
 
     def test_check_alert_conditions_no_alerts(self, performance_monitor):
@@ -471,9 +465,7 @@ class TestMARLPerformanceMonitor:
     ):
         """Test successful metrics export."""
         # Add some test data
-        performance_monitor.record_metric(
-            MetricType.AGENT_PERFORMANCE, 0.5, agent_id="test_agent"
-        )
+        performance_monitor.record_metric(MetricType.AGENT_PERFORMANCE, 0.5, agent_id="test_agent")
 
         # Mock the file context manager
         mock_file = Mock()

@@ -5,12 +5,15 @@ Tests the specialized metrics collection capabilities including
 agent metrics, coordination metrics, and system resource metrics.
 """
 
+# Standard Library
 import asyncio
 import time
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.marl.monitoring.metrics_collector import (
     CollectedMetric,
     CollectionStrategy,
@@ -147,9 +150,7 @@ class TestMetricsCollector:
             assert metric_name in metrics_collector._metric_definitions
 
         # Check collection strategies
-        success_rate_def = metrics_collector._metric_definitions[
-            "coordination_success_rate"
-        ]
+        success_rate_def = metrics_collector._metric_definitions["coordination_success_rate"]
         assert success_rate_def.collection_strategy == CollectionStrategy.CONTINUOUS
         assert success_rate_def.collection_interval == 10.0
 
@@ -360,9 +361,7 @@ class TestMetricsCollector:
         metrics_collector.collect_metric(metric_name, 0.9)
 
         # Get statistics for last 30 minutes
-        stats = metrics_collector.get_metric_statistics(
-            metric_name, time_window_seconds=1800
-        )
+        stats = metrics_collector.get_metric_statistics(metric_name, time_window_seconds=1800)
 
         assert stats["count"] == 1
         assert stats["latest"] == 0.9
@@ -511,9 +510,7 @@ class TestMetricsCollector:
         assert gpu_usage == expected_usage
 
     @patch("torch.cuda.is_available")
-    def test_collect_gpu_usage_not_available(
-        self, mock_cuda_available, metrics_collector
-    ):
+    def test_collect_gpu_usage_not_available(self, mock_cuda_available, metrics_collector):
         """Test GPU usage collection when CUDA is not available."""
         mock_cuda_available.return_value = False
 
@@ -556,9 +553,7 @@ class TestMetricsCollector:
     def test_export_metrics_data(self, metrics_collector):
         """Test exporting metrics data."""
         # Collect some test data
-        metrics_collector.collect_metric(
-            "metric1", 0.5, "test_source", {"key": "value"}
-        )
+        metrics_collector.collect_metric("metric1", 0.5, "test_source", {"key": "value"})
         metrics_collector.collect_metric("metric2", 0.7)
 
         export_data = metrics_collector.export_metrics_data()

@@ -4,13 +4,15 @@ Unit tests for MARL Parameter Manager.
 Tests parameter validation, optimization, and management functionality.
 """
 
+# Standard Library
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch
 
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.marl.config.config_schema import AgentConfig, MARLConfig
 from core.marl.config.parameter_manager import (
     MARLParameterManager,
@@ -400,9 +402,7 @@ class TestMARLParameterManager:
         """Test parameter optimization."""
         manager = MARLParameterManager()
 
-        suggestions = manager.optimize_parameters(
-            current_performance=0.6, target_performance=0.8
-        )
+        suggestions = manager.optimize_parameters(current_performance=0.6, target_performance=0.8)
 
         assert len(suggestions) > 0
         assert isinstance(suggestions, dict)
@@ -509,7 +509,7 @@ class TestMARLParameterManager:
 
         try:
             # Export
-            success = manager.export_parameters(temp_path, format="json")
+            success = manager.export_parameters(temp_path, file_format="json")
             assert success is True
 
             # Verify file exists and has content
@@ -600,13 +600,7 @@ class TestMARLParameterManagerFactory:
         )
         custom_registry.register_parameter(custom_spec)
 
-        manager = MARLParameterManagerFactory.create_with_custom_registry(
-            custom_registry
-        )
+        manager = MARLParameterManagerFactory.create_with_custom_registry(custom_registry)
 
         assert isinstance(manager, MARLParameterManager)
         assert manager.get_parameter("custom_param") == 0.123
-
-
-if __name__ == "__main__":
-    pytest.main([__file__])

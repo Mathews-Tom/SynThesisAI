@@ -1,3 +1,4 @@
+# pylint: disable=import-error
 """
 Unit tests for base RL agent framework.
 
@@ -5,15 +6,18 @@ This module tests the base RL agent architecture including neural networks,
 replay buffers, learning metrics, and the abstract base agent class.
 """
 
+# Standard Library
 import tempfile
 from pathlib import Path
 from typing import Any, Dict
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
+# Third-Party Library
 import numpy as np
 import pytest
 import torch
 
+# SynThesisAI Modules
 from core.marl.agents.base_agent import ActionSpace, BaseRLAgent
 from core.marl.agents.experience import Experience
 from core.marl.agents.learning_metrics import LearningMetrics
@@ -26,11 +30,7 @@ from core.marl.agents.neural_networks import (
 )
 from core.marl.agents.replay_buffer import PrioritizedReplayBuffer, ReplayBuffer
 from core.marl.config import AgentConfig
-from core.marl.exceptions import (
-    AgentFailureError,
-    ExperienceBufferError,
-    PolicyNetworkError,
-)
+from core.marl.exceptions import ExperienceBufferError, PolicyNetworkError
 
 
 # Test implementation of BaseRLAgent for testing
@@ -789,7 +789,7 @@ class TestBaseRLAgent:
         # Test CUDA available
         mock_cuda.return_value = True
         config.gpu_enabled = True
-        agent = MockRLAgent("test_agent", config)
+        MockRLAgent("test_agent", config)
         # Note: In testing environment, CUDA might not actually be available
         # so we just check that the agent initializes without error
 

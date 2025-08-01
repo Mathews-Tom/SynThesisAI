@@ -5,12 +5,15 @@ This module tests the Generator RL Agent implementation including strategy
 selection, reward calculation, state representation, and performance tracking.
 """
 
+# Standard Library
 import time
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
+# Third-Party Library
 import numpy as np
 import pytest
 
+# SynThesisAI Modules
 from core.marl.agents.base_agent import ActionSpace
 from core.marl.agents.specialized.generator_agent import (
     GenerationContextEncoder,
@@ -27,9 +30,7 @@ class TestGenerationStrategy:
     def test_strategy_initialization(self):
         """Test strategy initialization."""
         params = {"param1": 0.8, "param2": "value"}
-        strategy = GenerationStrategy(
-            "test_strategy", "Test strategy description", params
-        )
+        strategy = GenerationStrategy("test_strategy", "Test strategy description", params)
 
         assert strategy.name == "test_strategy"
         assert strategy.description == "Test strategy description"
@@ -128,9 +129,7 @@ class TestGenerationContextEncoder:
         assert all(isinstance(x, float) for x in simple_encoding)
 
         # Test complex topic
-        complex_encoding = encoder.encode_topic(
-            "Advanced Calculus with Applications 123"
-        )
+        complex_encoding = encoder.encode_topic("Advanced Calculus with Applications 123")
         assert len(complex_encoding) == 4
         assert complex_encoding[0] > simple_encoding[0]  # Longer topic
         assert complex_encoding[1] > simple_encoding[1]  # More words
@@ -469,9 +468,7 @@ class TestGeneratorRLAgent:
 
         # First strategy should have the highest overall score
         if len(strategy_perf) > 1:
-            assert (
-                strategy_perf[0]["overall_score"] >= strategy_perf[1]["overall_score"]
-            )
+            assert strategy_perf[0]["overall_score"] >= strategy_perf[1]["overall_score"]
 
     def test_state_summarization(self):
         """Test state summarization for logging."""

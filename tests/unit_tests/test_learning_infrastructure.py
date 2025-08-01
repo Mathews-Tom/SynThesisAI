@@ -5,23 +5,20 @@ This module tests the advanced learning infrastructure components including
 optimization, experience sharing, and distributed training capabilities.
 """
 
-import tempfile
+# Standard Library
 import time
-from typing import Any, Dict
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
+# Third-Party Library
 import numpy as np
 import pytest
 import torch
 import torch.nn as nn
 
+# SynThesisAI Modules
 from core.marl.agents.experience import Experience
 from core.marl.config import AgentConfig, ExperienceConfig, MARLConfig
-from core.marl.exceptions import (
-    ExperienceBufferError,
-    LearningDivergenceError,
-    OptimizationFailureError,
-)
+from core.marl.exceptions import LearningDivergenceError
 from core.marl.learning.distributed_training import (
     DistributedCoordinationManager,
     DistributedTrainingManager,
@@ -43,6 +40,22 @@ from core.marl.learning.optimization import (
 )
 
 
+# Pytest fixtures for common objects
+@pytest.fixture
+def mock_network():
+    return MockNetwork()
+
+
+@pytest.fixture
+def agent_config():
+    return AgentConfig()
+
+
+@pytest.fixture
+def default_optimizer(mock_network, agent_config):
+    return MARLOptimizer(mock_network, agent_config, "test_agent")
+
+
 # Simple test network for optimization tests
 class MockNetwork(nn.Module):
     def __init__(self):
@@ -56,11 +69,11 @@ class MockNetwork(nn.Module):
 class TestMARLOptimizer:
     """Test MARL optimizer functionality."""
 
-    def test_optimizer_initialization(self):
+    def test_optimizer_initialization(self, mock_network, agent_config, default_optimizer):
         """Test optimizer initialization."""
-        network = MockNetwork()
-        config = AgentConfig()
-        optimizer = MARLOptimizer(network, config, "test_agent")
+        optimizer = default_optimizer
+        network = mock_network
+        config = agent_config
 
         assert optimizer.agent_id == "test_agent"
         assert optimizer.config == config
@@ -68,11 +81,10 @@ class TestMARLOptimizer:
         assert optimizer.step_count == 0
         assert isinstance(optimizer.metrics, OptimizationMetrics)
 
-    def test_optimization_step(self):
+    def test_optimization_step(self, default_optimizer):
         """Test optimization step execution."""
-        network = MockNetwork()
-        config = AgentConfig()
-        optimizer = MARLOptimizer(network, config, "test_agent")
+        optimizer = default_optimizer
+        network = optimizer.network
 
         # Create dummy input and target
         x = torch.randn(4, 4)
@@ -107,11 +119,9 @@ class TestMARLOptimizer:
         new_lr = optimizer.optimizer.param_groups[0]["lr"]
         assert new_lr == 0.0005
 
-    def test_divergence_detection(self):
+    def test_divergence_detection(self, default_optimizer):
         """Test learning divergence detection."""
-        network = MockNetwork()
-        config = AgentConfig()
-        optimizer = MARLOptimizer(network, config, "test_agent")
+        optimizer = default_optimizer
 
         # Create loss that exceeds divergence threshold
         divergent_loss = torch.tensor(20.0)  # Above default threshold of 10.0
@@ -119,17 +129,15 @@ class TestMARLOptimizer:
         with pytest.raises(LearningDivergenceError):
             optimizer.step(divergent_loss)
 
-    def test_optimization_state_save_load(self):
+    def test_optimization_state_save_load(self, default_optimizer):
         """Test optimization state save and load."""
-        network = MockNetwork()
-        config = AgentConfig()
-        optimizer = MARLOptimizer(network, config, "test_agent")
+        optimizer = default_optimizer
 
         # Perform some optimization steps
         for _ in range(5):
             x = torch.randn(2, 4)
             target = torch.randn(2, 2)
-            output = network(x)
+            output = optimizer.network(x)
             loss = nn.MSELoss()(output, target)
             optimizer.step(loss)
 
@@ -138,7 +146,7 @@ class TestMARLOptimizer:
 
         # Create new optimizer and load state
         new_network = MockNetwork()
-        new_optimizer = MARLOptimizer(new_network, config, "test_agent")
+        new_optimizer = MARLOptimizer(new_network, optimizer.config, optimizer.agent_id)
         new_optimizer.load_optimization_state(state)
 
         assert new_optimizer.step_count == optimizer.step_count
@@ -172,7 +180,7 @@ class TestAdaptiveLearningRateScheduler:
 
         # Simulate plateau (no improvement)
         for _ in range(5):
-            adjusted = scheduler.step(1.0)  # Constant loss
+            scheduler.step(1.0)  # Constant loss
 
         final_lr = optimizer.optimizer.param_groups[0]["lr"]
         assert final_lr < initial_lr  # Learning rate should be reduced
@@ -307,9 +315,7 @@ class TestSharedExperienceManager:
         )
 
         # Share experience
-        exp_id = manager.share_experience(
-            experience, "agent1", ExperienceValue.HIGH_REWARD, 0.9
-        )
+        exp_id = manager.share_experience(experience, "agent1", ExperienceValue.HIGH_REWARD, 0.9)
 
         assert exp_id in manager.shared_experiences
         assert exp_id in manager.experience_metadata
@@ -330,9 +336,7 @@ class TestSharedExperienceManager:
                 next_state=np.array([float(i + 1)]),
                 done=False,
             )
-            manager.share_experience(
-                exp, f"agent{i}", ExperienceValue.HIGH_REWARD, 0.8 + i * 0.1
-            )
+            manager.share_experience(exp, f"agent{i}", ExperienceValue.HIGH_REWARD, 0.8 + i * 0.1)
 
         # Retrieve experiences for different agent
         experiences = manager.get_experiences_for_agent("agent_new", max_experiences=2)
@@ -354,9 +358,7 @@ class TestSharedExperienceManager:
             next_state=np.array([1.1]),
             done=False,
         )
-        exp_id = manager.share_experience(
-            exp, "agent1", ExperienceValue.HIGH_REWARD, 0.9
-        )
+        exp_id = manager.share_experience(exp, "agent1", ExperienceValue.HIGH_REWARD, 0.9)
 
         # Provide feedback
         manager.provide_feedback(exp_id, True, "agent2")
@@ -379,14 +381,10 @@ class TestSharedExperienceManager:
             next_state=np.array([1.1]),
             done=False,
         )
-        exp_id = manager.share_experience(
-            exp, "agent1", ExperienceValue.HIGH_REWARD, 0.9
-        )
+        exp_id = manager.share_experience(exp, "agent1", ExperienceValue.HIGH_REWARD, 0.9)
 
         # Manually set old timestamp
-        manager.experience_metadata[exp_id].creation_time = (
-            time.time() - 25 * 3600
-        )  # 25 hours ago
+        manager.experience_metadata[exp_id].creation_time = time.time() - 25 * 3600  # 25 hours ago
 
         # Cleanup old experiences
         removed_count = manager.cleanup_old_experiences(max_age_hours=24.0)
@@ -409,9 +407,7 @@ class TestSharedExperienceManager:
                 next_state=np.array([float(i + 1)]),
                 done=False,
             )
-            exp_id = manager.share_experience(
-                exp, f"agent{i}", ExperienceValue.HIGH_REWARD, 0.8
-            )
+            exp_id = manager.share_experience(exp, f"agent{i}", ExperienceValue.HIGH_REWARD, 0.8)
             manager.provide_feedback(exp_id, i % 2 == 0, "feedback_agent")
 
         stats = manager.get_sharing_statistics()
@@ -542,9 +538,7 @@ class TestCoordinationSuccessTracker:
         tracker = CoordinationSuccessTracker()
 
         # Record mixed results
-        contexts = [
-            {"participating_agents": ["agent1"], "coordination_strategy": "simple"}
-        ]
+        contexts = [{"participating_agents": ["agent1"], "coordination_strategy": "simple"}]
 
         for i in range(10):
             tracker.record_coordination(i % 2 == 0, contexts[0])  # 50% success rate
@@ -667,9 +661,7 @@ class TestDistributedCoordination:
 
         # Propose coordination action
         action_proposal = {"action": "generate", "strategy": "creative"}
-        proposal_id = coord_manager.propose_coordination_action(
-            "agent1", action_proposal
-        )
+        proposal_id = coord_manager.propose_coordination_action("agent1", action_proposal)
 
         assert proposal_id in coord_manager.consensus_proposals
         proposal = coord_manager.consensus_proposals[proposal_id]
@@ -691,9 +683,7 @@ class TestDistributedCoordination:
         coord_manager = DistributedCoordinationManager(training_manager)
 
         # Propose and vote
-        proposal_id = coord_manager.propose_coordination_action(
-            "agent1", {"action": "validate"}
-        )
+        proposal_id = coord_manager.propose_coordination_action("agent1", {"action": "validate"})
 
         # Vote from both nodes
         coord_manager.vote_on_proposal(proposal_id, "agent1", True)

@@ -1,12 +1,15 @@
+# Standard Library
 from unittest.mock import MagicMock, patch
 
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.orchestration.evaluate_target_model import model_attempts_answer
 
 
-@patch("core.orchestration.evaluate_target_model._get_openai_client")
-def test_model_attempts_answer_openai(mock_get_openai_client):
+@pytest.fixture
+def openai_response():
     mock_client = MagicMock()
     mock_response = MagicMock()
     mock_response.choices = [MagicMock()]
@@ -15,10 +18,24 @@ def test_model_attempts_answer_openai(mock_get_openai_client):
     mock_response.usage.completion_tokens = 20
 
     mock_client.chat.completions.create.return_value = mock_response
-    mock_get_openai_client.return_value = mock_client
+    return mock_client
+
+
+@pytest.fixture
+def gemini_model():
+    mock_model = MagicMock()
+    mock_model.generate_content.return_value.text = "x = 5"
+    return mock_model
+
+
+@patch("core.orchestration.evaluate_target_model._get_openai_client")
+def test_model_attempts_answer_openai(mock_get_openai_client, openai_response):
+    """Test model_attempts_answer using OpenAI provider."""
+    mock_get_openai_client.return_value = openai_response
 
     result = model_attempts_answer(
-        "x + 1 = 3", {"provider": "openai", "model_name": "gpt-4.1"}
+        problem="x + 1 = 3",
+        model_config={"provider": "openai", "model_name": "gpt-4.1"},
     )
 
     assert result["output"] == "x = 2"
@@ -27,13 +44,13 @@ def test_model_attempts_answer_openai(mock_get_openai_client):
 
 
 @patch("core.orchestration.evaluate_target_model.genai")
-def test_model_attempts_answer_gemini(mock_genai):
-    mock_model = MagicMock()
-    mock_model.generate_content.return_value.text = "x = 5"
-    mock_genai.GenerativeModel.return_value = mock_model
+def test_model_attempts_answer_gemini(mock_genai, gemini_model):
+    """Test model_attempts_answer using Gemini provider."""
+    mock_genai.GenerativeModel.return_value = gemini_model
 
     result = model_attempts_answer(
-        "2x + 1 = 11", {"provider": "gemini", "model_name": "gemini-2.5-pro"}
+        problem="2x + 1 = 11",
+        model_config={"provider": "gemini", "model_name": "gemini-2.5-pro"},
     )
 
     assert result["output"] == "x = 5"

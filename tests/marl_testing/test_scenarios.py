@@ -4,14 +4,17 @@ This module provides predefined test scenarios for comprehensive
 testing of MARL coordination mechanisms and conflict resolution.
 """
 
+# Standard Library
 import asyncio
 import random
 import time
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
 
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any, Dict
+
+# SynThesisAI Modules
 from utils.logging_config import get_logger
 
 
@@ -165,9 +168,7 @@ class BaseTestScenario(ABC):
         pass
 
     @abstractmethod
-    async def _validate_results(
-        self, execution_results: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def _validate_results(self, execution_results: Dict[str, Any]) -> Dict[str, Any]:
         """Validate scenario results."""
         pass
 
@@ -238,9 +239,7 @@ class CoordinationTestScenario(BaseTestScenario):
 
         return execution_results
 
-    async def _validate_results(
-        self, execution_results: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def _validate_results(self, execution_results: Dict[str, Any]) -> Dict[str, Any]:
         """Validate coordination scenario results."""
         validation_results = {
             "coordination_success_rate": 0.0,
@@ -390,15 +389,11 @@ class ConflictTestScenario(BaseTestScenario):
 
         # Calculate average resolution time
         if resolution_count > 0:
-            execution_results["average_resolution_time"] = (
-                total_resolution_time / resolution_count
-            )
+            execution_results["average_resolution_time"] = total_resolution_time / resolution_count
 
         return execution_results
 
-    async def _validate_results(
-        self, execution_results: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def _validate_results(self, execution_results: Dict[str, Any]) -> Dict[str, Any]:
         """Validate conflict scenario results."""
         validation_results = {
             "conflict_resolution_rate": 0.0,
@@ -410,8 +405,7 @@ class ConflictTestScenario(BaseTestScenario):
         # Calculate conflict resolution rate
         if execution_results["conflicts_detected"] > 0:
             validation_results["conflict_resolution_rate"] = (
-                execution_results["conflicts_resolved"]
-                / execution_results["conflicts_detected"]
+                execution_results["conflicts_resolved"] / execution_results["conflicts_detected"]
             )
 
         # Calculate resolution efficiency
@@ -471,11 +465,7 @@ class PerformanceTestScenario(BaseTestScenario):
         total_response_time = 0.0
 
         # Simulate performance testing
-        for step in range(
-            min(self.config.max_steps, 20)
-        ):  # More operations for performance
-            operation_start = time.time()
-
+        for step in range(min(self.config.max_steps, 20)):  # More operations for performance
             execution_results["total_operations"] += 1
 
             # Simulate operation success
@@ -508,15 +498,12 @@ class PerformanceTestScenario(BaseTestScenario):
         execution_results["average_response_time"] = (
             total_response_time / execution_results["total_operations"]
         )
-        execution_results["throughput"] = (
-            execution_results["total_operations"] / total_time
-        )
+        execution_results["throughput"] = execution_results["total_operations"] / total_time
 
         # Average resource usage
         if execution_results["performance_events"]:
             execution_results["memory_usage"] = sum(
-                event["memory_usage"]
-                for event in execution_results["performance_events"]
+                event["memory_usage"] for event in execution_results["performance_events"]
             ) / len(execution_results["performance_events"])
 
             execution_results["cpu_usage"] = sum(
@@ -525,9 +512,7 @@ class PerformanceTestScenario(BaseTestScenario):
 
         return execution_results
 
-    async def _validate_results(
-        self, execution_results: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def _validate_results(self, execution_results: Dict[str, Any]) -> Dict[str, Any]:
         """Validate performance scenario results."""
         validation_results = {
             "throughput_meets_target": False,
@@ -539,9 +524,7 @@ class PerformanceTestScenario(BaseTestScenario):
 
         # Validate throughput
         throughput = execution_results["throughput"]
-        validation_results["throughput_meets_target"] = (
-            throughput >= self.config.target_throughput
-        )
+        validation_results["throughput_meets_target"] = throughput >= self.config.target_throughput
 
         # Validate response time
         avg_response_time = execution_results["average_response_time"]

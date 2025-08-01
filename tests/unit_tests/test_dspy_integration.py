@@ -5,18 +5,19 @@ These tests verify the core functionality of the DSPy integration module,
 including configuration, signatures, and basic module initialization.
 """
 
-import os
+# Standard Library
 from unittest.mock import MagicMock, patch
 
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.dspy import (
     DSPY_AVAILABLE,
     SignatureManager,
     SignatureValidationError,
     STREAMContentGenerator,
     create_custom_signature,
-    get_all_domains,
     get_domain_signature,
     get_dspy_config,
     validate_signature,
@@ -75,9 +76,7 @@ class TestDSPySignatures:
 
         # Test registering custom signature
         custom_sig = "concept, difficulty -> problem, solution"
-        result = manager.register_custom_signature(
-            "custom_domain", "generation", custom_sig
-        )
+        result = manager.register_custom_signature("custom_domain", "generation", custom_sig)
         assert result is True
 
         # Test signature compatibility
@@ -128,12 +127,8 @@ class TestSTREAMContentGenerator:
 
         # Create a mock result with sufficient content to avoid refinement
         mock_result = MagicMock()
-        mock_result.problem_statement = (
-            "Test problem with sufficient length to avoid refinement"
-        )
-        mock_result.solution = (
-            "Test solution with sufficient length to avoid refinement"
-        )
+        mock_result.problem_statement = "Test problem with sufficient length to avoid refinement"
+        mock_result.solution = "Test solution with sufficient length to avoid refinement"
         mock_result.proof = "Test proof"
         mock_result.reasoning_trace = "Test reasoning trace"
         mock_result.pedagogical_hints = "Test hints"

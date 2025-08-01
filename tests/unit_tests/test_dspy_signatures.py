@@ -5,8 +5,10 @@ These tests verify the enhanced signature functionality for STREAM domains,
 including signature validation, parsing, and compatibility checking.
 """
 
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.dspy.exceptions import SignatureValidationError
 from core.dspy.signatures import (
     SignatureManager,
@@ -21,73 +23,98 @@ from core.dspy.signatures import (
 class TestDSPySignatures:
     """Test DSPy signature functionality."""
 
-    def test_get_domain_signature(self):
+    @pytest.mark.parametrize(
+        "domain,expected_keys",
+        [
+            (
+                "mathematics",
+                [
+                    "mathematical_concept",
+                    "problem_statement",
+                    "proof",
+                    "reasoning_trace",
+                    "pedagogical_hints",
+                    "misconception_analysis",
+                ],
+            ),
+            (
+                "science",
+                [
+                    "scientific_concept",
+                    "experimental_design",
+                    "evidence_evaluation",
+                    "scientific_principles",
+                ],
+            ),
+            (
+                "technology",
+                [
+                    "technical_concept",
+                    "algorithm_explanation",
+                    "system_design",
+                    "implementation_considerations",
+                ],
+            ),
+            (
+                "reading",
+                [
+                    "literary_concept",
+                    "comprehension_question",
+                    "analysis_prompt",
+                    "critical_thinking_exercise",
+                ],
+            ),
+            (
+                "engineering",
+                [
+                    "engineering_concept",
+                    "design_challenge",
+                    "optimization_problem",
+                    "constraint_analysis",
+                ],
+            ),
+            (
+                "arts",
+                [
+                    "artistic_concept",
+                    "creative_prompt",
+                    "aesthetic_analysis",
+                    "cultural_context",
+                ],
+            ),
+            (
+                "interdisciplinary",
+                [
+                    "primary_domain",
+                    "secondary_domain",
+                    "cross_domain_connections",
+                    "interdisciplinary_principles",
+                ],
+            ),
+        ],
+    )
+    def test_get_domain_signature(self, domain, expected_keys):
         """Test retrieving domain signatures."""
-        # Test mathematics domain
-        math_sig = get_domain_signature("mathematics", "generation")
-        assert "mathematical_concept" in math_sig
-        assert "problem_statement" in math_sig
-        assert "proof" in math_sig
-        assert "reasoning_trace" in math_sig
-        assert "pedagogical_hints" in math_sig
-        assert "misconception_analysis" in math_sig
+        sig = get_domain_signature(domain, "generation")
+        for key in expected_keys:
+            assert key in sig
 
-        # Test science domain
-        science_sig = get_domain_signature("science", "generation")
-        assert "scientific_concept" in science_sig
-        assert "experimental_design" in science_sig
-        assert "evidence_evaluation" in science_sig
-        assert "scientific_principles" in science_sig
-
-        # Test technology domain
-        tech_sig = get_domain_signature("technology", "generation")
-        assert "technical_concept" in tech_sig
-        assert "algorithm_explanation" in tech_sig
-        assert "system_design" in tech_sig
-        assert "implementation_considerations" in tech_sig
-
-        # Test reading domain
-        reading_sig = get_domain_signature("reading", "generation")
-        assert "literary_concept" in reading_sig
-        assert "comprehension_question" in reading_sig
-        assert "analysis_prompt" in reading_sig
-        assert "critical_thinking_exercise" in reading_sig
-
-        # Test engineering domain
-        engineering_sig = get_domain_signature("engineering", "generation")
-        assert "engineering_concept" in engineering_sig
-        assert "design_challenge" in engineering_sig
-        assert "optimization_problem" in engineering_sig
-        assert "constraint_analysis" in engineering_sig
-
-        # Test arts domain
-        arts_sig = get_domain_signature("arts", "generation")
-        assert "artistic_concept" in arts_sig
-        assert "creative_prompt" in arts_sig
-        assert "aesthetic_analysis" in arts_sig
-        assert "cultural_context" in arts_sig
-
-        # Test interdisciplinary domain
-        interdisciplinary_sig = get_domain_signature("interdisciplinary", "generation")
-        assert "primary_domain" in interdisciplinary_sig
-        assert "secondary_domain" in interdisciplinary_sig
-        assert "cross_domain_connections" in interdisciplinary_sig
-        assert "interdisciplinary_principles" in interdisciplinary_sig
-
-    def test_validate_signature(self):
-        """Test signature validation."""
-        # Test valid signatures
-        valid_signatures = [
+    @pytest.mark.parametrize(
+        "sig",
+        [
             "input1, input2 -> output1, output2",
             "concept -> solution",
             "a, b, c -> x, y, z",
             "input_with_underscore -> output_with_underscore",
-        ]
-        for sig in valid_signatures:
-            assert validate_signature(sig) is True
+        ],
+    )
+    def test_validate_signature_valid(self, sig):
+        """Test signature validation for valid signatures."""
+        assert validate_signature(sig) is True
 
-        # Test invalid signatures
-        invalid_signatures = [
+    @pytest.mark.parametrize(
+        "sig",
+        [
             "",  # Empty
             "input1, input2",  # Missing separator
             "-> output1, output2",  # Missing inputs
@@ -95,34 +122,40 @@ class TestDSPySignatures:
             "input1, input2 -> output1 -> extra",  # Too many separators
             "input@, input2 -> output1",  # Invalid field name
             "input1, -> output1",  # Empty field
-        ]
-        for sig in invalid_signatures:
-            with pytest.raises(SignatureValidationError):
-                validate_signature(sig)
-
-    def test_create_custom_signature(self):
-        """Test creating custom signatures."""
-        # Test valid inputs
-        inputs = ["concept", "difficulty"]
-        outputs = ["problem", "solution"]
-        sig = create_custom_signature(inputs, outputs)
-        assert sig == "concept, difficulty -> problem, solution"
-
-        # Test with more fields
-        inputs = ["a", "b", "c", "d"]
-        outputs = ["w", "x", "y", "z"]
-        sig = create_custom_signature(inputs, outputs)
-        assert sig == "a, b, c, d -> w, x, y, z"
-
-        # Test invalid inputs
+        ],
+    )
+    def test_validate_signature_invalid(self, sig):
+        """Test signature validation for invalid signatures."""
         with pytest.raises(SignatureValidationError):
-            create_custom_signature([], outputs)
+            validate_signature(sig)
 
-        with pytest.raises(SignatureValidationError):
-            create_custom_signature(inputs, [])
+    @pytest.mark.parametrize(
+        "inputs,outputs,expected",
+        [
+            (
+                ["concept", "difficulty"],
+                ["problem", "solution"],
+                "concept, difficulty -> problem, solution",
+            ),
+            (["a", "b", "c", "d"], ["w", "x", "y", "z"], "a, b, c, d -> w, x, y, z"),
+        ],
+    )
+    def test_create_custom_signature_valid(self, inputs, outputs, expected):
+        """Test creating custom signatures (valid cases)."""
+        assert create_custom_signature(inputs, outputs) == expected
 
+    @pytest.mark.parametrize(
+        "inputs,outputs",
+        [
+            ([], ["problem", "solution"]),
+            (["concept", "difficulty"], []),
+            (["invalid@name"], ["problem", "solution"]),
+        ],
+    )
+    def test_create_custom_signature_invalid(self, inputs, outputs):
+        """Test creating custom signatures (invalid cases)."""
         with pytest.raises(SignatureValidationError):
-            create_custom_signature(["invalid@name"], outputs)
+            create_custom_signature(inputs, outputs)
 
     def test_get_all_domains(self):
         """Test getting all domains."""
@@ -215,35 +248,22 @@ class TestSignatureManager:
         manager = SignatureManager()
 
         # Test compatible signatures (non-strict)
-        assert (
-            manager.is_signature_compatible("a, b, c -> x, y, z", "a, b -> x, y")
-            is True
-        )
+        assert manager.is_signature_compatible("a, b, c -> x, y, z", "a, b -> x, y") is True
 
         # Test incompatible signatures (missing required input)
-        assert (
-            manager.is_signature_compatible("a, b -> x, y, z", "a, b, c -> x, y")
-            is False
-        )
+        assert manager.is_signature_compatible("a, b -> x, y, z", "a, b, c -> x, y") is False
 
         # Test incompatible signatures (missing required output)
-        assert (
-            manager.is_signature_compatible("a, b, c -> x, y", "a, b -> x, y, z")
-            is False
-        )
+        assert manager.is_signature_compatible("a, b, c -> x, y", "a, b -> x, y, z") is False
 
         # Test strict compatibility
         assert (
-            manager.is_signature_compatible(
-                "a, b, c -> x, y, z", "a, b, c -> x, y, z", strict=True
-            )
+            manager.is_signature_compatible("a, b, c -> x, y, z", "a, b, c -> x, y, z", strict=True)
             is True
         )
 
         assert (
-            manager.is_signature_compatible(
-                "a, b, c -> x, y, z", "a, b, c -> x, y", strict=True
-            )
+            manager.is_signature_compatible("a, b, c -> x, y, z", "a, b, c -> x, y", strict=True)
             is False
         )
 
@@ -268,9 +288,7 @@ class TestSignatureManager:
         manager = SignatureManager()
 
         # Create composite from mathematics and science
-        composite_sig = manager.create_composite_signature(
-            "mathematics", "science", "generation"
-        )
+        composite_sig = manager.create_composite_signature("mathematics", "science", "generation")
 
         # Verify composite contains fields from both domains
         assert "mathematical_concept" in composite_sig

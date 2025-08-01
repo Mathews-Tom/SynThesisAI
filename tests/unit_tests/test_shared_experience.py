@@ -2,12 +2,15 @@
 Unit tests for Shared Experience Management System
 """
 
+# Standard Library
 import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
+# Third-Party Library
 import numpy as np
 import pytest
 
+# SynThesisAI Modules
 from core.marl.agents.base_agent import Experience
 from core.marl.learning.shared_experience import (
     ExperienceConfig,
@@ -119,7 +122,7 @@ class TestExperienceFilter:
         )
 
     @pytest.fixture
-    def filter(self, config):
+    def exp_filter(self, config):
         """Create test filter."""
         return ExperienceFilter(config)
 
@@ -136,62 +139,54 @@ class TestExperienceFilter:
 
     def test_filter_initialization(self, config):
         """Test filter initialization."""
-        filter = ExperienceFilter(config)
-        assert filter.config == config
+        experience_filter = ExperienceFilter(config)
+        assert experience_filter.config == config
 
-    def test_high_reward_experience(self, filter, sample_experience):
+    def test_high_reward_experience(self, exp_filter, sample_experience):
         """Test high reward experience filtering."""
         metadata = ExperienceMetadata("agent", time.time(), 0.9)  # High reward
 
-        should_share, reason = filter.should_share_experience(
-            sample_experience, metadata, []
-        )
+        should_share, reason = exp_filter.should_share_experience(sample_experience, metadata, [])
 
         assert should_share is True
         assert reason == "high_reward"
 
-    def test_low_reward_experience(self, filter, sample_experience):
+    def test_low_reward_experience(self, exp_filter, sample_experience):
         """Test low reward experience filtering."""
-        config = ExperienceConfig()
-        config.high_reward_threshold = 0.8
-        config.novelty_threshold = 1.0  # No novelty sharing
-        config.sharing_probability = 0.0  # No random sharing
-        filter = ExperienceFilter(config)
+        exp_filter.config.high_reward_threshold = 0.8
+        exp_filter.config.novelty_threshold = 1.0  # No novelty sharing
+        exp_filter.config.sharing_probability = 0.0  # No random sharing
 
         metadata = ExperienceMetadata("agent", time.time(), 0.5)  # Low reward
         metadata.novelty_score = 0.5  # Low novelty
 
-        should_share, reason = filter.should_share_experience(
-            sample_experience, metadata, []
-        )
+        should_share, reason = exp_filter.should_share_experience(sample_experience, metadata, [])
 
         assert should_share is False
         assert reason == "low_value"
 
-    def test_novel_experience(self, filter, sample_experience):
+    def test_novel_experience(self, exp_filter, sample_experience):
         """Test novel experience filtering."""
         config = ExperienceConfig()
         config.high_reward_threshold = 0.8
         config.novelty_threshold = 1.0  # Always share novel experiences
         config.sharing_probability = 0.0  # No random sharing
-        filter = ExperienceFilter(config)
+        exp_filter = ExperienceFilter(config)
 
         metadata = ExperienceMetadata("agent", time.time(), 0.5)  # Low reward
         metadata.novelty_score = 1.0  # High novelty
 
-        should_share, reason = filter.should_share_experience(
-            sample_experience, metadata, []
-        )
+        should_share, reason = exp_filter.should_share_experience(sample_experience, metadata, [])
 
         assert should_share is True
         assert reason == "novelty"
 
-    def test_calculate_novelty_score_empty_history(self, filter, sample_experience):
+    def test_calculate_novelty_score_empty_history(self, exp_filter, sample_experience):
         """Test novelty calculation with empty history."""
-        novelty = filter.calculate_novelty_score(sample_experience, [])
+        novelty = exp_filter.calculate_novelty_score(sample_experience, [])
         assert novelty == 1.0  # First experience is always novel
 
-    def test_calculate_novelty_score_with_history(self, filter):
+    def test_calculate_novelty_score_with_history(self, exp_filter):
         """Test novelty calculation with history."""
         # Create similar experiences
         exp1 = Experience(np.array([1.0, 2.0]), 0, 0.5, np.array([1.1, 2.1]), False)
@@ -199,41 +194,41 @@ class TestExperienceFilter:
         history = [exp1]
 
         # Similar experience should have low novelty
-        novelty = filter.calculate_novelty_score(exp2, history)
+        novelty = exp_filter.calculate_novelty_score(exp2, history)
         assert 0.0 <= novelty < 1.0
 
         # Very different experience should have high novelty
         exp3 = Experience(np.array([10.0, 20.0]), 0, 0.5, np.array([11.0, 21.0]), False)
-        novelty = filter.calculate_novelty_score(exp3, history)
+        novelty = exp_filter.calculate_novelty_score(exp3, history)
         assert (
             novelty >= 0.0
         )  # Should be non-negative, exact value depends on similarity calculation
 
-    def test_calculate_state_similarity(self, filter):
+    def test_calculate_state_similarity(self, exp_filter):
         """Test state similarity calculation."""
         state1 = np.array([1.0, 2.0, 3.0])
         state2 = np.array([1.0, 2.0, 3.0])  # Identical
         state3 = np.array([4.0, 5.0, 6.0])  # Different
 
         # Identical states should have high similarity
-        similarity = filter._calculate_state_similarity(state1, state2)
+        similarity = exp_filter._calculate_state_similarity(state1, state2)
         assert abs(similarity - 1.0) < 1e-6  # Account for floating point precision
 
         # Different states should have lower similarity
-        similarity = filter._calculate_state_similarity(state1, state3)
+        similarity = exp_filter._calculate_state_similarity(state1, state3)
         assert 0.0 <= similarity < 1.0
 
-    def test_calculate_state_similarity_different_shapes(self, filter):
+    def test_calculate_state_similarity_different_shapes(self, exp_filter):
         """Test state similarity with different shapes."""
         state1 = np.array([1.0, 2.0])
         state2 = np.array([1.0, 2.0, 3.0])
 
-        similarity = filter._calculate_state_similarity(state1, state2)
+        similarity = exp_filter._calculate_state_similarity(state1, state2)
         assert similarity == 0.0
 
-    def test_filter_reset(self, filter):
+    def test_filter_reset(self, exp_filter):
         """Test filter reset."""
-        filter.reset()  # Should not raise any exceptions
+        exp_filter.reset()  # Should not raise any exceptions
 
 
 class TestStateNoveltyTracker:
@@ -311,15 +306,9 @@ class TestExperienceSharing:
     def sample_experiences(self):
         """Create sample experiences."""
         return [
-            Experience(
-                np.array([1.0, 2.0]), 0, 0.9, np.array([1.1, 2.1]), False
-            ),  # High reward
-            Experience(
-                np.array([2.0, 3.0]), 1, 0.5, np.array([2.1, 3.1]), False
-            ),  # Low reward
-            Experience(
-                np.array([3.0, 4.0]), 0, 0.6, np.array([3.1, 4.1]), False
-            ),  # Medium reward
+            Experience(np.array([1.0, 2.0]), 0, 0.9, np.array([1.1, 2.1]), False),  # High reward
+            Experience(np.array([2.0, 3.0]), 1, 0.5, np.array([2.1, 3.1]), False),  # Low reward
+            Experience(np.array([3.0, 4.0]), 0, 0.6, np.array([3.1, 4.1]), False),  # Medium reward
         ]
 
     @pytest.fixture
@@ -342,22 +331,16 @@ class TestExperienceSharing:
         """Test share all strategy."""
         sharing.current_strategy = "share_all"
 
-        shared = sharing.select_experiences_to_share(
-            "agent1", sample_experiences, sample_metadata
-        )
+        shared = sharing.select_experiences_to_share("agent1", sample_experiences, sample_metadata)
 
         assert len(shared) == 3  # All experiences shared
         assert all(isinstance(item, tuple) and len(item) == 2 for item in shared)
 
-    def test_share_high_reward_strategy(
-        self, sharing, sample_experiences, sample_metadata
-    ):
+    def test_share_high_reward_strategy(self, sharing, sample_experiences, sample_metadata):
         """Test high reward sharing strategy."""
         sharing.current_strategy = "share_high_reward"
 
-        shared = sharing.select_experiences_to_share(
-            "agent1", sample_experiences, sample_metadata
-        )
+        shared = sharing.select_experiences_to_share("agent1", sample_experiences, sample_metadata)
 
         # Only high reward experience should be shared
         assert len(shared) == 1
@@ -367,24 +350,18 @@ class TestExperienceSharing:
         """Test novel sharing strategy."""
         sharing.current_strategy = "share_novel"
 
-        shared = sharing.select_experiences_to_share(
-            "agent1", sample_experiences, sample_metadata
-        )
+        shared = sharing.select_experiences_to_share("agent1", sample_experiences, sample_metadata)
 
         # Only novel experience should be shared (novelty >= 0.7)
         assert len(shared) == 1
         assert shared[0][1].novelty_score == 0.8
 
-    def test_unknown_strategy_fallback(
-        self, sharing, sample_experiences, sample_metadata
-    ):
+    def test_unknown_strategy_fallback(self, sharing, sample_experiences, sample_metadata):
         """Test fallback to default strategy for unknown strategy."""
         sharing.current_strategy = "unknown_strategy"
 
         # Should fallback to adaptive strategy
-        shared = sharing.select_experiences_to_share(
-            "agent1", sample_experiences, sample_metadata
-        )
+        shared = sharing.select_experiences_to_share("agent1", sample_experiences, sample_metadata)
 
         # Should share high reward and novel experiences
         assert len(shared) >= 1

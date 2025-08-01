@@ -5,11 +5,13 @@ These tests verify the functionality of the DSPyEngineerAgent class,
 including initialization, DSPy module management, and content generation.
 """
 
-import unittest
+# Standard Library
 from unittest.mock import MagicMock, patch
 
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.dspy.engineer_agent import DSPyEngineerAgent
 from core.dspy.exceptions import DSPyIntegrationError
 
@@ -55,9 +57,7 @@ class TestDSPyEngineerAgent:
 
     @patch("core.dspy.engineer_agent.STREAMContentGenerator")
     @patch("core.dspy.engineer_agent.get_dspy_config")
-    def test_initialize_dspy_module_failure(
-        self, mock_get_dspy_config, mock_stream_generator
-    ):
+    def test_initialize_dspy_module_failure(self, mock_get_dspy_config, mock_stream_generator):
         """Test failure in initializing DSPy module."""
         # Setup mocks
         mock_config = MagicMock()
@@ -94,9 +94,7 @@ class TestDSPyEngineerAgent:
         agent.dspy_module.return_value = mock_result
 
         # Test generation
-        result = agent.generate(
-            "Mathematics", "Calculus", difficulty_level="Undergraduate"
-        )
+        result = agent.generate("Mathematics", "Calculus", difficulty_level="Undergraduate")
 
         # Verify result
         assert result["subject"] == "Mathematics"
@@ -179,7 +177,3 @@ class TestDSPyEngineerAgent:
         )
         assert len(result["hints"]) >= 3
         assert "Step 1" in result["hints"]["0"]
-
-
-if __name__ == "__main__":
-    pytest.main(["-xvs", __file__])

@@ -5,16 +5,66 @@ Tests the communication protocol, message passing, broadcasting,
 and response handling for multi-agent RL coordination.
 """
 
+# Standard Library
 import asyncio
 from datetime import datetime
 from unittest.mock import AsyncMock, Mock, patch
 
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.marl.config_legacy import CoordinationConfig
 from core.marl.coordination.communication_protocol import (
-    AgentCommunicationProtocol, AgentMessage, MessageResponse)
+    AgentCommunicationProtocol,
+    AgentMessage,
+    MessageResponse,
+)
 from core.marl.exceptions import CommunicationError
+
+
+@pytest.fixture
+def config() -> CoordinationConfig:
+    """
+    Create test coordination configuration.
+
+    Returns:
+        CoordinationConfig: configuration with message_queue_size and communication_timeout
+    """
+    return CoordinationConfig(
+        message_queue_size=100,
+        communication_timeout=5.0,
+    )
+
+
+@pytest.fixture
+def protocol(config: CoordinationConfig) -> AgentCommunicationProtocol:
+    """
+    Create test AgentCommunicationProtocol.
+
+    Args:
+        config (CoordinationConfig): coordination configuration fixture
+
+    Returns:
+        AgentCommunicationProtocol: protocol instance with patched logger
+    """
+    with patch("core.marl.coordination.communication_protocol.get_marl_logger"):
+        return AgentCommunicationProtocol(config)
+
+
+@pytest.fixture
+def sample_message() -> AgentMessage:
+    """
+    Create sample agent message.
+
+    Returns:
+        AgentMessage: sample coordination_request message with default priority
+    """
+    return AgentMessage(
+        message_type="coordination_request",
+        content={"strategy": "step_by_step", "confidence": 0.8},
+        priority=1,
+    )
 
 
 class TestAgentMessage:
@@ -96,29 +146,6 @@ class TestMessageResponse:
 
 class TestAgentCommunicationProtocol:
     """Test AgentCommunicationProtocol class."""
-
-    @pytest.fixture
-    def config(self):
-        """Create test coordination configuration."""
-        return CoordinationConfig(
-            message_queue_size=100,
-            communication_timeout=5.0,
-        )
-
-    @pytest.fixture
-    def protocol(self, config):
-        """Create test AgentCommunicationProtocol."""
-        with patch("core.marl.coordination.communication_protocol.get_marl_logger"):
-            return AgentCommunicationProtocol(config)
-
-    @pytest.fixture
-    def sample_message(self):
-        """Create sample agent message."""
-        return AgentMessage(
-            message_type="coordination_request",
-            content={"strategy": "step_by_step", "confidence": 0.8},
-            priority=1,
-        )
 
     def test_initialization(self, protocol, config):
         """Test AgentCommunicationProtocol initialization."""

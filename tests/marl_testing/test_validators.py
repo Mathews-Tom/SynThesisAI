@@ -4,11 +4,14 @@ This module provides validation components for MARL test results
 to ensure test quality and correctness.
 """
 
+# Standard Library
 import time
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
+# SynThesisAI Modules
 from utils.logging_config import get_logger
 
 
@@ -84,8 +87,7 @@ class CoordinationValidator(MARLTestValidator):
         consensus_success_rate = test_results.get("consensus_success_rate", 0.0)
         if consensus_success_rate < 0.6:  # 60% minimum for consensus
             warnings.append(
-                f"Consensus success rate {consensus_success_rate:.2f} "
-                f"below recommended 0.60"
+                f"Consensus success rate {consensus_success_rate:.2f} " f"below recommended 0.60"
             )
 
         # Check response time
@@ -102,9 +104,7 @@ class CoordinationValidator(MARLTestValidator):
                 "consensus_success_rate": consensus_success_rate,
                 "average_response_time": avg_response_time,
                 "coordination_attempts": test_results.get("coordination_attempts", 0),
-                "successful_coordinations": test_results.get(
-                    "successful_coordinations", 0
-                ),
+                "successful_coordinations": test_results.get("successful_coordinations", 0),
             }
         )
 
@@ -182,8 +182,7 @@ class PerformanceValidator(MARLTestValidator):
         cpu_usage = test_results.get("cpu_usage", 0.0)
         if cpu_usage > self.max_cpu_percent:
             warnings.append(
-                f"CPU usage {cpu_usage:.1f}% "
-                f"above recommended {self.max_cpu_percent:.1f}%"
+                f"CPU usage {cpu_usage:.1f}% " f"above recommended {self.max_cpu_percent:.1f}%"
             )
 
         # Collect metrics
@@ -247,8 +246,7 @@ class ConflictValidator(MARLTestValidator):
         avg_resolution_time = test_results.get("average_resolution_time", 0.0)
         if avg_resolution_time > 3.0:  # 3 second maximum for conflict resolution
             warnings.append(
-                f"Average resolution time {avg_resolution_time:.2f}s "
-                f"above recommended 3.0s"
+                f"Average resolution time {avg_resolution_time:.2f}s " f"above recommended 3.0s"
             )
 
         # Check unresolved conflicts

@@ -5,10 +5,14 @@ These tests verify the integration of the DSPyTargetAgent with the
 rest of the system, including actual problem solving and evaluation.
 """
 
+# Standard Library
+from pathlib import Path
 from unittest.mock import patch
 
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.dspy.target_agent import DSPyTargetAgent, create_dspy_target_agent
 from utils.exceptions import ValidationError
 
@@ -18,7 +22,7 @@ class TestDSPyTargetIntegration:
     """Integration tests for DSPyTargetAgent."""
 
     @patch("core.dspy.base_module.DSPY_AVAILABLE", False)
-    def test_fallback_when_dspy_unavailable(self):
+    def test_fallback_when_dspy_unavailable(self) -> None:
         """Test fallback to legacy implementation when DSPy is unavailable."""
         # Create agent
         agent = create_dspy_target_agent()
@@ -36,7 +40,7 @@ class TestDSPyTargetIntegration:
 
     @patch("core.dspy.target_agent.DSPyTargetAgent._convert_dspy_result")
     @patch("core.dspy.target_agent.DSPyTargetAgent.initialize_dspy_module")
-    def test_dspy_result_conversion_error(self, mock_initialize, mock_convert):
+    def test_dspy_result_conversion_error(self, mock_initialize, mock_convert) -> None:
         """Test handling of conversion errors."""
         # Setup mocks
         mock_convert.side_effect = ValidationError("Test error", field="test")
@@ -53,7 +57,7 @@ class TestDSPyTargetIntegration:
         assert "output" in result
         assert "dspy_solved" in result and result["dspy_solved"] is False
 
-    def test_deterministic_solving(self):
+    def test_deterministic_solving(self) -> None:
         """Test deterministic solving capabilities."""
         # Create agent
         agent = create_dspy_target_agent()
@@ -68,11 +72,9 @@ class TestDSPyTargetIntegration:
 
         # For deterministic solving, results should be consistent
         # (This test uses fallback, so it should be deterministic)
-        assert (
-            len(set(results)) <= 2
-        )  # Allow for some variation but not complete randomness
+        assert len(set(results)) <= 2  # Allow for some variation but not complete randomness
 
-    def test_solution_evaluation(self):
+    def test_solution_evaluation(self) -> None:
         """Test solution evaluation functionality."""
         # Create agent
         agent = create_dspy_target_agent()
@@ -89,7 +91,7 @@ class TestDSPyTargetIntegration:
         assert "explanation" in result
         assert "dspy_evaluated" in result
 
-    def test_context_preparation(self):
+    def test_context_preparation(self) -> None:
         """Test context preparation for different scenarios."""
         # Create agent
         agent = create_dspy_target_agent()
@@ -110,7 +112,7 @@ class TestDSPyTargetIntegration:
         assert "Solve step by step" in context
 
     @pytest.mark.skipif(not hasattr(pytest, "real_dspy"), reason="Requires real DSPy")
-    def test_with_real_dspy(self):
+    def test_with_real_dspy(self) -> None:
         """Test with real DSPy if available (marked to skip if not)."""
         # This test only runs if pytest has a 'real_dspy' attribute
         # Create agent
@@ -131,15 +133,13 @@ class TestDSPyTargetIntegration:
         assert "confidence_score" in result
         assert "dspy_solved" in result
 
-    def test_multiple_domain_support(self):
+    def test_multiple_domain_support(self) -> None:
         """Test support for multiple domains."""
         # Create agent
         agent = create_dspy_target_agent()
 
         # Test mathematics domain
-        math_result = agent.solve(
-            "What is the derivative of x^2?", domain="mathematics"
-        )
+        math_result = agent.solve("What is the derivative of x^2?", domain="mathematics")
         assert "output" in math_result
 
         # Test physics domain (should fall back to legacy)
@@ -155,4 +155,4 @@ class TestDSPyTargetIntegration:
 
 
 if __name__ == "__main__":
-    pytest.main(["-xvs", __file__])
+    pytest.main(["-xvs", str(Path(__file__))])

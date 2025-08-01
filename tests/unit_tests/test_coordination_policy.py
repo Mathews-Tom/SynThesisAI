@@ -5,18 +5,21 @@ Tests the coordination policy, conflict resolution, and consensus mechanisms
 for multi-agent RL coordination.
 """
 
-import asyncio
-import time
-from unittest.mock import AsyncMock, Mock, patch
+# Standard Library
+from unittest.mock import AsyncMock, patch
 
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.marl.config_legacy import CoordinationConfig
 from core.marl.coordination.conflict_resolver import ConflictResolver
 from core.marl.coordination.consensus_mechanism import ConsensusMechanism
-from core.marl.coordination.coordination_policy import (AgentProposal,
-                                                        CoordinatedAction,
-                                                        CoordinationPolicy)
+from core.marl.coordination.coordination_policy import (
+    AgentProposal,
+    CoordinatedAction,
+    CoordinationPolicy,
+)
 from core.marl.exceptions import CoordinationFailureError
 
 
@@ -81,7 +84,7 @@ class TestCoordinatedAction:
 
         assert action.coordination_metadata == {}
         assert action.consensus_quality == 0.0
-        assert action.conflict_resolution_applied == False
+        assert not action.conflict_resolution_applied
 
 
 class TestCoordinationPolicy:
@@ -251,7 +254,7 @@ class TestCoordinationPolicy:
                 )
 
                 assert isinstance(result, CoordinatedAction)
-                assert result.conflict_resolution_applied == True
+                assert result.conflict_resolution_applied
                 assert (
                     coordination_policy.coordination_metrics["conflicts_detected"] == 1
                 )
@@ -341,7 +344,7 @@ class TestCoordinationPolicy:
         assert proposals[0].agent_id == "generator"
         assert proposals[0].strategy_name == "step_by_step_approach"
         assert proposals[0].confidence == 0.9
-        assert proposals[0].metadata["test"] == True
+        assert proposals[0].metadata["test"]
 
         assert proposals[1].agent_id == "validator"
         assert proposals[1].strategy_name == "standard_validation"
@@ -556,7 +559,7 @@ class TestConflictResolver:
             confidence=0.9,
         )
 
-        assert conflict_resolver._proposals_conflict(prop1, prop2) == True
+        assert conflict_resolver._proposals_conflict(prop1, prop2)
 
         # Test compatible proposals
         prop3 = AgentProposal(
@@ -566,7 +569,7 @@ class TestConflictResolver:
             confidence=0.8,
         )
 
-        assert conflict_resolver._proposals_conflict(prop1, prop3) == False
+        assert not conflict_resolver._proposals_conflict(prop1, prop3)
 
     def test_performance_summary(self, conflict_resolver):
         """Test conflict resolver performance summary."""
@@ -687,7 +690,7 @@ class TestConsensusMechanism:
 
         assert "confidence_weights" in consensus
         assert "confidence_emphasis" in consensus
-        assert consensus["confidence_emphasis"] == True
+        assert consensus["confidence_emphasis"]
         assert len(consensus["confidence_weights"]) == len(sample_proposals)
 
     def test_select_consensus_strategy(self, consensus_mechanism, sample_proposals):
@@ -812,7 +815,7 @@ class TestConsensusMechanism:
 
         assert "weighted_consensus" in consensus
         assert "weights_used" in consensus
-        assert consensus["weighted_consensus"] == True
+        assert consensus["weighted_consensus"]
         assert len(consensus["weights_used"]) == len(sample_proposals)
 
     def test_get_consensus_success_rate(self, consensus_mechanism):
@@ -848,7 +851,3 @@ class TestConsensusMechanism:
 
         assert summary["consensus_success_rate"] == 0.8
         assert summary["performance_status"] == "good"
-
-
-if __name__ == "__main__":
-    pytest.main([__file__])

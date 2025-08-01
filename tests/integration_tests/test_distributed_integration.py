@@ -1,12 +1,15 @@
 """Integration tests for distributed MARL system."""
 
+# Standard Library
 import asyncio
-import threading
 import time
+from typing import Any, AsyncIterator, Dict
 from unittest.mock import Mock, patch
 
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.marl.distributed.distributed_coordinator import (
     DistributedCoordinationConfig,
     DistributedCoordinator,
@@ -33,7 +36,7 @@ class TestDistributedMARLIntegration:
     """Test distributed MARL system integration."""
 
     @pytest.fixture
-    async def distributed_system(self):
+    async def distributed_system(self) -> AsyncIterator[Dict[str, Any]]:
         """Create integrated distributed system."""
         # Create components
         resource_config = ResourceConfig(monitoring_interval=1.0)
@@ -178,9 +181,7 @@ class TestDistributedMARLIntegration:
         trainer.register_agent("test_agent", mock_agent)
 
         # Start short training session
-        results = await trainer.start_distributed_training(
-            num_epochs=2, steps_per_epoch=5
-        )
+        results = await trainer.start_distributed_training(num_epochs=2, steps_per_epoch=5)
 
         assert "total_steps" in results
         assert "training_time" in results
@@ -220,7 +221,6 @@ class TestDistributedMARLIntegration:
     async def test_end_to_end_workflow(self, distributed_system):
         """Test end-to-end distributed MARL workflow."""
         resource_manager = distributed_system["resource_manager"]
-        coordinator = distributed_system["distributed_coordinator"]
         trainer = distributed_system["distributed_trainer"]
 
         # 1. Allocate resources for agents
@@ -373,9 +373,7 @@ class TestDistributedPerformance:
         try:
             # Create multiple concurrent allocation tasks
             async def allocate_resource(agent_id: str):
-                return await manager.allocate_resource(
-                    ResourceType.CPU, 0.5, f"agent_{agent_id}"
-                )
+                return await manager.allocate_resource(ResourceType.CPU, 0.5, f"agent_{agent_id}")
 
             # Run concurrent allocations
             tasks = [allocate_resource(str(i)) for i in range(10)]

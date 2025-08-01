@@ -6,11 +6,14 @@ few-shot examples, adversarial techniques, enhanced CheckerAgent validation,
 and CAS verification functionality.
 """
 
+# Standard Library
 import json
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
-import pytest
+# Third-Party Library
+import pytest  # pylint: disable=import-error
 
+# SynThesisAI Modules
 from core.agents import CheckerAgent, EngineerAgent
 from core.checker.cas_validator import CASValidator, verify_with_cas
 from utils.curriculum_strategy import create_curriculum_strategy
@@ -22,7 +25,6 @@ from utils.prompt_examples import (
 from utils.taxonomy import (
     get_random_topic_with_level,
     get_topic_info,
-    load_taxonomy_file,
     validate_nested_taxonomy_structure,
 )
 
@@ -30,7 +32,7 @@ from utils.taxonomy import (
 class TestEnhancedTaxonomy:
     """Test enhanced taxonomy functionality."""
 
-    def test_nested_taxonomy_validation(self):
+    def test_nested_taxonomy_validation(self) -> None:
         """Test validation of nested taxonomy structure."""
         # Valid nested taxonomy
         valid_taxonomy = {
@@ -57,7 +59,7 @@ class TestEnhancedTaxonomy:
         with pytest.raises(Exception):
             validate_nested_taxonomy_structure({"Algebra": "not a dict"})
 
-    def test_get_topic_info(self):
+    def test_get_topic_info(self) -> None:
         """Test getting topic information from enhanced taxonomy."""
         taxonomy = {
             "Algebra": {
@@ -76,7 +78,7 @@ class TestEnhancedTaxonomy:
         info = get_topic_info(taxonomy, "Algebra", "Nonexistent")
         assert info == {}
 
-    def test_get_random_topic_with_level(self):
+    def test_get_random_topic_with_level(self) -> None:
         """Test getting random topic filtered by difficulty level."""
         taxonomy = {
             "Algebra": {
@@ -106,7 +108,7 @@ class TestEnhancedTaxonomy:
 class TestPromptExamples:
     """Test few-shot examples and adversarial techniques."""
 
-    def test_get_few_shot_examples(self):
+    def test_get_few_shot_examples(self) -> None:
         """Test retrieval of few-shot examples."""
         examples = get_few_shot_examples(
             "Algebra (High School)", "Quadratic Equations and Functions"
@@ -119,7 +121,7 @@ class TestPromptExamples:
         assert "hints" in example
         assert isinstance(example["hints"], dict)
 
-    def test_get_adversarial_techniques(self):
+    def test_get_adversarial_techniques(self) -> None:
         """Test retrieval of adversarial techniques."""
         techniques = get_adversarial_techniques()
         assert len(techniques) > 0
@@ -129,7 +131,7 @@ class TestPromptExamples:
         hs_techniques = get_adversarial_techniques("High School")
         assert len(hs_techniques) >= len(techniques)  # Should include base + specific
 
-    def test_build_enhanced_prompt_context(self):
+    def test_build_enhanced_prompt_context(self) -> None:
         """Test building enhanced prompt context."""
         context = build_enhanced_prompt_context(
             subject="Algebra (High School)",
@@ -147,7 +149,7 @@ class TestPromptExamples:
 class TestCurriculumStrategy:
     """Test curriculum-based generation strategy."""
 
-    def test_curriculum_strategy_creation(self):
+    def test_curriculum_strategy_creation(self) -> None:
         """Test creating curriculum strategy."""
         taxonomy = {
             "Algebra": {
@@ -162,7 +164,7 @@ class TestCurriculumStrategy:
         assert strategy is not None
         assert strategy.taxonomy_data == taxonomy
 
-    def test_topic_selection(self):
+    def test_topic_selection(self) -> None:
         """Test intelligent topic selection."""
         taxonomy = {
             "Algebra": {
@@ -189,7 +191,7 @@ class TestCurriculumStrategy:
         assert difficulty == "High School"
         assert description == "Basic algebra"
 
-    def test_generation_stats(self):
+    def test_generation_stats(self) -> None:
         """Test generation statistics tracking."""
         taxonomy = {
             "Algebra": {
@@ -216,14 +218,14 @@ class TestCurriculumStrategy:
 class TestCASValidator:
     """Test Computer Algebra System validation."""
 
-    def test_cas_validator_creation(self):
+    def test_cas_validator_creation(self) -> None:
         """Test CAS validator creation."""
         validator = CASValidator()
         # Should work regardless of SymPy availability
         assert validator is not None
 
     @patch("core.checker.cas_validator.SYMPY_AVAILABLE", True)
-    def test_algebraic_verification(self):
+    def test_algebraic_verification(self) -> None:
         """Test algebraic equation verification."""
         validator = CASValidator()
 
@@ -236,17 +238,14 @@ class TestCASValidator:
 
         # Should detect equivalence (if SymPy is available)
         if validator.is_available():
-            assert (
-                result["method"]
-                in [
-                    "algebraic_equivalence",
-                    "simplified_equivalence",
-                    "numerical_equivalence",
-                    "parsing_failed",  # Allow parsing_failed as a valid result for complex expressions
-                ]
-            )
+            assert result["method"] in [
+                "algebraic_equivalence",
+                "simplified_equivalence",
+                "numerical_equivalence",
+                "parsing_failed",  # Allow parsing_failed as a valid result for complex expressions
+            ]
 
-    def test_verify_with_cas_function(self):
+    def test_verify_with_cas_function(self) -> None:
         """Test the main CAS verification function."""
         result = verify_with_cas(
             problem="What is 2 + 2?", given_answer="4", computed_answer="4"
@@ -260,7 +259,7 @@ class TestCASValidator:
 class TestEnhancedAgents:
     """Test enhanced agent functionality."""
 
-    def test_engineer_agent_enhanced_prompting(self):
+    def test_engineer_agent_enhanced_prompting(self) -> None:
         """Test EngineerAgent with enhanced prompting."""
         with patch("core.agents.get_config_manager") as mock_config:
             mock_config.return_value.get.return_value = {
@@ -279,7 +278,7 @@ class TestEnhancedAgents:
             assert "High School" in system_prompt
             assert "multi-step reasoning" in system_prompt
 
-    def test_checker_agent_enhanced_validation(self):
+    def test_checker_agent_enhanced_validation(self) -> None:
         """Test CheckerAgent with enhanced validation."""
         agent = CheckerAgent()
 

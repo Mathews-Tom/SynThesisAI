@@ -5,12 +5,15 @@ Tests the system-level monitoring capabilities including resource utilization,
 health checks, and performance bottleneck detection.
 """
 
+# Standard Library
 import asyncio
 import time
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.marl.monitoring.system_monitor import (
     HealthCheck,
     HealthStatus,
@@ -124,15 +127,11 @@ class TestSystemMonitor:
 
     def test_set_resource_thresholds(self, system_monitor):
         """Test setting custom resource thresholds."""
-        custom_thresholds = ResourceThresholds(
-            warning_threshold=0.85, critical_threshold=0.95
-        )
+        custom_thresholds = ResourceThresholds(warning_threshold=0.85, critical_threshold=0.95)
 
         system_monitor.set_resource_thresholds(ResourceType.CPU, custom_thresholds)
 
-        assert (
-            system_monitor._resource_thresholds[ResourceType.CPU] == custom_thresholds
-        )
+        assert system_monitor._resource_thresholds[ResourceType.CPU] == custom_thresholds
 
     def test_add_alert_callback(self, system_monitor):
         """Test adding alert callback."""
@@ -487,9 +486,7 @@ class TestSystemMonitor:
             )
             system_monitor._system_snapshots.append(snapshot)
 
-        trends = system_monitor.get_resource_trends(
-            ResourceType.CPU, time_window_seconds=600
-        )
+        trends = system_monitor.get_resource_trends(ResourceType.CPU, time_window_seconds=600)
 
         assert "error" not in trends
         assert trends["resource_type"] == "cpu"
@@ -537,9 +534,7 @@ class TestSystemMonitor:
         bottlenecks = system_monitor.get_performance_bottlenecks()
 
         # Should detect critical resource bottleneck
-        critical_bottlenecks = [
-            b for b in bottlenecks if b["type"] == "critical_resource"
-        ]
+        critical_bottlenecks = [b for b in bottlenecks if b["type"] == "critical_resource"]
         assert len(critical_bottlenecks) > 0
 
         bottleneck = critical_bottlenecks[0]
@@ -563,9 +558,7 @@ class TestSystemMonitor:
         bottlenecks = system_monitor.get_performance_bottlenecks()
 
         # Should detect resource pressure bottleneck
-        pressure_bottlenecks = [
-            b for b in bottlenecks if b["type"] == "resource_pressure"
-        ]
+        pressure_bottlenecks = [b for b in bottlenecks if b["type"] == "resource_pressure"]
         assert len(pressure_bottlenecks) > 0
 
         bottleneck = pressure_bottlenecks[0]
@@ -671,9 +664,7 @@ class TestSystemMonitor:
         with (
             patch.object(system_monitor, "get_system_snapshot") as mock_snapshot,
             patch.object(system_monitor, "get_overall_health_status") as mock_health,
-            patch.object(
-                system_monitor, "get_performance_bottlenecks"
-            ) as mock_bottlenecks,
+            patch.object(system_monitor, "get_performance_bottlenecks") as mock_bottlenecks,
         ):
             mock_snapshot.return_value = SystemSnapshot(
                 timestamp=time.time(),
@@ -744,12 +735,8 @@ class TestSystemMonitorFactory:
 
     def test_create_with_custom_thresholds(self):
         """Test creating monitor with custom thresholds."""
-        cpu_thresholds = ResourceThresholds(
-            warning_threshold=0.85, critical_threshold=0.95
-        )
-        memory_thresholds = ResourceThresholds(
-            warning_threshold=0.80, critical_threshold=0.90
-        )
+        cpu_thresholds = ResourceThresholds(warning_threshold=0.85, critical_threshold=0.95)
+        memory_thresholds = ResourceThresholds(warning_threshold=0.80, critical_threshold=0.90)
 
         monitor = SystemMonitorFactory.create_with_custom_thresholds(
             cpu_thresholds=cpu_thresholds,

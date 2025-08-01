@@ -4,29 +4,27 @@ Unit tests for MARL error handling system.
 Tests error types, error handler, error analyzer, and recovery strategies.
 """
 
+# Standard Library
 import asyncio
-import json
 import tempfile
-import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, Mock, patch
 
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.marl.error_handling.error_analyzer import ErrorAnalyzer
 from core.marl.error_handling.error_handler import ErrorHandlerFactory, MARLErrorHandler
 from core.marl.error_handling.error_types import (
     AgentError,
     CommunicationError,
-    ConfigurationError,
-    ConsensusError,
     CoordinationError,
     ErrorPattern,
     ErrorStatistics,
     LearningError,
     MARLError,
-    PerformanceError,
 )
 from core.marl.error_handling.recovery_strategies import (
     AgentRestartStrategy,
@@ -75,9 +73,7 @@ class TestErrorTypes:
 
     def test_marl_error_to_dict(self):
         """Test error serialization to dictionary."""
-        error = MARLError(
-            "Test error", error_code="TEST_ERROR", context={"test": "value"}
-        )
+        error = MARLError("Test error", error_code="TEST_ERROR", context={"test": "value"})
 
         error_dict = error.to_dict()
 
@@ -89,9 +85,7 @@ class TestErrorTypes:
 
     def test_agent_error_creation(self):
         """Test agent error creation."""
-        error = AgentError(
-            "Agent failed", agent_id="test_agent", agent_type="generator"
-        )
+        error = AgentError("Agent failed", agent_id="test_agent", agent_type="generator")
 
         assert error.agent_id == "test_agent"
         assert error.agent_type == "generator"
@@ -113,9 +107,7 @@ class TestErrorTypes:
 
     def test_error_pattern_creation(self):
         """Test error pattern creation."""
-        pattern = ErrorPattern(
-            pattern_id="test_pattern", error_codes=["ERROR_1", "ERROR_2"]
-        )
+        pattern = ErrorPattern(pattern_id="test_pattern", error_codes=["ERROR_1", "ERROR_2"])
 
         assert pattern.pattern_id == "test_pattern"
         assert pattern.error_codes == ["ERROR_1", "ERROR_2"]
@@ -124,9 +116,7 @@ class TestErrorTypes:
 
     def test_error_pattern_matching(self):
         """Test error pattern matching."""
-        pattern = ErrorPattern(
-            pattern_id="test_pattern", error_codes=["TEST_ERROR", "OTHER_ERROR"]
-        )
+        pattern = ErrorPattern(pattern_id="test_pattern", error_codes=["TEST_ERROR", "OTHER_ERROR"])
 
         matching_error = MARLError("Test", error_code="TEST_ERROR")
         non_matching_error = MARLError("Test", error_code="DIFFERENT_ERROR")
@@ -208,9 +198,7 @@ class TestRecoveryStrategies:
         strategy = AgentRestartStrategy()
 
         # Test can_handle
-        agent_error = AgentError(
-            "Agent failed", "test_agent", error_code="AGENT_INIT_ERROR"
-        )
+        agent_error = AgentError("Agent failed", "test_agent", error_code="AGENT_INIT_ERROR")
         other_error = CoordinationError("Coordination failed")
 
         assert await strategy.can_handle(agent_error) is True
@@ -218,9 +206,7 @@ class TestRecoveryStrategies:
 
         # Mock the restart methods
         with (
-            patch.object(
-                strategy, "_restart_agent", new_callable=AsyncMock
-            ) as mock_restart,
+            patch.object(strategy, "_restart_agent", new_callable=AsyncMock) as mock_restart,
             patch.object(
                 strategy,
                 "_verify_agent_health",
@@ -242,9 +228,7 @@ class TestRecoveryStrategies:
         strategy = CoordinationResetStrategy()
 
         # Test can_handle
-        coord_error = CoordinationError(
-            "Coordination failed", coordination_id="coord_123"
-        )
+        coord_error = CoordinationError("Coordination failed", coordination_id="coord_123")
         other_error = AgentError("Agent failed", "test_agent")
 
         assert await strategy.can_handle(coord_error) is True
@@ -309,9 +293,7 @@ class TestRecoveryStrategies:
         strategy = CommunicationRetryStrategy(max_retries=2)
 
         # Test can_handle
-        comm_error = CommunicationError(
-            "Message failed", sender="agent1", receiver="agent2"
-        )
+        comm_error = CommunicationError("Message failed", sender="agent1", receiver="agent2")
         other_error = AgentError("Agent failed", "test_agent")
 
         assert await strategy.can_handle(comm_error) is True
@@ -339,15 +321,9 @@ class TestRecoveryStrategies:
 
         # Mock fallback methods
         with (
-            patch.object(
-                strategy, "_log_error_details", new_callable=AsyncMock
-            ) as mock_log,
-            patch.object(
-                strategy, "_notify_administrators", new_callable=AsyncMock
-            ) as mock_notify,
-            patch.object(
-                strategy, "_enable_safe_mode", new_callable=AsyncMock
-            ) as mock_safe,
+            patch.object(strategy, "_log_error_details", new_callable=AsyncMock) as mock_log,
+            patch.object(strategy, "_notify_administrators", new_callable=AsyncMock) as mock_notify,
+            patch.object(strategy, "_enable_safe_mode", new_callable=AsyncMock) as mock_safe,
         ):
             result = await strategy.execute_recovery(any_error)
 
@@ -397,9 +373,7 @@ class TestRecoveryStrategyManager:
         manager = RecoveryStrategyManager()
 
         # Test agent error
-        agent_error = AgentError(
-            "Agent failed", "test_agent", error_code="AGENT_INIT_ERROR"
-        )
+        agent_error = AgentError("Agent failed", "test_agent", error_code="AGENT_INIT_ERROR")
         strategy = await manager.get_recovery_strategy(agent_error)
 
         assert strategy is not None
@@ -498,9 +472,7 @@ class TestErrorAnalyzer:
     @pytest.mark.asyncio
     async def test_analyze_error(self, temp_persistence_path):
         """Test single error analysis."""
-        analyzer = ErrorAnalyzer(
-            pattern_threshold=2, persistence_path=temp_persistence_path
-        )
+        analyzer = ErrorAnalyzer(pattern_threshold=2, persistence_path=temp_persistence_path)
 
         error = AgentError("Test error", "test_agent")
         result = await analyzer.analyze_error(error)
@@ -522,9 +494,7 @@ class TestErrorAnalyzer:
 
         # Add multiple similar errors
         for i in range(3):
-            error = AgentError(
-                f"Test error {i}", "test_agent", error_code="AGENT_TEST_ERROR"
-            )
+            error = AgentError(f"Test error {i}", "test_agent", error_code="AGENT_TEST_ERROR")
             await analyzer.analyze_error(error)
 
         # Trigger pattern analysis
@@ -536,9 +506,7 @@ class TestErrorAnalyzer:
     @pytest.mark.asyncio
     async def test_start_stop_analysis(self, temp_persistence_path):
         """Test starting and stopping analysis."""
-        analyzer = ErrorAnalyzer(
-            analysis_interval=0.1, persistence_path=temp_persistence_path
-        )
+        analyzer = ErrorAnalyzer(analysis_interval=0.1, persistence_path=temp_persistence_path)
 
         # Start analysis
         await analyzer.start_analysis()
@@ -552,14 +520,10 @@ class TestErrorAnalyzer:
     def test_pattern_persistence(self, temp_persistence_path):
         """Test pattern persistence."""
         # Create analyzer and add some patterns
-        analyzer = ErrorAnalyzer(
-            enable_persistence=True, persistence_path=temp_persistence_path
-        )
+        analyzer = ErrorAnalyzer(enable_persistence=True, persistence_path=temp_persistence_path)
 
         # Add a pattern manually
-        pattern = ErrorPattern(
-            pattern_id="test_pattern", error_codes=["TEST_ERROR"], frequency=5
-        )
+        pattern = ErrorPattern(pattern_id="test_pattern", error_codes=["TEST_ERROR"], frequency=5)
         analyzer.error_patterns["test_pattern"] = pattern
 
         # Save patterns
@@ -579,9 +543,7 @@ class TestErrorAnalyzer:
 
     def test_get_pattern_summary(self, temp_persistence_path):
         """Test getting pattern summary."""
-        analyzer = ErrorAnalyzer(
-            pattern_threshold=2, persistence_path=temp_persistence_path
-        )
+        analyzer = ErrorAnalyzer(pattern_threshold=2, persistence_path=temp_persistence_path)
 
         # Add some patterns
         pattern1 = ErrorPattern("pattern1", ["ERROR1"], frequency=5)
@@ -594,9 +556,7 @@ class TestErrorAnalyzer:
         assert summary["total_patterns"] == 2
         assert summary["active_patterns"] == 2
         assert len(summary["most_frequent_patterns"]) == 2
-        assert (
-            summary["most_frequent_patterns"][0][0] == "pattern1"
-        )  # Most frequent first
+        assert summary["most_frequent_patterns"][0][0] == "pattern1"  # Most frequent first
 
     def test_get_pattern_details(self, temp_persistence_path):
         """Test getting pattern details."""
@@ -650,9 +610,7 @@ class TestMARLErrorHandler:
         )
         return analyzer
 
-    def test_error_handler_initialization(
-        self, mock_recovery_manager, mock_error_analyzer
-    ):
+    def test_error_handler_initialization(self, mock_recovery_manager, mock_error_analyzer):
         """Test error handler initialization."""
         handler = MARLErrorHandler(
             recovery_manager=mock_recovery_manager,
@@ -687,9 +645,7 @@ class TestMARLErrorHandler:
         mock_error_analyzer.analyze_error.assert_called_once_with(error)
 
     @pytest.mark.asyncio
-    async def test_handle_generic_exception(
-        self, mock_recovery_manager, mock_error_analyzer
-    ):
+    async def test_handle_generic_exception(self, mock_recovery_manager, mock_error_analyzer):
         """Test handling generic exception."""
         handler = MARLErrorHandler(
             recovery_manager=mock_recovery_manager, error_analyzer=mock_error_analyzer
@@ -705,9 +661,7 @@ class TestMARLErrorHandler:
         assert "error_id" in result
 
         # Verify error was converted to MARL error and then removed after successful recovery
-        assert (
-            len(handler.active_errors) == 0
-        )  # Should be removed after successful recovery
+        assert len(handler.active_errors) == 0  # Should be removed after successful recovery
 
     @pytest.mark.asyncio
     async def test_recovery_failure(self, mock_error_analyzer):
@@ -717,13 +671,9 @@ class TestMARLErrorHandler:
         mock_strategy = Mock()
         mock_strategy.strategy_name = "failing_strategy"
         mock_strategy.execute_recovery = AsyncMock(
-            return_value=RecoveryResult(
-                False, "failing_strategy", 1.0, error="Recovery failed"
-            )
+            return_value=RecoveryResult(False, "failing_strategy", 1.0, error="Recovery failed")
         )
-        mock_recovery_manager.get_recovery_strategy = AsyncMock(
-            return_value=mock_strategy
-        )
+        mock_recovery_manager.get_recovery_strategy = AsyncMock(return_value=mock_strategy)
 
         handler = MARLErrorHandler(
             recovery_manager=mock_recovery_manager,
@@ -754,9 +704,7 @@ class TestMARLErrorHandler:
             return RecoveryResult(True, "slow_strategy")
 
         mock_strategy.execute_recovery = slow_recovery
-        mock_recovery_manager.get_recovery_strategy = AsyncMock(
-            return_value=mock_strategy
-        )
+        mock_recovery_manager.get_recovery_strategy = AsyncMock(return_value=mock_strategy)
 
         handler = MARLErrorHandler(
             recovery_manager=mock_recovery_manager,
@@ -781,15 +729,11 @@ class TestMARLErrorHandler:
         assert error_type == "agent"
 
         # Test coordination error classification
-        error_type = handler._classify_error_type(
-            RuntimeError("coordination failed"), {}, None
-        )
+        error_type = handler._classify_error_type(RuntimeError("coordination failed"), {}, None)
         assert error_type == "coordination"
 
         # Test timeout error classification
-        error_type = handler._classify_error_type(
-            TimeoutError("Operation timed out"), {}, None
-        )
+        error_type = handler._classify_error_type(TimeoutError("Operation timed out"), {}, None)
         assert error_type == "performance"
 
     @pytest.mark.asyncio

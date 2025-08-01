@@ -5,11 +5,13 @@ These tests verify the functionality of the STREAMContentGenerator base class,
 including content generation, refinement, and quality assessment.
 """
 
-import unittest
+# Standard Library
 from unittest.mock import MagicMock, patch
 
+# Third-Party Library
 import pytest
 
+# SynThesisAI Modules
 from core.dspy.base_module import STREAMContentGenerator
 from core.dspy.exceptions import DSPyIntegrationError, ModuleInitializationError
 
@@ -34,9 +36,7 @@ class TestSTREAMContentGenerator:
         # Test initialization with default signature
         generator = STREAMContentGenerator("mathematics")
         assert generator.domain == "mathematics"
-        assert (
-            generator.signature == "concept, difficulty -> problem_statement, solution"
-        )
+        assert generator.signature == "concept, difficulty -> problem_statement, solution"
         assert hasattr(generator, "generate")
         assert hasattr(generator, "refine")
         assert hasattr(generator, "validate_content")
@@ -75,9 +75,7 @@ class TestSTREAMContentGenerator:
 
         # Mock the generate method
         mock_content = MagicMock()
-        mock_content.problem_statement = (
-            "This is a test problem statement that is long enough."
-        )
+        mock_content.problem_statement = "This is a test problem statement that is long enough."
         mock_content.solution = "This is a test solution that is long enough."
         generator.generate = MagicMock(return_value=mock_content)
 
@@ -277,9 +275,7 @@ class TestSTREAMContentGenerator:
 
     @patch("core.dspy.base_module.get_dspy_config")
     @patch("core.dspy.base_module.get_domain_signature")
-    def test_calculate_quality_metrics(
-        self, mock_get_domain_signature, mock_get_dspy_config
-    ):
+    def test_calculate_quality_metrics(self, mock_get_domain_signature, mock_get_dspy_config):
         """Test calculate_quality_metrics method."""
         # Setup mocks
         mock_get_domain_signature.return_value = (
@@ -377,9 +373,7 @@ class TestSTREAMContentGenerator:
 
     @patch("core.dspy.base_module.get_dspy_config")
     @patch("core.dspy.base_module.get_domain_signature")
-    def test_get_optimization_data(
-        self, mock_get_domain_signature, mock_get_dspy_config
-    ):
+    def test_get_optimization_data(self, mock_get_domain_signature, mock_get_dspy_config):
         """Test get_optimization_data method."""
         # Setup mocks
         mock_get_domain_signature.return_value = (
@@ -399,15 +393,7 @@ class TestSTREAMContentGenerator:
         optimization_data = generator.get_optimization_data()
         assert optimization_data["domain"] == "mathematics"
         assert (
-            optimization_data["signature"]
-            == "concept, difficulty -> problem_statement, solution"
+            optimization_data["signature"] == "concept, difficulty -> problem_statement, solution"
         )
         assert optimization_data["module_config"] == mock_module_config
-        assert (
-            optimization_data["quality_requirements"]
-            == mock_module_config.quality_requirements
-        )
-
-
-if __name__ == "__main__":
-    pytest.main(["-xvs", __file__])
+        assert optimization_data["quality_requirements"] == mock_module_config.quality_requirements

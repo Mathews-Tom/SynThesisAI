@@ -2,13 +2,15 @@
 Unit tests for Continuous Learning System
 """
 
+# Standard Library
 import asyncio
-import time
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
+# Third-Party Library
 import numpy as np
 import pytest
 
+# SynThesisAI Modules
 from core.marl.agents.base_agent import BaseRLAgent, Experience
 from core.marl.learning.continuous_learning import (
     AdaptiveLearningRate,
@@ -132,8 +134,8 @@ class TestPerformanceTracker:
         rewards = [0.5, 0.6, 0.7, 0.8, 0.9]
         losses = [0.5, 0.4, 0.3, 0.2, 0.1]
 
-        for r, l in zip(rewards, losses):
-            tracker.record_performance(r, l)
+        for r, loss in zip(rewards, losses):
+            tracker.record_performance(r, loss)
 
         stats = tracker.get_recent_performance()
 
@@ -164,8 +166,8 @@ class TestPerformanceTracker:
         """Test adaptation decision with increasing loss."""
         # Add increasing losses
         losses = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-        for l in losses:
-            tracker.record_performance(0.5, l)
+        for loss in losses:
+            tracker.record_performance(0.5, loss)
 
         assert tracker.should_adapt(0.05) is True
 
