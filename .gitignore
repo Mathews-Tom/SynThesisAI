@@ -18,6 +18,8 @@ results/
 test_export.json
 *_export.json
 metrics_export.json
+test_results/*
+
 
 # Cached LLM Responses
 cache/

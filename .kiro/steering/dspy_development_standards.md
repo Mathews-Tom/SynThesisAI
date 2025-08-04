@@ -194,15 +194,15 @@ Follow this strict 3-layer order with blank lines:
 3. **Local/Project Modules**
 
 ```python
-# 1. Standard
+# Standard Library
 import os
 import logging
 
-# 2. Third-party
+# Third-Party Library
 import numpy as np
 from sklearn.metrics import accuracy_score
 
-# 3. Local
+# SynThesisAI Modules
 from .optimizer import MIPROv2
 from .config import SETTINGS
 ```
