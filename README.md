@@ -1,6 +1,6 @@
 # SynThesisAI – Next-Generation Platform for Generative Intelligence Across STREAM
 
-[![Python 3.11+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
 [![DSPy](https://img.shields.io/badge/DSPy-Latest-orange.svg)](https://github.com/stanfordnlp/dspy)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -45,7 +45,7 @@ SynThesisAI Platform
 
 ### Prerequisites
 
-- Python 3.9 or higher
+- Python 3.11 or higher
 - UV package manager (recommended) or pip
 
 ### Installation
