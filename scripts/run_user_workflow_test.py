@@ -82,7 +82,7 @@ def main():
         import os
 
         os.environ["TEST_OUTPUT_DIR"] = args.output_dir
-        logger.info(f"📂 Test output directory: {args.output_dir}")
+        logger.info("📂 Test output directory: %s", args.output_dir)
 
     # Run the test
     logger.info("🔄 Starting test execution...")
