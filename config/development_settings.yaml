@@ -1,0 +1,53 @@
+# Development configuration for SynThesisAI - optimized for testing and development
+
+# Basic settings
+num_problems: 1  # Generate only 1 problem for testing
+max_workers: 1   # Single worker to avoid complexity
+taxonomy: "taxonomy/enhanced_math_taxonomy.json"
+output_dir: "./dev_results"
+default_batch_id: "dev_test"
+
+# Disable slow features
+use_search: false
+use_enhanced_concurrent_processing: false
+enable_prefiltering: false
+llm_cache_enabled: false
+use_seed_data: false
+dspy_enabled: false  # Disable DSPy optimization
+
+# Model configuration
+engineer_model:
+  provider: "gemini"
+  model_name: "gemini-2.5-pro"
+
+checker_model:
+  provider: "openai"
+  model_name: "o3-mini"
+
+# IMPORTANT: Use a weaker target model to avoid the "too easy" problem
+target_model:
+  provider: "openai"
+  model_name: "gpt-4o-mini"  # Weaker model that will get problems wrong
+
+# Development-specific settings
+test_mode: true
+timeout_seconds: 60
+verbose: true
+log_level: "INFO"
+
+# Force acceptance of problems (bypass the "model answered correctly" filter)
+force_accept_problems: true
+skip_target_validation: false  # Still validate but don't discard
+max_generation_attempts: 3     # Limit attempts to avoid infinite loops
+
+# Validation settings
+validation:
+  enabled: true
+  timeout_seconds: 10
+  
+# Quality thresholds (relaxed for development)
+quality_thresholds:
+  fidelity_score: 0.6      # Lower threshold
+  utility_score: 0.6       # Lower threshold
+  safety_score: 0.7        # Lower threshold
+  pedagogical_score: 0.6   # Lower threshold

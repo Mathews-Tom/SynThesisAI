@@ -1,20 +1,20 @@
+# Standard Library
 import concurrent.futures
 import threading
 from random import choice
 from typing import Any, Dict, List, Tuple
 
+# SynThesisAI Modules
 from core.llm.llm_dispatch import call_checker, call_engineer, call_target_model
 from core.orchestration.concurrent_processor import create_concurrent_processor
+from utils.benchmark_seed import load_benchmark
 from utils.cost_estimation import safe_log_cost
 from utils.costs import CostTracker
 from utils.curriculum_strategy import create_curriculum_strategy
 from utils.logging_config import get_logger
 from utils.performance_monitor import get_performance_monitor
-from utils.validation import assert_valid_model_config
-
-from utils.benchmark_seed import load_benchmark
 from utils.topic_classifier import classify_subject_topic
-from random import choice
+from utils.validation import assert_valid_model_config
 
 # Get logger instance
 logger = get_logger(__name__)
@@ -35,7 +35,11 @@ def _generate_batch_problems(
         Tuple of (result_type, data_dict) containing multiple problems
     """
     thread_id = threading.current_thread().ident
-    logger.info(f"🧵 Thread {thread_id} generating batch of {batch_size} problems concurrently")
+    logger.info(
+        "🧵 Thread %s generating batch of %d problems concurrently",
+        thread_id,
+        batch_size,
+    )
 
     taxonomy = config.get("taxonomy")
     engineer_cfg = config["engineer_model"]
@@ -45,20 +49,32 @@ def _generate_batch_problems(
 
     try:
         # Use ThreadPoolExecutor for concurrent problem generation
-        with concurrent.futures.ThreadPoolExecutor(max_workers=min(batch_size, 5)) as executor:
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=min(batch_size, 5)
+        ) as executor:
             # Submit all generation tasks concurrently
             future_to_index = {}
             for i in range(batch_size):
                 # Use curriculum strategy for topic selection if available
                 if curriculum_strategy:
-                    subject, topic, difficulty_level, topic_description = curriculum_strategy.select_topic_and_difficulty()
+                    subject, topic, difficulty_level, topic_description = (
+                        curriculum_strategy.select_topic_and_difficulty()
+                    )
                 else:
                     # Fallback to legacy random selection
-                    subject = choice(list(taxonomy.keys())) if taxonomy else config.get("subject")
-                    topic = choice(taxonomy[subject]) if taxonomy else config.get("topic")
+                    subject = (
+                        choice(list(taxonomy.keys()))
+                        if taxonomy
+                        else config.get("subject")
+                    )
+                    topic = (
+                        choice(taxonomy[subject]) if taxonomy else config.get("topic")
+                    )
                     difficulty_level = None
-                
-                future = executor.submit(call_engineer, subject, topic, None, engineer_cfg, difficulty_level)
+
+                future = executor.submit(
+                    call_engineer, subject, topic, None, engineer_cfg, difficulty_level
+                )
                 future_to_index[future] = i
 
             problems = []
@@ -85,10 +101,14 @@ def _generate_batch_problems(
                         "batch_index": batch_index,
                     }
                     problems.append(problem_data)
-                    logger.debug(f"✅ Completed batch problem {batch_index + 1}/{batch_size}")
+                    logger.debug(
+                        f"✅ Completed batch problem {batch_index + 1}/{batch_size}"
+                    )
 
                 except Exception as e:
-                    logger.error(f"🚨 Error generating problem {batch_index}: {str(e)}")
+                    logger.error(
+                        "🚨 Error generating problem %d: %s", batch_index, str(e)
+                    )
                     # Continue with other problems even if one fails
 
         if not problems:
@@ -99,7 +119,9 @@ def _generate_batch_problems(
                 "batch_size": batch_size,
             }
 
-        logger.info(f"🎯 Successfully generated {len(problems)}/{batch_size} problems in batch")
+        logger.info(
+            f"🎯 Successfully generated {len(problems)}/{batch_size} problems in batch"
+        )
         return "batch_generated", {"problems": problems, "batch_size": len(problems)}
 
     except Exception as e:
@@ -128,14 +150,14 @@ def _generate_and_validate_prompt(
                 - "discarded": prompt was rejected or target model succeeded
                 - "error": an error occurred during generation
     """
-    
+
     thread_id = threading.current_thread().ident
-    logger.info(f"🧵 Thread {thread_id} starting task processing")
-    
+    logger.info("🧵 Thread %s starting task processing", thread_id)
+
     # Start performance monitoring
     perf_monitor = get_performance_monitor()
     start_time = perf_monitor.start_request(thread_id)
-    
+
     success = False
     retries = 0
 
@@ -146,14 +168,14 @@ def _generate_and_validate_prompt(
 
     # Initialize curriculum strategy for intelligent topic selection
     curriculum_strategy = create_curriculum_strategy(taxonomy) if taxonomy else None
-    
-    try:    
+
+    try:
         seed_mode = config.get("use_seed_data", False)
         seed = None
         subject = topic = difficulty_level = None
 
         if seed_mode:
-            
+
             benchmark_name = config.get("benchmark_name", "custom_seed")
 
             # ✅ Use seed_data if provided, fallback only if necessary
@@ -168,26 +190,30 @@ def _generate_and_validate_prompt(
 
             # Classify subject/topic from seed problem
             subject, topic = classify_subject_topic(
-                problem_text=seed,
-                model_name="gpt-4.1",
-                cost_tracker=cost_tracker
+                problem_text=seed, model_name="gpt-4.1", cost_tracker=cost_tracker
             )
 
             if not subject or not topic:
-                logger.warning(f"❌ Classification failed — subject={subject}, topic={topic}")
+                logger.warning(
+                    f"❌ Classification failed — subject={subject}, topic={topic}"
+                )
                 return "discarded", {
                     "problem": seed,
                     "answer": seed_problem.get("answer", ""),
                     "rejection_reason": "Subject/topic classification failed",
                 }
-            
-            logger.info(f"🔍 Classified seed: subject={subject}, topic={topic}")
+
+            logger.info("🔍 Classified seed: subject=%s, topic=%s", subject, topic)
 
         else:
             if curriculum_strategy:
-                subject, topic, difficulty_level, topic_description = curriculum_strategy.select_topic_and_difficulty()
+                subject, topic, difficulty_level, topic_description = (
+                    curriculum_strategy.select_topic_and_difficulty()
+                )
             else:
-                subject = choice(list(taxonomy.keys())) if taxonomy else config.get("subject")
+                subject = (
+                    choice(list(taxonomy.keys())) if taxonomy else config.get("subject")
+                )
                 topic = choice(taxonomy[subject]) if taxonomy else config.get("topic")
                 difficulty_level = None
                 topic_description = None
@@ -203,7 +229,9 @@ def _generate_and_validate_prompt(
                     }
 
         # Step 1: Engineer — generate problem from taxonomy or modify seed
-        engineer_result = call_engineer(subject, topic, seed, engineer_cfg, difficulty_level)
+        engineer_result = call_engineer(
+            subject, topic, seed, engineer_cfg, difficulty_level
+        )
         safe_log_cost(
             cost_tracker,
             engineer_cfg,
@@ -230,7 +258,6 @@ def _generate_and_validate_prompt(
             core["benchmark_name"] = benchmark_name
             core["source_seed"] = seed
 
-
         # Step 2: Checker validation
         checker_result = call_checker(core, checker_cfg, mode="initial")
         safe_log_cost(
@@ -251,20 +278,22 @@ def _generate_and_validate_prompt(
         )
 
         if not checker_result["valid"]:
-            logger.info(f"❌ Rejected: {checker_result.get('reason', '')}")
+            logger.info("❌ Rejected: %s", checker_result.get("reason", ""))
             return "discarded", {
                 **core,
                 "rejection_reason": checker_result.get("reason", ""),
             }
 
         if corrected_hints:
-            
-            logger.info(f"✍️ Checker revised {len(corrected_hints)} hint(s).")
+
+            logger.info("✍️ Checker revised %d hint(s).", len(corrected_hints))
             for idx_str, revised_hint in corrected_hints.items():
                 if idx_str in core["hints"]:
                     core["hints"][idx_str] = revised_hint
                 else:
-                    logger.warning(f"⚠️ Hint index '{idx_str}' not found in core['hints']")
+                    logger.warning(
+                        f"⚠️ Hint index '{idx_str}' not found in core['hints']"
+                    )
 
         else:
             logger.info("✅ Keeping original hints from generator.")
@@ -292,20 +321,29 @@ def _generate_and_validate_prompt(
             raw_prompt=final_check.get("raw_prompt", ""),
         )
 
-        if not final_check.get("valid", False):
-            logger.info("🧠 Target model failed — Accepted!")
+        # Check if we should force accept problems (for development/testing)
+        force_accept = config.get("force_accept_problems", False)
+        target_failed = not final_check.get("valid", False)
+
+        if target_failed or force_accept:
+            if target_failed:
+                logger.info("🧠 Target model failed — Accepted!")
+            else:
+                logger.info("🔧 Force accept enabled — Accepted!")
 
             # Step 5: Similarity Scoring (optional, with optimization)
             if config.get("use_search", False):
                 try:
                     from core.search import score_similarity
 
-                    similarity = score_similarity(core["problem"], cost_tracker=cost_tracker)
+                    similarity = score_similarity(
+                        core["problem"], cost_tracker=cost_tracker
+                    )
                     core["similar_problems"] = {
                         "similarity_score": similarity.get("similarity_score"),
                         "top_matches": similarity.get("top_matches", []),
                     }
-                    
+
                     logger.info(
                         f"🔍 Similarity score: {core['similar_problems']['similarity_score']:.3f}"
                     )
@@ -336,16 +374,13 @@ def _generate_and_validate_prompt(
             "subject": subject,
             "topic": topic,
         }
-    
+
     finally:
         # Record performance metrics
         perf_monitor.end_request(
-            start_time=start_time,
-            success=success,
-            retries=retries,
-            thread_id=thread_id
+            start_time=start_time, success=success, retries=retries, thread_id=thread_id
         )
-    
+
     return result
 
 
@@ -391,7 +426,9 @@ def run_generation_pipeline(
     Returns:
         tuple: (accepted_list, discarded_list, cost_tracker)
     """
-    logger.info("🚀 Starting enhanced generation pipeline with adaptive threading and caching")
+    logger.info(
+        "🚀 Starting enhanced generation pipeline with adaptive threading and caching"
+    )
 
     # Initialize performance monitoring
     perf_monitor = get_performance_monitor()
@@ -417,12 +454,12 @@ def run_generation_pipeline(
             result = _run_enhanced_pipeline(config, cost_tracker)
         else:
             result = _run_legacy_pipeline(config, cost_tracker)
-        
+
         # Log performance summary
         perf_monitor.log_summary()
-        
+
         return result
-        
+
     except Exception as e:
         logger.error("🚨 Pipeline execution failed: %s", str(e), exc_info=True)
         perf_monitor.log_summary()  # Log performance even on failure
@@ -501,7 +538,7 @@ def _run_legacy_pipeline(
     attempt_counter = 0
 
     max_workers = config.get("max_workers", 10)
-    logger.info(f"🚀 Starting parallel execution with {max_workers} worker threads")
+    logger.info("🚀 Starting parallel execution with %d worker threads", max_workers)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = []

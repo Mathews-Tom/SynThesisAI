@@ -1,0 +1,40 @@
+# Quick test configuration - designed to complete fast and avoid infinite loops
+
+# Basic settings
+num_problems: 1
+max_workers: 1
+taxonomy: "taxonomy/enhanced_math_taxonomy.json"
+output_dir: "./quick_test_results"
+default_batch_id: "quick_test"
+
+# Disable slow features
+use_search: false
+use_enhanced_concurrent_processing: false
+enable_prefiltering: false
+llm_cache_enabled: false
+use_seed_data: false
+dspy_enabled: false
+
+# Model configuration - use weaker target model
+engineer_model:
+  provider: "gemini"
+  model_name: "gemini-2.5-pro"
+
+checker_model:
+  provider: "openai"
+  model_name: "o3-mini"
+
+# Use weaker target model to increase chance of failure
+target_model:
+  provider: "openai"
+  model_name: "gpt-4o-mini"
+
+# CRITICAL: Force accept problems to avoid infinite loops
+force_accept_problems: true
+max_generation_attempts: 2
+timeout_seconds: 60
+
+# Test mode settings
+test_mode: true
+verbose: true
+log_level: "INFO"

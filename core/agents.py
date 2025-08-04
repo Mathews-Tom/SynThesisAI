@@ -6,19 +6,21 @@ different roles in the problem generation pipeline: EngineerAgent, CheckerAgent,
 and TargetAgent.
 """
 
+# Standard Library
 import json
 import logging
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 
+# SynThesisAI Modules
 from core.llm.llm_client import get_llm_client
+from core.checker.cas_validator import verify_with_cas
 from utils.config_manager import get_config_manager
 from utils.exceptions import ModelError, ValidationError
 from utils.json_utils import safe_json_parse
 from utils.system_messages import CHECKER_MESSAGE, ENGINEER_MESSAGE
 from utils.taxonomy import get_topic_info
 from utils.prompt_examples import build_enhanced_prompt_context
-from core.checker.cas_validator import verify_with_cas
 
 # Get logger for this module
 logger = logging.getLogger(__name__)
@@ -32,7 +34,7 @@ class Agent(ABC):
     and maintains its own configuration and system prompts.
     """
 
-    def __init__(self, agent_type: str, config_key: str):
+    def __init__(self, agent_type: str, config_key: str) -> None:
         """
         Initialize the base agent.
 
@@ -52,12 +54,20 @@ class Agent(ABC):
         self.model_name = self.model_config.get("model_name", "gpt-4")
 
         self.logger.info(
-            f"Initialized {agent_type} agent with {self.provider} {self.model_name}"
+            "Initialized %s agent with %s %s",
+            agent_type,
+            self.provider,
+            self.model_name,
         )
 
     @abstractmethod
     def get_system_prompt(self) -> str:
-        """Get the system prompt for this agent."""
+        """
+        Get the system prompt for this agent.
+
+        Returns:
+            System prompt string for the agent.
+        """
         pass
 
     def call_model(
@@ -73,6 +83,9 @@ class Agent(ABC):
 
         Returns:
             Dict containing model response and metadata
+
+        Raises:
+            ModelError: If the model call fails
         """
         try:
             result = self.llm_client.call_model(
@@ -84,15 +97,21 @@ class Agent(ABC):
             )
 
             self.logger.debug(
-                f"{self.agent_type} model call completed "
-                f"(tokens: {result.get('tokens_prompt', 0)}→{result.get('tokens_completion', 0)})"
+                "%s model call completed (tokens: %s→%s)",
+                self.agent_type,
+                result.get("tokens_prompt", 0),
+                result.get("tokens_completion", 0),
             )
 
             return result
 
         except Exception as e:
-            self.logger.error(f"{self.agent_type} model call failed: {str(e)}")
-            raise
+            self.logger.error(
+                "%s model call failed: %s",
+                self.agent_type,
+                str(e),
+            )
+            raise ModelError(f"{self.agent_type} model call failed: {str(e)}") from e
 
 
 class EngineerAgent(Agent):
@@ -103,26 +122,36 @@ class EngineerAgent(Agent):
     specifications and ensures they meet quality criteria.
     """
 
-    def __init__(self):
-        """Initialize the EngineerAgent."""
+    def __init__(self) -> None:
+        """
+        Initialize the EngineerAgent.
+        """
         super().__init__("engineer", "engineer_model")
 
     def get_system_prompt(self, difficulty_level: Optional[str] = None) -> str:
-        """Get the enhanced system prompt for problem generation."""
+        """
+        Get the enhanced system prompt for problem generation.
+
+        Args:
+            difficulty_level: Optional difficulty level for prompt customization.
+
+        Returns:
+            The system prompt string including difficulty instructions if provided.
+        """
         base_prompt = ENGINEER_MESSAGE
-        
+
         # Add difficulty-specific instructions
         if difficulty_level:
             difficulty_instructions = {
                 "High School": "Focus on problems that require multi-step reasoning and conceptual understanding beyond basic computation.",
                 "Undergraduate": "Create problems that combine multiple mathematical concepts and require theoretical insight.",
                 "Graduate": "Generate problems that test deep theoretical understanding and advanced mathematical techniques.",
-                "Research": "Develop problems that push the boundaries of standard methods and require novel approaches."
+                "Research": "Develop problems that push the boundaries of standard methods and require novel approaches.",
             }
-            
+
             if difficulty_level in difficulty_instructions:
                 base_prompt += f"\n\nDifficulty Level: {difficulty_level}\n{difficulty_instructions[difficulty_level]}"
-        
+
         return base_prompt
 
     def generate(
@@ -161,16 +190,21 @@ class EngineerAgent(Agent):
             ValidationError: If the generated problem is invalid
             ModelError: If the model call fails
         """
-        self.logger.info(f"Generating problem for {subject} - {topic} (level: {difficulty_level})")
+        self.logger.info(
+            "Generating problem for %s - %s (level: %s)",
+            subject,
+            topic,
+            difficulty_level,
+        )
 
         # Get topic information from enhanced taxonomy
         taxonomy_data = self.config_manager.get("taxonomy", {})
         topic_info = get_topic_info(taxonomy_data, subject, topic)
-        
+
         # Use topic info to determine difficulty level if not provided
         if not difficulty_level and topic_info:
             difficulty_level = topic_info.get("level")
-            
+
         topic_description = topic_info.get("description")
 
         # Build enhanced context using few-shot examples and adversarial techniques
@@ -178,23 +212,27 @@ class EngineerAgent(Agent):
             subject=subject,
             topic=topic,
             difficulty_level=difficulty_level,
-            topic_description=topic_description
+            topic_description=topic_description,
         )
 
         # Build user prompt with enhanced context
         user_prompt_parts = [
             f"Generate a math problem in {subject} under the topic '{topic}' with hints."
         ]
-        
+
         if difficulty_level:
-            user_prompt_parts.append(f"The problem should be at {difficulty_level} level.")
-            
+            user_prompt_parts.append(
+                f"The problem should be at {difficulty_level} level."
+            )
+
         if topic_description:
             user_prompt_parts.append(f"Topic context: {topic_description}")
 
         if seed_prompt:
-            user_prompt_parts.append(f"Use this real-world example as inspiration:\n{seed_prompt}")
-            
+            user_prompt_parts.append(
+                f"Use this real-world example as inspiration:\n{seed_prompt}"
+            )
+
         # Add enhanced context
         if enhanced_context:
             user_prompt_parts.append(f"\n{enhanced_context}")
@@ -212,10 +250,13 @@ class EngineerAgent(Agent):
         try:
             parsed_data = safe_json_parse(response["output"])
         except Exception as e:
-            self.logger.error(f"Failed to parse engineer response as JSON: {str(e)}")
+            self.logger.error(
+                "Failed to parse engineer response as JSON: %s",
+                str(e),
+            )
             raise ValidationError(
                 f"Invalid JSON response from engineer: {str(e)}", field="response"
-            )
+            ) from e
 
         # Validate the response structure
         required_fields = ["subject", "topic", "problem", "answer", "hints"]
@@ -228,7 +269,11 @@ class EngineerAgent(Agent):
         if not isinstance(hints, dict) or len(hints) < 3:
             raise ValidationError("Invalid or too few hints returned.", field="hints")
 
-        self.logger.info(f"Successfully generated {difficulty_level or 'standard'} level problem with {len(hints)} hints")
+        self.logger.info(
+            "Successfully generated %s level problem with %d hints",
+            difficulty_level or "standard",
+            len(hints),
+        )
 
         # Return complete result
         return {
@@ -254,12 +299,19 @@ class CheckerAgent(Agent):
     if different answer formats are mathematically equivalent.
     """
 
-    def __init__(self):
-        """Initialize the CheckerAgent."""
+    def __init__(self) -> None:
+        """
+        Initialize the CheckerAgent.
+        """
         super().__init__("checker", "checker_model")
 
     def get_system_prompt(self) -> str:
-        """Get the system prompt for problem validation."""
+        """
+        Get the system prompt for problem validation.
+
+        Returns:
+            The system prompt string for validation.
+        """
         return CHECKER_MESSAGE
 
     def validate(
@@ -288,7 +340,10 @@ class CheckerAgent(Agent):
             ValidationError: If mode is invalid
             ModelError: If the model call fails
         """
-        self.logger.info(f"Validating problem in {mode} mode")
+        self.logger.info(
+            "Validating problem in %s mode",
+            mode,
+        )
 
         # Prepare user prompt based on mode
         if mode == "initial":
@@ -296,16 +351,16 @@ class CheckerAgent(Agent):
                 "problem": problem_data["problem"],
                 "answer": problem_data["answer"],
                 "hints": problem_data["hints"],
-                "validation_type": "initial"
+                "validation_type": "initial",
             }
         elif mode == "equivalence_check":
             user_prompt = {
                 "problem": problem_data["problem"],
                 "true_answer": problem_data["answer"],
                 "model_answer": problem_data["target_model_answer"],
-                "validation_type": "equivalence_check"
+                "validation_type": "equivalence_check",
             }
-            
+
             # Add enhanced equivalence checking instructions
             user_prompt["equivalence_instructions"] = [
                 "Check for mathematical equivalence, not just textual similarity",
@@ -313,14 +368,16 @@ class CheckerAgent(Agent):
                 "Account for rounding differences and approximations",
                 "Verify algebraic equivalence for expressions",
                 "Check if answers represent the same mathematical concept",
-                "Provide a confidence score (0-1) for the equivalence assessment"
+                "Provide a confidence score (0-1) for the equivalence assessment",
             ]
         else:
             raise ValidationError(f"Unknown validation mode: {mode}", field="mode")
 
         # Build enhanced system prompt for equivalence checking
         if mode == "equivalence_check":
-            enhanced_system_prompt = self.get_system_prompt() + """
+            enhanced_system_prompt = (
+                self.get_system_prompt()
+                + """
 
 ENHANCED EQUIVALENCE CHECKING:
 When checking answer equivalence, consider these scenarios:
@@ -340,6 +397,7 @@ Provide a confidence score from 0 to 1:
 
 Include "equivalence_confidence" in your JSON response.
 """
+            )
             system_prompt = enhanced_system_prompt
         else:
             system_prompt = self.get_system_prompt()
@@ -354,10 +412,13 @@ Include "equivalence_confidence" in your JSON response.
         try:
             parsed_result = safe_json_parse(response["output"])
         except Exception as e:
-            self.logger.error(f"Failed to parse checker response as JSON: {str(e)}")
+            self.logger.error(
+                "Failed to parse checker response as JSON: %s",
+                str(e),
+            )
             raise ValidationError(
                 f"Invalid JSON response from checker: {str(e)}", field="response"
-            )
+            ) from e
 
         # Validate response structure
         if "valid" not in parsed_result:
@@ -376,36 +437,62 @@ Include "equivalence_confidence" in your JSON response.
                 cas_result = verify_with_cas(
                     problem=problem_data["problem"],
                     given_answer=problem_data["answer"],
-                    computed_answer=problem_data["target_model_answer"]
+                    computed_answer=problem_data["target_model_answer"],
                 )
-                
+
                 # If CAS verification is available and confident, use it to enhance the result
                 if cas_result.get("verified") and cas_result.get("confidence", 0) > 0.8:
                     if not is_valid:  # LLM said invalid, but CAS says valid
-                        self.logger.info(f"CAS verification overrides LLM: answers are equivalent")
+                        self.logger.info(
+                            "CAS verification overrides LLM: answers are equivalent"
+                        )
                         is_valid = True
-                        reason = f"CAS verification: {cas_result['reason']} (LLM disagreed)"
-                        equivalence_confidence = max(equivalence_confidence, cas_result.get("confidence", 0.9))
-                elif cas_result.get("verified") == False and cas_result.get("confidence", 0) > 0.8:
+                        reason = (
+                            f"CAS verification: {cas_result['reason']} (LLM disagreed)"
+                        )
+                        equivalence_confidence = max(
+                            equivalence_confidence, cas_result.get("confidence", 0.9)
+                        )
+                elif (
+                    cas_result.get("verified") == False
+                    and cas_result.get("confidence", 0) > 0.8
+                ):
                     if is_valid:  # LLM said valid, but CAS says invalid
-                        self.logger.info(f"CAS verification overrides LLM: answers are not equivalent")
+                        self.logger.info(
+                            "CAS verification overrides LLM: answers are not equivalent"
+                        )
                         is_valid = False
-                        reason = f"CAS verification: {cas_result['reason']} (LLM disagreed)"
-                        equivalence_confidence = min(equivalence_confidence, 1.0 - cas_result.get("confidence", 0.9))
-                        
+                        reason = (
+                            f"CAS verification: {cas_result['reason']} (LLM disagreed)"
+                        )
+                        equivalence_confidence = min(
+                            equivalence_confidence,
+                            1.0 - cas_result.get("confidence", 0.9),
+                        )
+
             except Exception as e:
-                self.logger.debug(f"CAS verification failed: {str(e)}")
+                self.logger.debug(
+                    "CAS verification failed: %s",
+                    str(e),
+                )
 
         # Log detailed validation result
         if mode == "equivalence_check":
-            cas_info = f" [CAS: {cas_result.get('method', 'N/A')}]" if cas_result else ""
+            cas_info = (
+                f" [CAS: {cas_result.get('method', 'N/A')}]" if cas_result else ""
+            )
             self.logger.info(
-                f"Equivalence check: {'VALID' if is_valid else 'INVALID'} "
-                f"(confidence: {equivalence_confidence:.2f}) - {reason}{cas_info}"
+                "Equivalence check: %s (confidence: %.2f) - %s%s",
+                "VALID" if is_valid else "INVALID",
+                equivalence_confidence,
+                reason,
+                cas_info,
             )
         else:
             self.logger.info(
-                f"Validation result: {'VALID' if is_valid else 'INVALID'} - {reason}"
+                "Validation result: %s - %s",
+                "VALID" if is_valid else "INVALID",
+                reason,
             )
 
         result = {
@@ -418,11 +505,11 @@ Include "equivalence_confidence" in your JSON response.
             "raw_output": response.get("output", ""),
             "raw_prompt": full_prompt,
         }
-        
+
         # Add CAS verification results if available
         if cas_result:
             result["cas_verification"] = cas_result
-            
+
         return result
 
 
@@ -434,12 +521,17 @@ class TargetAgent(Agent):
     on appropriately challenging problems.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the TargetAgent."""
         super().__init__("target", "target_model")
 
     def get_system_prompt(self) -> str:
-        """Get the system prompt for problem solving."""
+        """
+        Get the system prompt for problem solving.
+
+        Returns:
+            The system prompt string instructing the model to provide only the answer.
+        """
         return "You are a math student trying to solve the following problem. Only provide the final answer. No explanation."
 
     def solve(self, problem_text: str, **kwargs) -> Dict[str, Any]:
@@ -469,7 +561,10 @@ class TargetAgent(Agent):
         response = self.call_model(full_prompt, temperature=0.0, **kwargs)
 
         answer = response.get("output", "").strip()
-        self.logger.info(f"Target model provided answer: {answer[:100]}...")
+        self.logger.info(
+            "Target model provided answer: %s",
+            (answer[:100] + "..."),
+        )
 
         return {
             "output": answer,
@@ -481,15 +576,30 @@ class TargetAgent(Agent):
 
 # Factory functions for easy agent creation
 def create_engineer_agent() -> EngineerAgent:
-    """Create and return an EngineerAgent instance."""
+    """
+    Create and return an EngineerAgent instance.
+
+    Returns:
+        An initialized EngineerAgent.
+    """
     return EngineerAgent()
 
 
 def create_checker_agent() -> CheckerAgent:
-    """Create and return a CheckerAgent instance."""
+    """
+    Create and return a CheckerAgent instance.
+
+    Returns:
+        An initialized CheckerAgent.
+    """
     return CheckerAgent()
 
 
 def create_target_agent() -> TargetAgent:
-    """Create and return a TargetAgent instance."""
+    """
+    Create and return a TargetAgent instance.
+
+    Returns:
+        An initialized TargetAgent.
+    """
     return TargetAgent()

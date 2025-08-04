@@ -1,0 +1,23 @@
+{
+  "quality_thresholds": {
+    "fidelity_score": 0.85,
+    "utility_score": 0.75,
+    "safety_score": 0.90,
+    "pedagogical_score": 0.80,
+    "cas_verification": 0.95,
+    "notation_accuracy": 0.90,
+    "proof_validity": 0.85
+  },
+  "validation_rules": {
+    "require_cas_verification": true,
+    "check_mathematical_notation": true,
+    "validate_proof_steps": true,
+    "verify_difficulty_level": true,
+    "check_prerequisite_alignment": true
+  },
+  "timeout_seconds": 45,
+  "max_retries": 3,
+  "cache_enabled": true,
+  "cache_ttl_seconds": 7200,
+  "performance_monitoring": true
+}

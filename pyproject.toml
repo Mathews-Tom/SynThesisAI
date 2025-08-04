@@ -5,51 +5,43 @@ description = "The Next-Gen Platform for Generative Intelligence Across"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    # =============================
     # LLM Clients
-    # =============================
-    "openai>=1.0.0", # For OpenAI LLMs (e.g., o1, o3, GPT-4)
-    "google-generativeai>=0.4.1", # For Gemini models via Generative AI SDK
-    "requests>=2.31.0", # For DeepSeek R1 via Fireworks HTTP API
-    # =============================
+    "openai>=1.0.0",                # For OpenAI LLMs (e.g., o1, o3, GPT-4)
+    "google-generativeai>=0.4.1",   # For Gemini models via Generative AI SDK
+    "requests>=2.31.0",             # For DeepSeek R1 via Fireworks HTTP API
+
     # Web Framework
-    # =============================
-    "fastapi>=0.110.0", # FastAPI backend for API interface
-    "uvicorn[standard]>=0.29.0", # ASGI server to run FastAPI locally
-    # =============================
+    "fastapi>=0.110.0",             # FastAPI backend for API interface
+    "uvicorn[standard]>=0.29.0",    # ASGI server to run FastAPI locally
+
     # Utility & Config
-    # =============================
-    "python-dotenv>=1.0.0", # Loads environment variables from .env
-    "pyyaml>=6.0.1", # For loading config/settings.yaml
-    "pandas>=2.2.1", # (Optional) For structured data inspection
-    "tqdm>=4.66.2", # (Optional) For progress bars in CLI
-    # =============================
+    "python-dotenv>=1.0.0",         # Loads environment variables from .env
+    "pyyaml>=6.0.1",                # For loading config/settings.yaml
+    "pandas>=2.2.1",                # (Optional) For structured data inspection
+    "tqdm>=4.66.2",                 # (Optional) For progress bars in CLI
+
     # Pydantic (for schemas)
-    # =============================
-    "pydantic>=2.7.1", # Required by FastAPI and custom request/response models
+    "pydantic>=2.7.1",              # Required by FastAPI and custom request/response models
     "json-repair>=0.47.4",
     "pytest>=8.4.1",
     "sympy>=1.14.0",
-    # =============================
+
     # DSPy Framework
-    # =============================
-    "dspy-ai>=2.5.0", # DSPy framework for declarative self-improving prompts
-    "optuna>=3.6.1", # For MIPROv2 optimizer hyperparameter tuning
-    # =============================
+    "dspy-ai>=2.5.0",               # DSPy framework for declarative self-improving prompts
+    "optuna>=3.6.1",                # For MIPROv2 optimizer hyperparameter tuning
+
     # Reinforcement Learning
-    # =============================
-    "torch>=2.0.0", # PyTorch for neural networks
-    "stable-baselines3>=2.0.0", # Stable RL algorithms
-    "gymnasium>=0.29.0", # OpenAI Gym environment interface
-    "ray[rllib]>=2.8.0", # Ray RLlib for distributed RL
-    "numpy>=1.24.0", # Numerical computing
-    "scikit-learn>=1.3.0", # Machine learning utilities
-    # =============================
+    "torch>=2.0.0",                 # PyTorch for neural networks
+    "stable-baselines3>=2.0.0",     # Stable RL algorithms
+    "gymnasium>=0.29.0",            # OpenAI Gym environment interface
+    "ray[rllib]>=2.8.0",            # Ray RLlib for distributed RL
+    "numpy>=1.24.0",                # Numerical computing
+    "scikit-learn>=1.3.0",          # Machine learning utilities
+
     # Quality Assurance
-    # =============================
-    "nltk>=3.8.1", # Natural language processing
-    "spacy>=3.7.0", # Advanced NLP
-    "transformers>=4.35.0", # Transformer models for content analysis
+    "nltk>=3.8.1",                  # Natural language processing
+    "spacy>=3.7.0",                 # Advanced NLP
+    "transformers>=4.35.0",         # Transformer models for content analysis
     "pytest-asyncio>=1.1.0",
     "psutil>=7.0.0",
     "scipy>=1.16.0",

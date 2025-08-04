@@ -1,0 +1,41 @@
+{
+  "quality_thresholds": {
+    "fidelity_score": 0.80,
+    "utility_score": 0.75,
+    "safety_score": 0.85,
+    "pedagogical_score": 0.80,
+    "unit_consistency": 0.60,
+    "physical_law_accuracy": 0.70,
+    "dimensional_analysis": 0.75
+  },
+  "validation_rules": {
+    "require_unit_consistency": true,
+    "check_dimensional_analysis": true,
+    "validate_physical_laws": true,
+    "verify_physics_constants": true,
+    "check_equation_consistency": true
+  },
+  "physics_domains": {
+    "mechanics": {
+      "enabled": true,
+      "laws": ["newton_first", "newton_second", "newton_third", "conservation_energy", "conservation_momentum"]
+    },
+    "electricity": {
+      "enabled": true,
+      "laws": ["ohms_law", "coulombs_law"]
+    },
+    "thermodynamics": {
+      "enabled": true,
+      "laws": ["conservation_energy"]
+    },
+    "waves": {
+      "enabled": true,
+      "laws": []
+    }
+  },
+  "timeout_seconds": 30,
+  "max_retries": 3,
+  "cache_enabled": true,
+  "cache_ttl_seconds": 3600,
+  "performance_monitoring": true
+}
