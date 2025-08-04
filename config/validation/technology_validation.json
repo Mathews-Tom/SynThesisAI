@@ -1,0 +1,14 @@
+{
+  "quality_thresholds": {
+    "fidelity_score": 0.8,
+    "utility_score": 0.7,
+    "safety_score": 0.9,
+    "pedagogical_score": 0.75
+  },
+  "validation_rules": {},
+  "timeout_seconds": 30,
+  "max_retries": 3,
+  "cache_enabled": true,
+  "cache_ttl_seconds": 3600,
+  "performance_monitoring": true
+}

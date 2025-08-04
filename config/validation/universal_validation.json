@@ -1,0 +1,15 @@
+{
+  "enabled_domains": [
+    "mathematics",
+    "science", 
+    "technology",
+    "reading",
+    "engineering",
+    "arts"
+  ],
+  "global_timeout_seconds": 60,
+  "parallel_validation": true,
+  "max_concurrent_validations": 5,
+  "fallback_on_error": true,
+  "quality_aggregation_method": "weighted_average"
+}
