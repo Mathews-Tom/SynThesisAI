@@ -64,8 +64,8 @@ def main():
         project_root / "tests" / "end_to_end" / "test_synthesisai_user_workflow.py"
     )
 
-    logger.info(f"🚀 Running {args.test_type} workflow test...")
-    logger.info(f"📁 Test file: {test_file}")
+    logger.info("🚀 Running %s workflow test...", args.test_type)
+    logger.info("📁 Test file: %s", test_file)
 
     # Prepare pytest arguments
     pytest_args = [
