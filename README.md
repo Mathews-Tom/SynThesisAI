@@ -5,6 +5,8 @@
 [![DSPy](https://img.shields.io/badge/DSPy-Latest-orange.svg)](https://github.com/stanfordnlp/dspy)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+![SynThesisAI](SynThesisAI.png)
+
 ## Overview
 
 SynThesisAI is a comprehensive, self-optimizing, multi-domain AI platform that leverages DSPy's declarative programming paradigm and agentic reinforcement learning to generate high-quality educational content across **STREAM** domains (Science, Technology, Reading, Engineering, Arts, and Mathematics).
