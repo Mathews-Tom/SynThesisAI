@@ -9,7 +9,7 @@ __pycache__/
 .ruff_cache/
 .test_cache/
 pytest.ini
-SynThesisAI.egg-info
+*.egg-info
 
 # Environments Configurations
 .env
