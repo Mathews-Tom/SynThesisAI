@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 # SynThesisAI Modules
-from core.marl.config_legacy import CoordinationConfig
+from core.marl.config import CoordinationConfig
 from core.marl.coordination.communication_protocol import (
     AgentCommunicationProtocol,
     AgentMessage,

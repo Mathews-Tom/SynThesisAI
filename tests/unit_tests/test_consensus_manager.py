@@ -3,9 +3,10 @@
 # Third-Party Library
 import pytest
 
+from core.marl.config import CoordinationConfig
+
 # SynThesisAI Modules
 from core.marl.config.config_schema import ConsensusConfig
-from core.marl.config_legacy import CoordinationConfig
 from core.marl.coordination.consensus_mechanism import ConsensusMechanism
 
 

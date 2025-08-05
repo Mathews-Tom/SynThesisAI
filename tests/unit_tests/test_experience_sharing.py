@@ -7,7 +7,7 @@ import pytest
 
 # SynThesisAI Modules
 from core.marl.agents.experience import Experience
-from core.marl.config_legacy import ExperienceConfig
+from core.marl.config import ExperienceConfig
 from core.marl.learning.experience_sharing import (
     ActionFrequencyTracker,
     CoordinationSuccessTracker,

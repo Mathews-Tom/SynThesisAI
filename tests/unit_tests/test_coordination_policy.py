@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 # SynThesisAI Modules
-from core.marl.config_legacy import CoordinationConfig
+from core.marl.config import CoordinationConfig
 from core.marl.coordination.conflict_resolver import ConflictResolver
 from core.marl.coordination.consensus_mechanism import ConsensusMechanism
 from core.marl.coordination.coordination_policy import (

@@ -19,7 +19,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 # SynThesisAI Modules
-from ..config_legacy import AgentConfig
+from ..config import AgentConfig
 from ..exceptions import AgentFailureError, PolicyNetworkError
 from ..logging_config import get_marl_logger
 from .experience import Experience

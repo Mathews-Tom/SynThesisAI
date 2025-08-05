@@ -93,9 +93,9 @@ class LearningMetrics:
             "optimization_count": self.optimization_count,
             "performance_history": self.performance_history,
             "improvement_rate": self.improvement_rate,
-            "last_optimization": self.last_optimization.isoformat()
-            if self.last_optimization
-            else None,
+            "last_optimization": (
+                self.last_optimization.isoformat() if self.last_optimization else None
+            ),
             "best_performance": self.best_performance,
             "current_performance": self.current_performance,
         }
@@ -546,15 +546,15 @@ class ContinuousLearningManager:
             if metrics.optimization_count > 5:
                 # Increase exploration for experienced modules
                 adaptive_params["init_temperature"] = 1.6
-                adaptive_params["num_candidate_programs"] = 20
+                # Removed num_candidate_programs as it's not supported by MIPROv2
             elif metrics.optimization_count > 2:
                 # Moderate exploration
                 adaptive_params["init_temperature"] = 1.5
-                adaptive_params["num_candidate_programs"] = 18
+                # Removed num_candidate_programs as it's not supported by MIPROv2
             else:
                 # Conservative for new modules
                 adaptive_params["init_temperature"] = 1.3
-                adaptive_params["num_candidate_programs"] = 16
+                # Removed num_candidate_programs as it's not supported by MIPROv2
 
             # Adjust based on improvement rate
             if metrics.improvement_rate < 0.01:  # Slow improvement
@@ -646,9 +646,11 @@ class ContinuousLearningManager:
                     "current_performance": metrics.current_performance,
                     "best_performance": metrics.best_performance,
                     "improvement_rate": metrics.improvement_rate,
-                    "last_optimization": metrics.last_optimization.isoformat()
-                    if metrics.last_optimization
-                    else None,
+                    "last_optimization": (
+                        metrics.last_optimization.isoformat()
+                        if metrics.last_optimization
+                        else None
+                    ),
                 }
 
             return summary
