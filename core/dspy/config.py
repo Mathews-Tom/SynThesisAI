@@ -116,18 +116,18 @@ class DSPyConfig:
         # Default optimization configurations
         default_configs = {
             "mipro_v2": {
-                "max_bootstrapped_demos": 4,
-                "max_labeled_demos": 16,
-                "num_candidate_programs": 16,
-                "init_temperature": 1.4,
-                "optuna_trials_num": 100,
+                "max_bootstrapped_demos": 2,
+                "max_labeled_demos": 8,
+                "init_temperature": 1.0,
+                "optuna_trials_num": 20,
             },
             "bootstrap": {
-                "max_bootstrapped_demos": 4,
-                "max_labeled_demos": 16,
+                "max_bootstrapped_demos": 2,
+                "max_labeled_demos": 8,
             },
             "copro": {
-                "num_candidate_programs": 16,
+                "max_bootstrapped_demos": 2,
+                "max_labeled_demos": 8,
             },
         }
 
@@ -143,8 +143,8 @@ class DSPyConfig:
         """
         return {
             "min_quality_score": 0.5,
-            "min_examples": 10,
-            "max_examples": 1000,
+            "min_examples": 1,
+            "max_examples": 100,
             "validation_split": 0.2,
         }
 

@@ -15,6 +15,11 @@ target_success_rate: 0.3
 # Pre-filtering and Optimization
 enable_prefiltering: true
 
+# DSPy Integration Configuration
+dspy_enabled: true 
+dspy_config_path: "config/dspy_config.json"
+dspy_fallback_on_error: true # Fall back to legacy agents if DSPy fails
+
 engineer_model:
   provider: "gemini"
   model_name: "gemini-2.5-pro"

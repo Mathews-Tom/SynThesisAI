@@ -261,7 +261,7 @@ class TestPhase2CoordinationMechanisms:
     def test_coordination_protocol(self):
         """Test coordination protocol and consensus mechanisms."""
         try:
-            from core.marl.config_legacy import CoordinationConfig
+            from core.marl.config import CoordinationConfig
             from core.marl.coordination.communication_protocol import AgentMessage
 
             # Test basic configuration
@@ -292,7 +292,7 @@ class TestPhase2CoordinationMechanisms:
     async def test_consensus_mechanisms(self):
         """Test consensus mechanisms."""
         try:
-            from core.marl.config_legacy import CoordinationConfig
+            from core.marl.config import CoordinationConfig
             from core.marl.coordination.consensus_mechanism import ConsensusMechanism
 
             config = CoordinationConfig()

@@ -12,15 +12,16 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 
+from core.checker.cas_validator import verify_with_cas
+
 # SynThesisAI Modules
 from core.llm.llm_client import get_llm_client
-from core.checker.cas_validator import verify_with_cas
 from utils.config_manager import get_config_manager
 from utils.exceptions import ModelError, ValidationError
 from utils.json_utils import safe_json_parse
+from utils.prompt_examples import build_enhanced_prompt_context
 from utils.system_messages import CHECKER_MESSAGE, ENGINEER_MESSAGE
 from utils.taxonomy import get_topic_info
-from utils.prompt_examples import build_enhanced_prompt_context
 
 # Get logger for this module
 logger = logging.getLogger(__name__)
@@ -579,9 +580,33 @@ def create_engineer_agent() -> EngineerAgent:
     """
     Create and return an EngineerAgent instance.
 
+    Uses DSPy-enabled agents when DSPy is enabled in configuration,
+    otherwise falls back to legacy agents.
+
     Returns:
-        An initialized EngineerAgent.
+        An initialized EngineerAgent (legacy or DSPy-enabled).
     """
+    from utils.config_manager import get_config_manager
+
+    config_manager = get_config_manager()
+
+    # Check if DSPy is enabled
+    try:
+        from core.dspy.config import get_dspy_config
+
+        dspy_config = get_dspy_config()
+        if dspy_config.is_enabled():
+            from core.dspy.engineer_agent import create_dspy_engineer_agent
+
+            return create_dspy_engineer_agent()
+    except (ImportError, Exception) as e:
+        # Log the error but continue with fallback
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.warning("DSPy engineer agent creation failed, using legacy: %s", str(e))
+
+    # Fallback to legacy agent
     return EngineerAgent()
 
 
@@ -589,9 +614,33 @@ def create_checker_agent() -> CheckerAgent:
     """
     Create and return a CheckerAgent instance.
 
+    Uses DSPy-enabled agents when DSPy is enabled in configuration,
+    otherwise falls back to legacy agents.
+
     Returns:
-        An initialized CheckerAgent.
+        An initialized CheckerAgent (legacy or DSPy-enabled).
     """
+    from utils.config_manager import get_config_manager
+
+    config_manager = get_config_manager()
+
+    # Check if DSPy is enabled
+    try:
+        from core.dspy.config import get_dspy_config
+
+        dspy_config = get_dspy_config()
+        if dspy_config.is_enabled():
+            from core.dspy.checker_agent import create_dspy_checker_agent
+
+            return create_dspy_checker_agent()
+    except (ImportError, Exception) as e:
+        # Log the error but continue with fallback
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.warning("DSPy checker agent creation failed, using legacy: %s", str(e))
+
+    # Fallback to legacy agent
     return CheckerAgent()
 
 
@@ -599,7 +648,31 @@ def create_target_agent() -> TargetAgent:
     """
     Create and return a TargetAgent instance.
 
+    Uses DSPy-enabled agents when DSPy is enabled in configuration,
+    otherwise falls back to legacy agents.
+
     Returns:
-        An initialized TargetAgent.
+        An initialized TargetAgent (legacy or DSPy-enabled).
     """
+    from utils.config_manager import get_config_manager
+
+    config_manager = get_config_manager()
+
+    # Check if DSPy is enabled
+    try:
+        from core.dspy.config import get_dspy_config
+
+        dspy_config = get_dspy_config()
+        if dspy_config.is_enabled():
+            from core.dspy.target_agent import create_dspy_target_agent
+
+            return create_dspy_target_agent()
+    except (ImportError, Exception) as e:
+        # Log the error but continue with fallback
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.warning("DSPy target agent creation failed, using legacy: %s", str(e))
+
+    # Fallback to legacy agent
     return TargetAgent()

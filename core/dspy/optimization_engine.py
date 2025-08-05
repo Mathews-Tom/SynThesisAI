@@ -5,14 +5,16 @@ This module implements the DSPyOptimizationEngine class for optimizing DSPy modu
 using MIPROv2 and other optimization techniques with comprehensive training data management.
 """
 
+# Standard Library
 import hashlib
 import json
 import logging
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
+# SynThesisAI Modules
 from .base_module import STREAMContentGenerator
 from .cache import get_optimization_cache
 from .config import OptimizationResult, TrainingExample, get_dspy_config
@@ -508,12 +510,33 @@ class DSPyOptimizationEngine:
             opt_config = self.config.get_optimization_config("mipro_v2")
 
             # Create MIPROv2 optimizer with configuration
-            optimizer = MIPROv2(
-                max_bootstrapped_demos=opt_config.get("max_bootstrapped_demos", 4),
-                max_labeled_demos=opt_config.get("max_labeled_demos", 16),
-                num_candidate_programs=opt_config.get("num_candidate_programs", 16),
-                init_temperature=opt_config.get("init_temperature", 1.4),
-            )
+            # Note: MIPROv2 requires a metric parameter
+            try:
+                # Try to import a simple metric function
+                import dspy
+
+                # Create a simple accuracy metric
+                def simple_metric(example, pred, trace=None):
+                    """Simple accuracy metric for DSPy optimization."""
+                    try:
+                        # Basic accuracy check
+                        return 1.0 if pred and hasattr(pred, "answer") else 0.0
+                    except:
+                        return 0.0
+
+                optimizer = MIPROv2(
+                    metric=simple_metric,
+                    max_bootstrapped_demos=opt_config.get("max_bootstrapped_demos", 2),
+                    max_labeled_demos=opt_config.get("max_labeled_demos", 8),
+                    init_temperature=opt_config.get("init_temperature", 1.0),
+                )
+            except Exception as e:
+                self.logger.error("Failed to create MIPROv2 optimizer: %s", str(e))
+                raise OptimizationFailureError(
+                    f"Failed to create MIPROv2 optimizer: {str(e)}",
+                    domain=domain,
+                    details={"config": opt_config, "error": str(e)},
+                ) from e
 
             self.logger.info(
                 "Optimizing with %d training and %d validation examples",

@@ -134,9 +134,11 @@ class Feedback:
             domain=data["domain"],
             severity=data.get("severity", FeedbackSeverity.MEDIUM.value),
             metadata=data.get("metadata", {}),
-            timestamp=datetime.fromisoformat(data["timestamp"])
-            if "timestamp" in data
-            else None,
+            timestamp=(
+                datetime.fromisoformat(data["timestamp"])
+                if "timestamp" in data
+                else None
+            ),
         )
         feedback.feedback_id = data.get("feedback_id", feedback.feedback_id)
         return feedback
@@ -439,9 +441,11 @@ class DSPyFeedbackIntegrator:
                         feedback_type=FeedbackType.ACCURACY,
                         source=FeedbackSource.SYSTEM,
                         domain=domain,
-                        severity=FeedbackSeverity.HIGH
-                        if accuracy < 0.5
-                        else FeedbackSeverity.MEDIUM,
+                        severity=(
+                            FeedbackSeverity.HIGH
+                            if accuracy < 0.5
+                            else FeedbackSeverity.MEDIUM
+                        ),
                         metadata={
                             "accuracy_score": accuracy,
                             "validation_results": validation_results,
@@ -642,12 +646,10 @@ class DSPyFeedbackIntegrator:
 
         # Adjust optimization parameters for high-priority issues
         if "high_priority_issues" in feedback_analysis.get("improvement_areas", []):
-            adjustments["optimization_params"]["max_labeled_demos"] = (
-                20  # Increase training examples
-            )
-            adjustments["optimization_params"]["num_candidate_programs"] = (
-                20  # More candidate programs
-            )
+            adjustments["optimization_params"][
+                "max_labeled_demos"
+            ] = 20  # Increase training examples
+            # Removed num_candidate_programs as it's not supported by MIPROv2
 
         return adjustments
 

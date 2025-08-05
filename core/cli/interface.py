@@ -1,8 +1,10 @@
+# Standard Library
 import argparse
 import json
 import os
 from pathlib import Path
 
+# SynThesisAI Modules
 from core.orchestration.generate_batch import run_generation_pipeline
 from utils.config_manager import get_config_manager
 from utils.exceptions import TaxonomyError
@@ -130,10 +132,10 @@ def main():
 
     # Get the complete configuration for the pipeline
     config = config_manager.get_all()
-    valid, rejected = run_generation_pipeline(config)
+    valid, rejected, cost_tracker = run_generation_pipeline(config)
     save_prompts(valid, rejected, save_path)
 
-    logger.info(f"✅ {len(valid)} accepted | ❌ {len(rejected)} discarded")
+    logger.info("✅ %d accepted | ❌ %d discarded", len(valid), len(rejected))
 
 
 if __name__ == "__main__":

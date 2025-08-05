@@ -14,19 +14,50 @@ models to support a phased migration.
 from typing import List
 
 # SynThesisAI Modules
-# Import the legacy AgentConfig and specialized configs from the config file
-from ..config_legacy import (
-    AgentConfig,
-    CurriculumAgentConfig,
-    GeneratorAgentConfig,
-    ValidatorAgentConfig,
-)
 from .config_manager import MARLConfigManager
 from .config_migration import ConfigMigrationManager
-from .config_schema import AgentConfig as NewAgentConfig
-from .config_schema import CoordinationConfig, LearningConfig, MARLConfig
+from .config_schema import (
+    AgentConfig,
+    CommunicationConfig,
+    ConsensusConfig,
+    CoordinationConfig,
+    ExplorationConfig,
+    LearningConfig,
+    MARLConfig,
+    NetworkConfig,
+    OptimizationConfig,
+    ReplayBufferConfig,
+    SharedLearningConfig,
+    SystemConfig,
+)
 from .config_templates import ConfigTemplateManager
 from .config_validator import ConfigValidator
+
+
+# Create aliases for specialized agent configs using the new AgentConfig
+# These provide backward compatibility for specialized agent types
+def create_curriculum_agent_config(agent_id: str = "curriculum") -> AgentConfig:
+    """Create a curriculum agent configuration."""
+    return AgentConfig(agent_id=agent_id, agent_type="curriculum")
+
+
+def create_generator_agent_config(agent_id: str = "generator") -> AgentConfig:
+    """Create a generator agent configuration."""
+    return AgentConfig(agent_id=agent_id, agent_type="generator")
+
+
+def create_validator_agent_config(agent_id: str = "validator") -> AgentConfig:
+    """Create a validator agent configuration."""
+    return AgentConfig(agent_id=agent_id, agent_type="validator")
+
+
+# Backward compatibility aliases
+CurriculumAgentConfig = create_curriculum_agent_config
+GeneratorAgentConfig = create_generator_agent_config
+ValidatorAgentConfig = create_validator_agent_config
+
+# Experience config is now part of SharedLearningConfig
+ExperienceConfig = SharedLearningConfig
 
 __all__: List[str] = [
     "AgentConfig",
@@ -34,11 +65,20 @@ __all__: List[str] = [
     "ConfigTemplateManager",
     "ConfigValidator",
     "CoordinationConfig",
-    "CurriculumAgentConfig",
-    "GeneratorAgentConfig",
     "LearningConfig",
     "MARLConfig",
     "MARLConfigManager",
-    "NewAgentConfig",
+    "NetworkConfig",
+    "OptimizationConfig",
+    "ExplorationConfig",
+    "ReplayBufferConfig",
+    "ConsensusConfig",
+    "CommunicationConfig",
+    "SharedLearningConfig",
+    "SystemConfig",
+    # Legacy compatibility (will be removed)
+    "CurriculumAgentConfig",
+    "GeneratorAgentConfig",
     "ValidatorAgentConfig",
+    "ExperienceConfig",
 ]

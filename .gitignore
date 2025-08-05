@@ -9,6 +9,7 @@ __pycache__/
 .ruff_cache/
 .test_cache/
 pytest.ini
+*.egg-info
 
 # Environments Configurations
 .env
